@@ -1,0 +1,22 @@
+<html>
+<head>
+  <title>Objects</title>
+  <script type="text/javascript" id="srcLoad">
+var url ='https://raw.githubusercontent.com/d-cook/Objects/master/Objects.js'; 
+var r = new XMLHttpRequest(); 
+r.addEventListener("load", function() {
+  var h = document.getElementsByTagName('head')[0];
+  var s = document.createElement('script');
+  s.setAttribute('type', 'text/javascript');
+  s.innerHTML = this.responseText + '\r\n//# sourceURL=' + url;
+  h.appendChild(s);
+  h.removeChild(document.getElementById('srcLoad'));
+}); 
+r.open('GET', url);
+r.send();
+false;
+  </script>
+</head>
+<body>
+</body>
+</html>
