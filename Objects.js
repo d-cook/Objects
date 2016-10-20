@@ -1,4 +1,5 @@
-(function(){
-  var O = window.Objects = {};
-  // TODO: Everything here.
-})();
+window.addEventListener("load", function() {
+
+var O = window.Objects = {};
+
+});
