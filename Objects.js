@@ -1,4 +1,4 @@
-window.addEventListener("load", function() {
+(function() {
 
 function newObject (keys, obj) {
    var v = Object.create(null);
@@ -55,4 +55,4 @@ O.call = function (cb, code, env) {
    return { func: O.exec, args: [cb, code, O.newObject({ parent: env })] };
 };
 
-});
+})();
