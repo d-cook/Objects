@@ -13,6 +13,13 @@ function newObject (keys, obj) {
    return o;
 }
 
+function run (func) {
+   var r = func();
+   while(r && r.func) {
+      r = r.func.apply(null, r.args || []);
+   }
+}
+
 var O = window.Objects = {};
 
 });
