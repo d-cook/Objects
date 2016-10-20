@@ -36,4 +36,23 @@ O.null = { type: O.types.null };
 
 O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 
+O.exec = function (cb, code, env) {
+   // code <-- evaluate this
+   // env  <-- in this context
+   // O.exec(funcToCall, newEnv, function (r) { /* apply r to next thing */ }); <-- call a function with current callback
+   // cb(r); <-- return a value
+
+   if (O.isNative(code)) {
+      return { func: code.func, args: [cb, code, env] };
+   }
+   if (O.isObject(code) && code.op && env[code.op]) {
+      return { func: env[code.op], args: [cb, code, env] };
+   }
+   return { func: cb, args: [code] };
+};
+
+O.call = function (cb, code, env) {
+   return { func: O.exec, args: [cb, code, O.newObject({ parent: env })] };
+};
+
 });
