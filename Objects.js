@@ -36,6 +36,9 @@ O.null = { type: O.types.null };
 
 O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 
+// TODO: Replace env[...] with recursive lookup
+// TODO: Replace foo.bar with foo.value.bar, or implement a property getter
+
 O.eval = function (cb, code, env) {
    // Execute JavaScript
    if (O.isNative(code)) {
@@ -43,7 +46,11 @@ O.eval = function (cb, code, env) {
    }
    // Execute some other operation (as defined in env)
    if (O.isObject(code) && code.op && env[code.op]) {
-      return { func: env[code.op], args: [cb, code, env] }; // :: env[code.op](cb, code, env)
+      var func = env[code.op];
+      if (func.syntax) {
+         return { func: func, args: [cb, code, env] }; // :: env[code.op](cb, code, env)
+      }
+      // TODO: Evaluate each of code.args, then pass them to func
    }
    // Otherwise, the "code" is a value ("self-evaluating")
    return { func: cb, args: [code] }; // :: cb(code)
