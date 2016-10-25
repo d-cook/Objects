@@ -2,20 +2,23 @@
 <head>
   <title>Objects</title>
   <script type="text/javascript" id="srcLoad">
-// TODO: determine this URL programmatically, so branch name does not have to be manually updated with each branch/merge:
-var url ='https://raw.githubusercontent.com/d-cook/Objects/notMaster/Objects.js'; 
-var r = new XMLHttpRequest(); 
-r.addEventListener("load", function() {
-  var h = document.getElementsByTagName('head')[0];
-  var s = document.createElement('script');
-  s.setAttribute('type', 'text/javascript');
-  s.innerHTML = this.responseText + '\r\n//# sourceURL=' + url;
-  h.appendChild(s);
-  h.removeChild(document.getElementById('srcLoad'));
-}); 
-r.open('GET', url);
-r.send();
-false;
+(function(){
+  var a = document.createElement('a');
+  a.href = 'Objects.js';
+  var url = a.href.replace(/\/(\w|\.)+\.com\//, '\/raw.githubusercontent.com\/'); 
+  var r = new XMLHttpRequest(); 
+  r.addEventListener("load", function() {
+    var h = document.getElementsByTagName('head')[0];
+    var s = document.createElement('script');
+    s.setAttribute('type', 'text/javascript');
+    s.innerHTML = this.responseText + '\r\n//# sourceURL=' + url;
+    h.appendChild(s);
+    h.removeChild(document.getElementById('srcLoad'));
+  });
+  r.open('GET', url);
+  r.send();
+  return false;
+}());
   </script>
 </head>
 <body>
