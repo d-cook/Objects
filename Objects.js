@@ -36,23 +36,21 @@ O.null = { type: O.types.null };
 
 O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 
-O.exec = function (cb, code, env) {
-   // code <-- evaluate this
-   // env  <-- in this context
-   // O.exec(funcToCall, newEnv, function (r) { /* apply r to next thing */ }); <-- call a function with current callback
-   // cb(r); <-- return a value
-
+O.eval = function (cb, code, env) {
+   // Execute JavaScript
    if (O.isNative(code)) {
-      return { func: code.func, args: [cb, code, env] };
+      return { func: code.func, args: [cb, code, env] }; // :: code.func(cb, code, env)
    }
+   // Execute some other operation (as defined in env)
    if (O.isObject(code) && code.op && env[code.op]) {
-      return { func: env[code.op], args: [cb, code, env] };
+      return { func: env[code.op], args: [cb, code, env] }; // :: env[code.op](cb, code, env)
    }
-   return { func: cb, args: [code] };
+   // Otherwise, the "code" is a value ("self-evaluating")
+   return { func: cb, args: [code] }; // :: cb(code)
 };
 
 O.call = function (cb, code, env) {
-   return { func: O.exec, args: [cb, code, O.newObject({ parent: env })] };
+   return { func: O.eval, args: [cb, code, O.newObject({ parent: env })] };
 };
 
-})();
+}());
