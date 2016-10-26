@@ -75,9 +75,11 @@ O.eval = function (cb, code, env) {
          }
          return tailcall(nextArg, [0]);
       }
+      // Compute the function to call:
       if (O.isObject(code.op)) {
          return tailcall(O.eval, [code.op, env], processFunc);
       }
+      // Otherwise lookup the function to call:
       return tailcall(processFunc, [ env[code.op] ]);
    }
    // Otherwise, the "code" is a value ("self-evaluating")
