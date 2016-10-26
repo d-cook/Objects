@@ -1,6 +1,6 @@
 (function() {
 
-function newObject (keys, obj) {
+function newObject (obj) {
    var v = Object.create(null);
    for (var p in obj) {
       if (Object.hasOwnProperty.apply(obj, p)) {
