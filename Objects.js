@@ -48,12 +48,12 @@ O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 O.eval = function (cb, code, env) {
    // Execute native JavaScript
    if (O.isNative(code)) {
-      return tailcall(code.func, [code, env], cb);
+      return tailcall(O.get(code, 'func'), [code, env], cb);
    }
    // Execute an operation defined in env
-   if (O.isObject(code) && code.op && env[code.op]) {
+   if (O.isObject(code) && O.has(code, 'op')) {
       function processFunc (func) {
-         var args = code.args || [];
+         var args = O.get(code, 'args') || [];
          // Execute a syntax-function (operates on unevaluated arguments)
          if (func.syntax) {
             return tailcall(func, [args, env], cb);
@@ -64,7 +64,7 @@ O.eval = function (cb, code, env) {
             // Invoke the operation once all args are evaluated:
             if (i >= args.length) {
                var newEnv = newObject({ parent: env });
-               newEnv.args = computedArgs; // TODO: instead, insert args as named props of newEnv
+               O.set(newEnv, 'args', computedArgs); // TODO: instead, insert args as named props of newEnv
                return tailcall(O.eval, [func, newEnv], cb);
             }
             // Evaluate the next argument:
@@ -75,15 +75,30 @@ O.eval = function (cb, code, env) {
          }
          return tailcall(nextArg, [0]);
       }
+      var op = O.get(code, 'op');
       // Compute the function to call:
-      if (O.isObject(code.op)) {
-         return tailcall(O.eval, [code.op, env], processFunc);
+      if (O.isObject(op)) {
+         return tailcall(O.eval, [op, env], processFunc);
       }
       // Otherwise lookup the function to call:
-      return tailcall(processFunc, [ env[code.op] ]);
+      return tailcall(processFunc, [ env[op] ]);
    }
    // Otherwise, the "code" is a value ("self-evaluating")
    return tailcall(cb, [code]);
+};
+
+O.has = function (obj, prop) {
+   return (O.isObject(obj) || O.isArray(obj)) && obj.value.hasOwnProperty(prop);
+};
+
+O.get = function (obj, prop) {
+   return O.has(obj, prop) ? obj.value[prop] : O.null;
+};
+
+O.set = function (obj, prop, value) {
+   if (O.isObject(obj) || O.isArray(obj)) {
+      obj.value[prop] = value;
+   }
 };
 
 }());
