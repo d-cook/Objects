@@ -53,21 +53,21 @@ O.eval = function (cb, code, env) {
    // Execute an operation defined in env
    if (O.isObject(code) && code.op && env[code.op]) {
       return tailcall(O.eval, [code.op, env], function (func) {
+         var args = code.args || [];
          // Execute a syntax-function (operates on unevaluated arguments)
          if (func.syntax) {
-            return tailcall(func, [code, env], cb);
+            return tailcall(func, [args, env], cb);
          }
          // Evaluate each argument, then pass them into the operation
-         var args = [];
-         var argExps = code.args || [];
+         var computedArgs = [];
          function nextArg (i) {
             // Invoke the operation once all args are evaluated:
-            if (i >= argExps.length) {
-               return tailcall(func, args, cb);
+            if (i >= args.length) {
+               return tailcall(func, computedArgs, cb);
             }
             // Evaluate the next argument:
             return tailcall(O.eval, [argsExps[i], env], function (a) {
-               args.push(a);
+               computedArgs.push(a);
                return tailcall(nextArg, [i+1]);
             });
          }
