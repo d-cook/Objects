@@ -46,17 +46,32 @@ O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 // TODO: Replace foo.bar with foo.value.bar, or implement a property getter
 
 O.eval = function (cb, code, env) {
-   // Execute JavaScript
+   // Execute native JavaScript
    if (O.isNative(code)) {
       return tailcall(code.func, [code, env], cb);
    }
-   // Execute some other operation (as defined in env)
+   // Execute an operation defined in env
    if (O.isObject(code) && code.op && env[code.op]) {
       return tailcall(O.eval, [code.op, env], function (func) {
+         // Execute a syntax-function (operates on unevaluated arguments)
          if (func.syntax) {
             return tailcall(func, [code, env], cb);
          }
-         // TODO: Evaluate each of code.args, then pass them to func
+         // Evaluate each argument, then pass them into the operation
+         var args = [];
+         var argExps = code.args || [];
+         function nextArg (i) {
+            // Invoke the operation once all args are evaluated:
+            if (i >= argExps.length) {
+               return tailcall(func, args, cb);
+            }
+            // Evaluate the next argument:
+            return tailcall(O.eval, [argsExps[i], env], function (a) {
+               args.push(a);
+               return tailcall(nextArg, [i+1]);
+            });
+         }
+         return tailcall(nextArg, [0]);
       });
    }
    // Otherwise, the "code" is a value ("self-evaluating")
