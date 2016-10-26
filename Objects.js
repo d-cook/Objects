@@ -25,6 +25,8 @@ function run (func) {
       r = r.func.apply(null, r.args || []);
    }
 }
+   
+// TODO: Convert remaining O functions to Continuation Passing Style
 
 var O = window.Objects = {};
 
@@ -43,7 +45,6 @@ O.null = { type: O.types.null };
 O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 
 // TODO: Replace env[...] with recursive lookup
-// TODO: Replace foo.bar with foo.value.bar, or implement a property getter
 
 O.eval = function (cb, code, env) {
    // Execute native JavaScript
