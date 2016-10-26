@@ -44,7 +44,11 @@ O.null = { type: O.types.null };
 
 O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 
-// TODO: Replace env[...] with recursive lookup
+O.lookup = function (env, prop) {
+   if (O.has(env, prop)) { return O.get(env, prop); }
+   if (O.has(env, 'parent')) { return O.lookup(O.get(env, 'parent'), prop); }
+   return O.null;
+};
 
 O.eval = function (cb, code, env) {
    // Execute native JavaScript
@@ -82,7 +86,7 @@ O.eval = function (cb, code, env) {
          return tailcall(O.eval, [op, env], processFunc);
       }
       // Otherwise lookup the function to call:
-      return tailcall(processFunc, [ env[op] ]);
+      return tailcall(processFunc, [O.lookup(env, op)]);
    }
    // Otherwise, the "code" is a value ("self-evaluating")
    return tailcall(cb, [code]);
