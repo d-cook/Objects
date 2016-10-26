@@ -63,7 +63,9 @@ O.eval = function (cb, code, env) {
          function nextArg (i) {
             // Invoke the operation once all args are evaluated:
             if (i >= args.length) {
-               return tailcall(func, computedArgs, cb);
+               var newEnv = newObject({ parent: env });
+               newEnv.args = computedArgs; // TODO: instead, insert args as named props of newEnv
+               return tailcall(O.eval, [func, newEnv], cb);
             }
             // Evaluate the next argument:
             return tailcall(O.eval, [argsExps[i], env], function (a) {
@@ -76,10 +78,6 @@ O.eval = function (cb, code, env) {
    }
    // Otherwise, the "code" is a value ("self-evaluating")
    return tailcall(cb, [code]);
-};
-
-O.call = function (cb, code, env) {
-   return tailcall(O.eval, [code, O.newObject({ parent: env })], cb);
 };
 
 }());
