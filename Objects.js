@@ -52,7 +52,7 @@ O.eval = function (cb, code, env) {
    }
    // Execute an operation defined in env
    if (O.isObject(code) && code.op && env[code.op]) {
-      return tailcall(O.eval, [code.op, env], function (func) {
+      function processFunc (func) {
          var args = code.args || [];
          // Execute a syntax-function (operates on unevaluated arguments)
          if (func.syntax) {
@@ -74,7 +74,11 @@ O.eval = function (cb, code, env) {
             });
          }
          return tailcall(nextArg, [0]);
-      });
+      }
+      if (O.isObject(code.op)) {
+         return tailcall(O.eval, [code.op, env], processFunc);
+      }
+      return tailcall(processFunc, [ env[code.op] ]);
    }
    // Otherwise, the "code" is a value ("self-evaluating")
    return tailcall(cb, [code]);
