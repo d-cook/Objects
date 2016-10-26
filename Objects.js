@@ -13,8 +13,10 @@ function newObject (keys, obj) {
    return o;
 }
 
-function tailcall (args, func) {
-   return { func: func, args: args };
+function tailcall (func, args, cb) {
+   var allArgs = cb ? [cb] : [];
+   allArgs.push.apply(allArgs, args);
+   return { func: func, args: allArgs };
 }
 
 function run (func) {
@@ -46,22 +48,23 @@ O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 O.eval = function (cb, code, env) {
    // Execute JavaScript
    if (O.isNative(code)) {
-      return tailcall([cb, code, env], code.func);
+      return tailcall(code.func, [code, env], cb);
    }
    // Execute some other operation (as defined in env)
    if (O.isObject(code) && code.op && env[code.op]) {
-      var func = env[code.op];
-      if (func.syntax) {
-         return tailcall([cb, code, env], func);
-      }
-      // TODO: Evaluate each of code.args, then pass them to func
+      return tailcall(O.eval, [code.op, env], function (func) {
+         if (func.syntax) {
+            return tailcall(func, [code, env], cb);
+         }
+         // TODO: Evaluate each of code.args, then pass them to func
+      });
    }
    // Otherwise, the "code" is a value ("self-evaluating")
-   return tailcall([code], cb);
+   return tailcall(cb, [code]);
 };
 
 O.call = function (cb, code, env) {
-   return tailcall([cb, code, O.newObject({ parent: env })], O.eval);
+   return tailcall(O.eval, [code, O.newObject({ parent: env })], cb);
 };
 
 }());
