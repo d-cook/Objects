@@ -73,22 +73,23 @@ O.eval = function (cb, code, env) {
    if (O.isObject(code) && O.has(code, 'op')) {
       function processFunc (func) {
          var args = O.get(code, 'args') || [];
+         var callArgs = [];
+         var newEnv = newObject({ parent: env });
+         O.set(newEnv, 'args', callArgs); // TODO: instead, insert args as named props of newEnv
          // Execute a syntax-function (operates on unevaluated arguments)
-         if (func.syntax) {
-            return tailcall(func, [args, env], cb);
+         if (O.get(func, 'syntax')) {
+            callArgs.push.apply(callArgs, args);
+            return tailcall(O.eval, [func, newEnv], cb);
          }
          // Evaluate each argument, then pass them into the operation
-         var computedArgs = [];
          function nextArg (i) {
             // Invoke the operation once all args are evaluated:
             if (i >= args.length) {
-               var newEnv = newObject({ parent: env });
-               O.set(newEnv, 'args', computedArgs); // TODO: instead, insert args as named props of newEnv
                return tailcall(O.eval, [func, newEnv], cb);
             }
             // Evaluate the next argument:
             return tailcall(O.eval, [argsExps[i], env], function (a) {
-               computedArgs.push(a);
+               callArgs.push(a);
                return tailcall(nextArg, [i+1]);
             });
          }
