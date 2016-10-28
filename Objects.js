@@ -40,29 +40,9 @@ O.types.number = { type: O.types.type, name: 'number' }; O.isNumber = function (
 O.types.native = { type: O.types.type, name: 'native' }; O.isNative = function (o) { return O.typeof(o) === O.types.native; };
 O.types.type.type = O.types.type;
 
-O.null = { type: O.types.null };
-
 O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 
-O.has = function (obj, prop) {
-   return (O.isObject(obj) || O.isArray(obj)) && obj.value.hasOwnProperty(prop);
-};
-
-O.get = function (obj, prop) {
-   return O.has(obj, prop) ? obj.value[prop] : O.null;
-};
-
-O.set = function (obj, prop, value) {
-   if (O.isObject(obj) || O.isArray(obj)) {
-      obj.value[prop] = value;
-   }
-};
-
-O.lookup = function (env, prop) {
-   if (O.has(env, prop)) { return O.get(env, prop); }
-   if (O.has(env, 'parent')) { return O.lookup(O.get(env, 'parent'), prop); }
-   return O.null;
-};
+O.null = { type: O.types.null };
 
 O.eval = function (cb, code, env) {
    // Execute native JavaScript
@@ -105,6 +85,26 @@ O.eval = function (cb, code, env) {
    }
    // Otherwise, the "code" is a value ("self-evaluating")
    return tailcall(cb, [code]);
+};
+
+O.has = function (obj, prop) {
+   return (O.isObject(obj) || O.isArray(obj)) && obj.value.hasOwnProperty(prop);
+};
+
+O.get = function (obj, prop) {
+   return O.has(obj, prop) ? obj.value[prop] : O.null;
+};
+
+O.set = function (obj, prop, value) {
+   if (O.isObject(obj) || O.isArray(obj)) {
+      obj.value[prop] = value;
+   }
+};
+
+O.lookup = function (env, prop) {
+   if (O.has(env, prop)) { return O.get(env, prop); }
+   if (O.has(env, 'parent')) { return O.lookup(O.get(env, 'parent'), prop); }
+   return O.null;
 };
 
 }());
