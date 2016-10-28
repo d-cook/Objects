@@ -52,7 +52,9 @@ O.isNative = function (o) { return O.typeof(o) === O.types.native; };
 
 O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
 
-O.null = { type: O.types.null };
+O.null  = { type: O.types.null };
+O.true  = { type: O.types.bool };
+O.false = { type: O.types.bool };
 
 O.eval = function (cb, code, env) {
    // Execute native JavaScript
