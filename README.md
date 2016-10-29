@@ -11,7 +11,7 @@ PLAN:
 
 3. "Bootstrap" the system by re-coding it in terms of the aforementioned language features. This consists of an object-representation of the entire system, and a bit of JavaScript (the "bootstrapper") to initially create those objects. The bootstrapper should also package (or copy) itself into said objects.
 
-4. Create a interactive UI as the sole interface (API) for interacting with the system. (This will require a base layer of UI / graphics tools be coded in JavaScript; but this and the specific UI built on top of it should be packaged up into objects. This UI voids the need for a [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) or any text parsing, by instead allowing the DIRECT creation & manipulation of [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree) objects.
+4. Create a interactive UI as the sole interface (API) for interacting with the system. (This will require a layer of UI / graphics tools be coded in JavaScript, but the system will support for embedding "native" code). This UI voids the need for a [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop), allowing [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree) objects to be created & modified directly, rather than having to parse them from text.
 
 5. From this point on, the system is completely self-modifying and self-describing. Thus the evaluator, the language, any underlying "native" JavaScript, and the interactive UI can all be changed (or even replaced) directly through the interactive UI.
 
