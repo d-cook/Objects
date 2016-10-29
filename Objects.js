@@ -1,4 +1,5 @@
 (function() {
+
 var hasOwn = (function() {
    var has = Object.hasOwnPropery;
    return function (obj, prop) { return has.apply(obj, prop); };
@@ -50,16 +51,16 @@ O.types.object = { type: O.types.type, name: 'object' };
 O.types.native = { type: O.types.type, name: 'native' };
 O.types.type.type = O.types.type;
    
-O.isType   = function (o) { return O.typeof(o) === O.types.type;   };
-O.isNull   = function (o) { return O.typeof(o) === O.types.null;   };
-O.isBool   = function (o) { return O.typeof(o) === O.types.bool;   };
-O.isNumber = function (o) { return O.typeof(o) === O.types.number; };
-O.isString = function (o) { return O.typeof(o) === O.types.string; };
-O.isArray  = function (o) { return O.typeof(o) === O.types.array;  };
-O.isObject = function (o) { return O.typeof(o) === O.types.object; };
-O.isNative = function (o) { return O.typeof(o) === O.types.native; };
+O.isType   = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.type  ]); }); };
+O.isNull   = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.null  ]); }); };
+O.isBool   = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.bool  ]); }); };
+O.isNumber = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.number]); }); };
+O.isString = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.string]); }); };
+O.isArray  = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.array ]); }); };
+O.isObject = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.object]); }); };
+O.isNative = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.native]); }); };
 
-O.typeof = function (obj) { return (obj && obj.type) || O.types.null; };
+O.typeof = function (cb, obj) { return tailcall(cb, [(obj && obj.type) || O.types.null]); };
 
 O.null  = { type: O.types.null };
 O.true  = { type: O.types.bool };
@@ -108,24 +109,44 @@ O.eval = function (cb, code, env) {
    return tailcall(cb, [code]);
 };
 
-O.has = function (obj, prop) {
-   return (O.isObject(obj) || O.isArray(obj)) && hasOwn(obj.value, prop);
+O.has = function (cb, obj, prop) {
+   return tailcall(O.typeof, [obj], function (t) {
+      return tailcall(cb, [
+         (t === O.types.object || t === O.types.array) && hasOwn(obj.value, prop)
+      ]);
+   });
 };
 
-O.get = function (obj, prop) {
-   return O.has(obj, prop) ? obj.value[prop] : O.null;
+O.get = function (cb, obj, prop) {
+   return tailcall(O.has, [obj, prop], function (h) {
+      return tailcall(cb, [h ? obj.value[prop] : O.null]);
+   });
 };
 
-O.set = function (obj, prop, value) {
-   if (O.isObject(obj) || O.isArray(obj)) {
-      obj.value[prop] = value;
-   }
+O.tryGet = function (cb, obj, prop) {
+   return tailcall(O.typeof, [obj], function (t) {
+      var h = (t === O.types.object || t === O.types.array) && hasOwn(obj.value, prop);
+      var v = (h ? obj.value[prop] : O.null);
+      return tailcall(cb, [h, v]);
+   });
 };
 
-O.lookup = function (env, prop) {
-   if (O.has(env, prop)) { return O.get(env, prop); }
-   if (O.has(env, 'parent')) { return O.lookup(O.get(env, 'parent'), prop); }
-   return O.null;
+O.set = function (cb, obj, prop, value) {
+   return tailcall(O.typeof, [obj], function (t) {
+      var success = (t === O.types.object || t === O.types.array);
+      if (success) { obj.value[prop] = value; }
+      return tailcall(cb, [success]);
+   });
+};
+
+O.lookup = function (cb, env, prop) {
+   return tailcall(O.tryGet, [env, prop], function (has, value) {
+      if (has) { return tailcall(cb, [value]); }
+      return tailcall(O.tryGet, [env, 'parent'], function (has, parent) {
+         if (!has) { return tailcall(cb, [O.null]); }
+         return tailcall(O.lookup, [parent, prop], cb);
+      });
+   });
 };
 
 }());
