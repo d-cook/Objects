@@ -1,13 +1,22 @@
 (function() {
+var hasOwn = (function() {
+   var has = Object.hasOwnPropery;
+   return function (obj, prop) { return has.apply(obj, prop); };
+}());
+
+var createObj = (function() {
+   var create = Object.create;
+   return function () { return create(null); };
+}());
 
 function newObject (obj) {
-   var v = Object.create(null);
+   var v = createObj();
    for (var p in obj) {
-      if (Object.hasOwnProperty.apply(obj, p)) {
+      if (hasOwn(obj, p)) {
          v[p] = obj[p];
       }
    }
-   var o = Object.create(null);
+   var o = createObj();
    o.type = O.types.object;
    o.value = v;
    return o;
@@ -100,7 +109,7 @@ O.eval = function (cb, code, env) {
 };
 
 O.has = function (obj, prop) {
-   return (O.isObject(obj) || O.isArray(obj)) && obj.value.hasOwnProperty(prop);
+   return (O.isObject(obj) || O.isArray(obj)) && hasOwn(obj.value, prop);
 };
 
 O.get = function (obj, prop) {
