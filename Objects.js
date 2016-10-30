@@ -10,6 +10,8 @@ var createObj = (function() {
    return function () { return create(null); };
 }());
 
+function noop () { }
+
 function newObject (obj) {
    var v = createObj();
    for (var p in obj) {
