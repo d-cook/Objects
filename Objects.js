@@ -105,7 +105,7 @@ O.eval = function (cb, code, env) {
          return tailcall(O.eval, [op, env], processFunc);
       }
       // Otherwise lookup the function to call:
-      return tailcall(processFunc, [O.lookup(env, op)]);
+      return tailcall(processFunc, [O.lookup(op, env)]);
    }
    // Otherwise, the "code" is a value ("self-evaluating")
    return tailcall(cb, [code]);
@@ -142,7 +142,7 @@ O.set = function (cb, obj, prop, value) {
    });
 };
 
-O.lookup = function (cb, env, prop) {
+O.lookup = function (cb, prop, env) {
    return tailcall(O.tryGet, [env, prop], function (has, value) {
       if (has) { return tailcall(cb, [value]); }
       return tailcall(O.tryGet, [env, 'parent'], function (has, parent) {
