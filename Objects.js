@@ -37,8 +37,6 @@ function run (func) {
       r = r.func.apply(null, r.args || []);
    }
 }
-   
-// TODO: Convert remaining O functions to Continuation Passing Style
 
 var O = window.Objects = {};
 
@@ -63,6 +61,8 @@ O.isObject = function (cb, o) { return tailcall(O.typeof, [o], function (cb, t) 
 O.isNative = function (cb, o) { return tailcall(O.typeof, [o], function (cb, t) { return tailcall(cb, [t === O.types.native]); }); };
 
 O.typeof = function (cb, obj) { return tailcall(cb, [(obj && obj.type) || O.types.null]); };
+
+// TODO: Update funcs to return wrapped values (e.g. O.null, O.true, O.false instead of null, true, false)
 
 O.null  = { type: O.types.null };
 O.true  = { type: O.types.bool };
