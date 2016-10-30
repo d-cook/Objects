@@ -69,46 +69,58 @@ O.true  = { type: O.types.bool };
 O.false = { type: O.types.bool };
 
 O.eval = function (cb, code, env) {
-   // Execute native JavaScript
-   if (O.isNative(code)) {
-      return tailcall(O.get(code, 'func'), [code, env], cb);
-   }
-   // Execute an operation defined in env
-   if (O.isObject(code) && O.has(code, 'op')) {
-      function processFunc (func) {
-         var args = O.get(code, 'args') || [];
-         var callArgs = [];
-         var newEnv = newObject({ parent: env });
-         O.set(newEnv, 'args', callArgs); // TODO: instead, insert args as named props of newEnv
-         // Execute a syntax-function (operates on unevaluated arguments)
-         if (O.get(func, 'syntax')) {
-            callArgs.push.apply(callArgs, args);
-            return tailcall(O.eval, [func, newEnv], cb);
+   return tailcall(O.getType, [code], function (type) {
+      // Execute native JavaScript
+      if (type === O.types.native) {
+         return tailcall(O.get, [code, 'func'], function (func) {
+            return tailcall(func, [code, env], cb);
+         });
+      }
+      // If not an object or native, return it as a value (it's not runnable "code")
+      if (type !== O.types.object) {
+         return tailcall(cb, [code]);
+      }
+      // Execute an operation defined in env
+      return tailcall(O.tryGet, ['op'], function (hasOp, op) {
+         // If there is no operation to perform, just return it as a value
+         if (!hasOp) {
+            return tailcall(cb, [code]);
          }
-         // Evaluate each argument, then pass them into the operation
-         function nextArg (i) {
-            // Invoke the operation once all args are evaluated:
-            if (i >= args.length) {
-               return tailcall(O.eval, [func, newEnv], cb);
-            }
-            // Evaluate the next argument:
-            return tailcall(O.eval, [argsExps[i], env], function (a) {
-               callArgs.push(a);
-               return tailcall(nextArg, [i+1]);
+         return tailcall(O.typeof, [op], function (opType) {
+            // The operation is either computed as code, or looked up as an environment property
+            var computeOp = (opType === O.types.object) ? O.eval : O.lookup;
+            return tailcall(computeOp, [op, env], function (func) {
+               return tailcall(O.get, [code, 'args'], function (args) {
+                  args = args || [];
+                  var newEnv = newObject({ parent: env });
+                  // TODO: instead of just setting 'args', set each args as property of newEnv
+                  return tailcall(O.set, [newEnv, 'args', []], function (callArgs) {
+                     return tailcall(O.get, [func, 'syntax'], function (isSyntax) {
+                        // Execute a syntax-function (operates on unevaluated arguments)
+                        if (isSyntax) {
+                           callArgs.push.apply(callArgs, args);
+                           return tailcall(O.eval, [func, newEnv], cb);
+                        }
+                        // Evaluate each argument, then pass them into the operation
+                        function nextArg (cb, i) {
+                           // Invoke the operation once all args are evaluated:
+                           if (i >= args.length) {
+                              return tailcall(O.eval, [func, newEnv], cb);
+                           }
+                           // Evaluate the next argument:
+                           return tailcall(O.eval, [argsExps[i], env], function (a) {
+                              callArgs.push(a);
+                              return tailcall(nextArg, [i+1], cb);
+                           });
+                        }
+                        return tailcall(nextArg, [0], cb);
+                     }
+                  });
+               });
             });
-         }
-         return tailcall(nextArg, [0]);
-      }
-      var op = O.get(code, 'op');
-      // Compute the function to call:
-      if (O.isObject(op)) {
-         return tailcall(O.eval, [op, env], processFunc);
-      }
-      // Otherwise lookup the function to call:
-      return tailcall(processFunc, [O.lookup(op, env)]);
-   }
-   // Otherwise, the "code" is a value ("self-evaluating")
-   return tailcall(cb, [code]);
+         });
+      });
+   });
 };
 
 O.has = function (cb, obj, prop) {
