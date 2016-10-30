@@ -24,7 +24,7 @@ function newObject (obj) {
 }
 
 function tailcall (func, args, cb) {
-   var allArgs = cb ? [cb] : [];
+   var allArgs = [ cb || noop ];
    allArgs.push.apply(allArgs, args);
    return { func: func, args: allArgs };
 }
