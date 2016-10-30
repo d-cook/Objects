@@ -135,9 +135,10 @@ O.tryGet = function (cb, obj, prop) {
 
 O.set = function (cb, obj, prop, value) {
    return tailcall(O.typeof, [obj], function (t) {
-      var success = (t === O.types.object || t === O.types.array);
-      if (success) { obj.value[prop] = value; }
-      return tailcall(cb, [success]);
+      if (t === O.types.object || t === O.types.array) {
+         obj.value[prop] = value;
+      }
+      return tailcall(cb, [value]);
    });
 };
 
