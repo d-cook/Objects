@@ -31,10 +31,10 @@ function tailcall (func, args, cb) {
    return { func: func, args: allArgs };
 }
 
-function run (func) {
-   var r = func();
-   while(r && r.func) {
-      r = r.func.apply(null, r.args || []);
+function invoke (aTailcall) {
+   var tc = (typeof aTailcall === 'function') ? tailcall.apply(null, arguments) : tc;
+   while(tc && tc.func) {
+      tc = tc.func.apply(null, tc.args || []);
    }
 }
 
