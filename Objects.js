@@ -204,7 +204,7 @@ O.Test = {
    make: makeValue,
    run: function (code, env, cb) {
       cb = arguments[arguments.length];
-      if (typeof arguments !== 'function') { cb = noop; }
+      if (typeof arguments !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
       code = makeValue(code);
       invoke(O.eval, [code, env], cb); 
