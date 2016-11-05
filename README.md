@@ -21,7 +21,7 @@ PLAN:
 
 HOW TO TEST / USE IT:
 
-There is not much to "see" yet, but you can execute ad-hoc code from this [Test Page](https://rawgit.com/d-cook/Objects/master/Objects.html) (Objects.html in "raw" mode) via Developer Tools (press F12 on that page) by hitting a break-point to cature a reference to the "run" function, and then executing something of the following form from the Console:
-invoke(O.eval, [YOUR_AST_OBJECT, (YOUR_ENV || O)], YOUR_CALLBACK));
+There is not much to "see" yet, but you can execute ad-hoc code from this [Test Page](https://rawgit.com/d-cook/Objects/master/Objects.html) (Objects.html in "raw" mode) by executing something of the following form from the F12 Developer Console:
+run(YOUR_AST_OBJECT, YOUR_ENVIRONMENT, YOUR_CALLBACK)); // Either environment or callback (or both) can be omitted
 
 (TODO: Somehow update the above "Test Page" URL to be relative to the current URL / branch ... is that even possible?)
