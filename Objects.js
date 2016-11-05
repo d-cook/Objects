@@ -207,7 +207,7 @@ O.Test = {
       if (typeof arguments !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
       code = makeValue(code);
-      invoke(O.eval, [code, env], cb); 
+      invoke(O.eval, [code, env], function (k, ret) { return cb(ret); }); 
    }
 };
 
