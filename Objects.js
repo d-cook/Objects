@@ -9,20 +9,52 @@ var createObj = (function() {
    var create = Object.create;
    return function () { return create(null); };
 }());
+   
+var isArray = (function() {
+   var tostr = Object.prototype.toString;
+   return function (o) { return tostr.call(o) === '[object Array]'; }
+}());
 
 function noop () { }
 
-function newObject (obj) {
-   var v = createObj();
-   for (var p in obj) {
-      if (hasOwn(obj, p)) {
-         v[p] = obj[p];
-      }
-   }
+function make (type, value) {
    var o = createObj();
-   o.type = O.types.object;
-   o.value = v;
+   o.type = type;
+   o.value = value;
    return o;
+}
+
+function makeBool (b) { return b ? O.true : O.false; }
+function makeNumber (n) { return make(O.types.number, n); }
+function makeString (s) { return make(O.types.string, s); }
+function makeNative (n) { return make(O.types.native, n); }
+
+function makeArray (a) {
+   var v = [];
+   for (var i = 0; i < a.length; i++) { v[i] = makeValue(a[i]); }
+   return make(O.types.array, v);
+}
+
+function makeObject (o) {
+   var v = createObj();
+   for (var p in o) { if (hasOwn(o, p)) { v[p] = makeValue(o[p]); } }
+   return make(O.types.object, v);
+}
+
+function makeValue (v) {
+   var t = typeof v;
+   if (t === 'undefined' || v === null) { return O.null; }
+   if (t === 'boolean' ) { return makeBool  (v); }
+   if (t === 'number'  ) { return makeNumber(v); }
+   if (t === 'string'  ) { return makeString(v); }
+   if (t === 'function') { return makeNative(v); }
+   if (t === 'object') {
+      return (
+         v.type && typeof v.type === 'object' &&
+         v.type.type === O.types.type && O.types[v.type.name]
+      ) ? v : isArray(v) ? makeArray(v) : makeObject(v);
+   }
+   return O.null;
 }
 
 function tailcall (func, args, cb) {
@@ -92,7 +124,7 @@ O.eval = function (cb, code, env) {
             return tailcall(computeOp, [op, env], function (cb, func) {
                return tailcall(O.get, [code, 'args'], function (cb, args) {
                   args = args || [];
-                  var newEnv = newObject({ parent: env });
+                  var newEnv = makeObject({ parent: env });
                   // TODO: instead of just setting 'args', set each args as property of newEnv
                   return tailcall(O.set, [newEnv, 'args', []], function (cb, callArgs) {
                      return tailcall(O.get, [func, 'syntax'], function (cb, isSyntax) {
@@ -169,26 +201,11 @@ O.lookup = function (cb, prop, env) {
 // ------------------------------------------ //
 
 O.Test = {
-   parse: function (o) {
-      var t = typeof o;
-      if (t === 'undefined' || o === null) { return O.null; }
-      if (t === 'boolean' ) { return o ? O.true : O.false; }
-      if (t === 'number'  ) { return { type: O.types.number, value: o }; }
-      if (t === 'string'  ) { return { type: O.types.string, value: o }; }
-      if (t === 'function') { return { type: O.types.native, value: o }; }
-      if (t === 'object') {
-         return (Object.prototype.toString.call(o) === '[object Array]'
-            ? { type: O.types.array, value: o } // TODO: call parse for each property
-            : { type: O.types.object, value: o } // TODO: call parse for each property
-         );
-      }
-      return O.null;
-   },
    run: function (code, env, cb) {
       cb = arguments[arguments.length];
       if (typeof arguments !== 'function') { cb = noop; }
       if (typeof env !== 'object' || !env) { env = O; }
-      code = O.Test.parse(code);
+      code = makeValue(code);
       invoke(O.eval, [code, env], cb); 
    }
 };
