@@ -201,6 +201,7 @@ O.lookup = function (cb, prop, env) {
 // ------------------------------------------ //
 
 O.Test = {
+   make: makeValue,
    run: function (code, env, cb) {
       cb = arguments[arguments.length];
       if (typeof arguments !== 'function') { cb = noop; }
