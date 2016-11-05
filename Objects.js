@@ -100,10 +100,10 @@ O.true  = createObj(); O.true .type = O.types.bool; O.true .name = 'true';
 O.false = createObj(); O.false.type = O.types.bool; O.false.name = 'false';
 
 O.eval = function (cb, code, env) {
-   return tailcall(O.typeof, [code], function (type) {
+   return tailcall(O.typeof, [code], function (noCb, type) {
       // Execute native JavaScript
       if (type === O.types.native) {
-         return tailcall(O.get, [code, 'func'], function (cb, func) {
+         return tailcall(O.get, [code, 'func'], function (noCb, func) {
             return tailcall(func, [code, env], cb);
          });
       }
@@ -112,21 +112,21 @@ O.eval = function (cb, code, env) {
          return tailcall(cb, [code]);
       }
       // Execute an operation defined in env
-      return tailcall(O.tryGet, ['op'], function (cb, hasOp, op) {
+      return tailcall(O.tryGet, ['op'], function (noCb, hasOp, op) {
          // If there is no operation to perform, just return it as a value
          if (!hasOp) {
             return tailcall(cb, [code]);
          }
-         return tailcall(O.typeof, [op], function (cb, opType) {
+         return tailcall(O.typeof, [op], function (noCb, opType) {
             // The operation is either computed as code, or looked up as an environment property
             var computeOp = (opType === O.types.object) ? O.eval : O.lookup;
-            return tailcall(computeOp, [op, env], function (cb, func) {
-               return tailcall(O.get, [code, 'args'], function (cb, args) {
+            return tailcall(computeOp, [op, env], function (noCb, func) {
+               return tailcall(O.get, [code, 'args'], function (noCb, args) {
                   args = args || [];
                   var newEnv = makeObject({ parent: env });
                   // TODO: instead of just setting 'args', set each args as property of newEnv
-                  return tailcall(O.set, [newEnv, 'args', []], function (cb, callArgs) {
-                     return tailcall(O.get, [func, 'syntax'], function (cb, isSyntax) {
+                  return tailcall(O.set, [newEnv, 'args', []], function (noCb, callArgs) {
+                     return tailcall(O.get, [func, 'syntax'], function (noCb, isSyntax) {
                         // Execute a syntax-function (operates on unevaluated arguments)
                         if (isSyntax) {
                            callArgs.push.apply(callArgs, args);
