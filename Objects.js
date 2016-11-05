@@ -95,9 +95,9 @@ O.typeof = function (cb, obj) { return tailcall(cb, [(obj && obj.type) || O.type
 
 // TODO: Update funcs to return wrapped values (e.g. O.null, O.true, O.false instead of null, true, false)
 
-O.null  = createObj(); O.null .type = O.types.null; O.null .value = O.null;
-O.true  = createObj(); O.true .type = O.types.bool; O.true .value = O.true;
-O.false = createObj(); O.false.type = O.types.bool; O.false.value = O.false;
+O.null  = createObj(); O.null .type = O.types.null; O.null .name = 'null';
+O.true  = createObj(); O.true .type = O.types.bool; O.true .name = 'true';
+O.false = createObj(); O.false.type = O.types.bool; O.false.name = 'false';
 
 O.eval = function (cb, code, env) {
    return tailcall(O.typeof, [code], function (type) {
