@@ -227,8 +227,8 @@ O.Test = {
       if (typeof cb !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
       code = makeValue(code);
-      invoke(O.eval, [code, env], function (throwAwayCb, ret) {
-         return tailcall(unmake, [ret], cb);
+      invoke(O.eval, [code, env], function (noCb, ret) {
+         return tailcall(unmake, [ret], function(noCb, r) { cb(r); });
       }); 
    }
 };
