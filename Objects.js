@@ -112,7 +112,7 @@ O.eval = function (cb, code, env) {
          return tailcall(cb, [code]);
       }
       // Execute an operation defined in env
-      return tailcall(O.tryGet, ['op'], function (noCb, hasOp, op) {
+      return tailcall(O.tryGet, ['op', env], function (noCb, hasOp, op) {
          // If there is no operation to perform, just return it as a value
          if (!hasOp) {
             return tailcall(cb, [code]);
