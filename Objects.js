@@ -202,8 +202,8 @@ O.lookup = function (cb, prop, env) {
 O.Test = {
    make: makeValue,
    run: function (code, env, cb) {
-      cb = arguments[arguments.length];
-      if (typeof arguments !== 'function') { cb = function (v) { console.log(v); }; }
+      cb = arguments[arguments.length - 1];
+      if (typeof cb !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
       code = makeValue(code);
       invoke(O.eval, [code, env], function (k, ret) { return cb(ret); }); 
