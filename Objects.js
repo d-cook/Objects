@@ -210,9 +210,11 @@ function unmake(cb, v) {
          for (var p in v.value) {
             if (hasOwn(v.value, p)) {
                next = (function (next, r) {
-                  return tailcall(unmake, [r], function(cb, r) {
-                     return function () { nv[p] = r; return tailcall(next); };
-                  });
+                  return function () {
+                     return tailcall(unmake, [r], function(cb, r) {
+                        nv[p] = r; return tailcall(next);
+                     });
+                  };
                }(next, v.value[p]));
             }
          }
