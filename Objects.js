@@ -155,7 +155,7 @@ O.eval = function (cb, code, env) {
 };
 
 O.has = function (cb, obj, prop) {
-   return tailcall(O.typeof, [obj], function (cb, t) {
+   return tailcall(O.typeof, [obj], function (noCb, t) {
       return tailcall(cb, [
          (t === O.types.object || t === O.types.array) && hasOwn(obj.value, prop)
       ]);
@@ -163,13 +163,13 @@ O.has = function (cb, obj, prop) {
 };
 
 O.get = function (cb, obj, prop) {
-   return tailcall(O.has, [obj, prop], function (cb, h) {
+   return tailcall(O.has, [obj, prop], function (noCb, h) {
       return tailcall(cb, [h ? obj.value[prop] : O.null]);
    });
 };
 
 O.tryGet = function (cb, obj, prop) {
-   return tailcall(O.typeof, [obj], function (cb, t) {
+   return tailcall(O.typeof, [obj], function (noCb, t) {
       var h = (t === O.types.object || t === O.types.array) && hasOwn(obj.value, prop);
       var v = (h ? obj.value[prop] : O.null);
       return tailcall(cb, [h, v]);
@@ -177,7 +177,7 @@ O.tryGet = function (cb, obj, prop) {
 };
 
 O.set = function (cb, obj, prop, value) {
-   return tailcall(O.typeof, [obj], function (cb, t) {
+   return tailcall(O.typeof, [obj], function (noCb, t) {
       if (t === O.types.object || t === O.types.array) {
          obj.value[prop] = value;
       }
@@ -186,9 +186,9 @@ O.set = function (cb, obj, prop, value) {
 };
 
 O.lookup = function (cb, prop, env) {
-   return tailcall(O.tryGet, [env, prop], function (cb, has, value) {
+   return tailcall(O.tryGet, [env, prop], function (noCb, has, value) {
       if (has) { return tailcall(cb, [value]); }
-      return tailcall(O.tryGet, [env, 'parent'], function (cb, has, parent) {
+      return tailcall(O.tryGet, [env, 'parent'], function (noCb, has, parent) {
          if (!has) { return tailcall(cb, [O.null]); }
          return tailcall(O.lookup, [parent, prop], cb);
       });
