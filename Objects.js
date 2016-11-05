@@ -206,7 +206,9 @@ function unmake(cb, v) {
    return tailcall(O.typeof, [v], function (cb, t) {
       if (t === O.types.object || t === O.types.array) {
          var nv = (t === O.types.object) ? createObj() : [];
-         var next = function () { return tailcall(cb, [nv]); };
+         var next = function () {
+            return tailcall(cb, [nv]);
+         };
          for (var p in v.value) {
             if (hasOwn(v.value, p)) {
                next = (function (next, r) {
