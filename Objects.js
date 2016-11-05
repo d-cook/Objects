@@ -199,6 +199,27 @@ O.lookup = function (cb, prop, env) {
 // TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
 // ------------------------------------------ //
 
+function unmake(cb, v) {
+   if (v === O.null ) { return tailcall(cb, [null ]); }
+   if (v === O.true ) { return tailcall(cb, [true ]); }
+   if (v === O.false) { return tailcall(cb, [false]); }
+   return tailcall(O.typeof, [v], function (t) {
+      if (t === O.types.object || t === O.types.array) {
+         var nv = (t === O.types.object) ? createObj() : [];
+         var next = function () { return tailcall(cb, [nv]); };
+         for (var p in v.value) {
+            if (hasOwn(v.value, p)) {
+               next = tailcall(unmake, [v.value[p]], function (cb, r) {
+                  nv[p] = r; return tailcall(next);
+               });
+            }
+         }
+         return tailcall(next);
+      }
+      return tailcall(cb, [v.value]);
+   });
+}
+
 O.Test = {
    make: makeValue,
    run: function (code, env, cb) {
@@ -206,7 +227,9 @@ O.Test = {
       if (typeof cb !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
       code = makeValue(code);
-      invoke(O.eval, [code, env], function (k, ret) { return cb(ret); }); 
+      invoke(O.eval, [code, env], function (throwAwayCb, ret) {
+         return tailcall(unmake, [ret], cb);
+      }); 
    }
 };
 
