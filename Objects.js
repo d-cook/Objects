@@ -101,7 +101,7 @@ O.true  = { type: O.types.bool };
 O.false = { type: O.types.bool };
 
 O.eval = function (cb, code, env) {
-   return tailcall(O.getType, [code], function (type) {
+   return tailcall(O.typeof, [code], function (type) {
       // Execute native JavaScript
       if (type === O.types.native) {
          return tailcall(O.get, [code, 'func'], function (cb, func) {
