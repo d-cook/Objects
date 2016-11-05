@@ -103,7 +103,7 @@ O.eval = function (cb, code, env) {
    return tailcall(O.typeof, [code], function (noCb, type) {
       // Execute native JavaScript
       if (type === O.types.native) {
-         return tailcall(O.get, [code, 'func'], function (noCb, func) {
+         return tailcall(O.get, [code, 'value'], function (noCb, func) {
             return tailcall(func, [code, env], cb);
          });
       }
