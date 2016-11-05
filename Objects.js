@@ -1,8 +1,8 @@
 (function() {
 
 var hasOwn = (function() {
-   var has = Object.hasOwnPropery;
-   return function (obj, prop) { return has.apply(obj, prop); };
+   var has = Object.hasOwnProperty;
+   return function (obj, prop) { return has.call(obj, prop); };
 }());
 
 var createObj = (function() {
