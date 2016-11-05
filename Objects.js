@@ -70,18 +70,17 @@ function invoke (aTailcall) {
    }
 }
 
-var O = window.Objects = {};
+var O = window.Objects = createObj();
 
 O.types = {};
-O.types.type   = { type: null        , name: 'type'   };
-O.types.null   = { type: O.types.type, name: 'null'   };
-O.types.bool   = { type: O.types.type, name: 'bool'   };
-O.types.number = { type: O.types.type, name: 'number' };
-O.types.string = { type: O.types.type, name: 'string' };
-O.types.array  = { type: O.types.type, name: 'array'  };
-O.types.object = { type: O.types.type, name: 'object' };
-O.types.native = { type: O.types.type, name: 'native' };
-O.types.type.type = O.types.type;
+O.types.type   = createObj(); O.types.type  .type = O.types.type; O.types.type  .name = 'type';
+O.types.null   = createObj(); O.types.null  .type = O.types.type; O.types.null  .name = 'null';
+O.types.bool   = createObj(); O.types.bool  .type = O.types.type; O.types.bool  .name = 'bool';
+O.types.number = createObj(); O.types.number.type = O.types.type; O.types.number.name = 'number';
+O.types.string = createObj(); O.types.string.type = O.types.type; O.types.string.name = 'string';
+O.types.array  = createObj(); O.types.array .type = O.types.type; O.types.array .name = 'array';
+O.types.object = createObj(); O.types.object.type = O.types.type; O.types.object.name = 'object';
+O.types.native = createObj(); O.types.native.type = O.types.type; O.types.native.name = 'native';
    
 O.isType   = function (cb, o) { return tailcall(O.typeof, [o], function (cb, t) { return tailcall(cb, [t === O.types.type  ]); }); };
 O.isNull   = function (cb, o) { return tailcall(O.typeof, [o], function (cb, t) { return tailcall(cb, [t === O.types.null  ]); }); };
@@ -96,9 +95,9 @@ O.typeof = function (cb, obj) { return tailcall(cb, [(obj && obj.type) || O.type
 
 // TODO: Update funcs to return wrapped values (e.g. O.null, O.true, O.false instead of null, true, false)
 
-O.null  = { type: O.types.null }; O.null .value = O.null;
-O.true  = { type: O.types.bool }; O.true .value = O.true;
-O.false = { type: O.types.bool }; O.false.value = O.false;
+O.null  = createObj(); O.null .type = O.types.null; O.null .value = O.null;
+O.true  = createObj(); O.true .type = O.types.bool; O.true .value = O.true;
+O.false = createObj(); O.false.type = O.types.bool; O.false.value = O.false;
 
 O.eval = function (cb, code, env) {
    return tailcall(O.typeof, [code], function (type) {
