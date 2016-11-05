@@ -164,4 +164,33 @@ O.lookup = function (cb, prop, env) {
    });
 };
 
+// ------------------------------------------ //
+// TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
+// ------------------------------------------ //
+
+O.Test = {
+   parse: function (o) {
+      var t = typeof o;
+      if (t === 'undefined' || o === null) { return O.null; }
+      if (t === 'boolean' ) { return o ? O.true : O.false; }
+      if (t === 'number'  ) { return { type: O.types.number, value: o }; }
+      if (t === 'string'  ) { return { type: O.types.string, value: o }; }
+      if (t === 'function') { return { type: O.types.native, value: o }; }
+      if (t === 'object') {
+         return (Object.prototype.toString.call(o) === '[object Array]'
+            ? { type: O.types.array, value: o } // TODO: call parse for each property
+            : { type: O.types.object, value: o } // TODO: call parse for each property
+         );
+      }
+      return O.null;
+   },
+   run: function (code, env, cb) {
+      cb = arguments[arguments.length];
+      if (typeof arguments !== 'function') { cb = noop; }
+      if (typeof env !== 'object' || !env) { env = O; }
+      code = O.Test.parse(code);
+      invoke(O.eval, [code, env], cb); 
+   }
+};
+
 }());
