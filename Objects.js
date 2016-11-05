@@ -203,7 +203,7 @@ function unmake(cb, v) {
    if (v === O.null ) { return tailcall(cb, [null ]); }
    if (v === O.true ) { return tailcall(cb, [true ]); }
    if (v === O.false) { return tailcall(cb, [false]); }
-   return tailcall(O.typeof, [v], function (t) {
+   return tailcall(O.typeof, [v], function (cb, t) {
       if (t === O.types.object || t === O.types.array) {
          var nv = (t === O.types.object) ? createObj() : [];
          var next = function () { return tailcall(cb, [nv]); };
