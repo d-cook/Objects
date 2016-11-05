@@ -209,9 +209,9 @@ function unmake(cb, v) {
          var next = function () { return tailcall(cb, [nv]); };
          for (var p in v.value) {
             if (hasOwn(v.value, p)) {
-               next = tailcall(unmake, [v.value[p]], function (cb, r) {
-                  nv[p] = r; return tailcall(next);
-               });
+               next = (function (next) {
+                  return function () { nv[p] = r; return tailcall(next); };
+               }(next, r));
             }
          }
          return tailcall(next);
