@@ -211,13 +211,13 @@ function unmake(cb, v) {
          };
          for (var p in v.value) {
             if (hasOwn(v.value, p)) {
-               next = (function (next, r) {
+               next = (function (next, k, v) {
                   return function () {
-                     return tailcall(unmake, [r], function(r) {
-                        nv[p] = r; return tailcall(next);
+                     return tailcall(unmake, [v], function(v) {
+                        nv[k] = v; return tailcall(next);
                      });
                   };
-               }(next, v.value[p]));
+               }(next, p, v.value[p]));
             }
          }
          return tailcall(next);
