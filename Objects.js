@@ -103,7 +103,7 @@ O.eval = function (cb, code, env) {
    return tailcall(O.typeof, [code], function (type) {
       // Execute native JavaScript
       if (type === O.types.native) {
-         return tailcall(O.get, [code, 'value'], function (func) {
+         return tailcall(O.get, ['value', code], function (func) {
             return tailcall(func, [code, env], cb);
          });
       }
@@ -121,12 +121,12 @@ O.eval = function (cb, code, env) {
             // The operation is either computed as code, or looked up as an environment property
             var computeOp = (opType === O.types.object) ? O.eval : O.lookup;
             return tailcall(computeOp, [op, env], function (func) {
-               return tailcall(O.get, [code, 'args'], function (args) {
+               return tailcall(O.get, ['args', code], function (args) {
                   args = args || [];
                   var newEnv = makeObject({ parent: env });
                   // TODO: instead of just setting 'args', set each args as property of newEnv
-                  return tailcall(O.set, [newEnv, 'args', []], function (callArgs) {
-                     return tailcall(O.get, [func, 'syntax'], function (isSyntax) {
+                  return tailcall(O.set, ['args', [], newEnv], function (callArgs) {
+                     return tailcall(O.get, ['syntax', func], function (isSyntax) {
                         // Execute a syntax-function (operates on unevaluated arguments)
                         if (isSyntax) {
                            callArgs.push.apply(callArgs, args);
@@ -154,7 +154,7 @@ O.eval = function (cb, code, env) {
    });
 };
 
-O.has = function (cb, obj, prop) {
+O.has = function (cb, prop, obj) {
    return tailcall(O.typeof, [obj], function (t) {
       return tailcall(cb, [
          (t === O.types.object || t === O.types.array) && hasOwn(obj.value, prop)
@@ -162,13 +162,13 @@ O.has = function (cb, obj, prop) {
    });
 };
 
-O.get = function (cb, obj, prop) {
+O.get = function (cb, prop, obj) {
    return tailcall(O.has, [obj, prop], function (h) {
       return tailcall(cb, [h ? obj.value[prop] : O.null]);
    });
 };
 
-O.tryGet = function (cb, obj, prop) {
+O.tryGet = function (cb, prop, obj) {
    return tailcall(O.typeof, [obj], function (t) {
       var h = (t === O.types.object || t === O.types.array) && hasOwn(obj.value, prop);
       var v = (h ? obj.value[prop] : O.null);
@@ -176,7 +176,7 @@ O.tryGet = function (cb, obj, prop) {
    });
 };
 
-O.set = function (cb, obj, prop, value) {
+O.set = function (cb, prop, value, obj) {
    return tailcall(O.typeof, [obj], function (t) {
       if (t === O.types.object || t === O.types.array) {
          obj.value[prop] = value;
@@ -186,11 +186,11 @@ O.set = function (cb, obj, prop, value) {
 };
 
 O.lookup = function (cb, prop, env) {
-   return tailcall(O.tryGet, [env, prop], function (has, value) {
+   return tailcall(O.tryGet, [prop, env], function (has, value) {
       if (has) { return tailcall(cb, [value]); }
-      return tailcall(O.tryGet, [env, 'parent'], function (has, parent) {
+      return tailcall(O.tryGet, ['parent', env], function (has, parent) {
          if (!has) { return tailcall(cb, [O.null]); }
-         return tailcall(O.lookup, [parent, prop], cb);
+         return tailcall(O.lookup, [prop, parent], cb);
       });
    });
 };
