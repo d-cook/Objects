@@ -94,6 +94,7 @@ O.isNative = function (cb, o) { return tailcall(O.typeof, [o], function (t) { re
 O.typeof = function (cb, obj) { return tailcall(cb, [(obj && obj.type) || O.types.null]); };
 
 // TODO: Update funcs to return wrapped values (e.g. O.null, O.true, O.false instead of null, true, false)
+// TODO: Don't use O.get or O.tryGet to get properties built into the type structure (e.g. 'value' in an O.types.object)
 
 O.null  = createObj(); O.null .type = O.types.null; O.null .name = 'null';
 O.true  = createObj(); O.true .type = O.types.bool; O.true .name = 'true';
