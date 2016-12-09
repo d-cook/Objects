@@ -73,32 +73,28 @@ function invoke (aTailcall) {
 var O = window.Objects = createObj();
 
 O.types = {};
-O.types.type   = createObj(); O.types.type  .type = O.types.type; O.types.type  .name = 'type';
-O.types.null   = createObj(); O.types.null  .type = O.types.type; O.types.null  .name = 'null';
-O.types.bool   = createObj(); O.types.bool  .type = O.types.type; O.types.bool  .name = 'bool';
-O.types.number = createObj(); O.types.number.type = O.types.type; O.types.number.name = 'number';
-O.types.string = createObj(); O.types.string.type = O.types.type; O.types.string.name = 'string';
-O.types.array  = createObj(); O.types.array .type = O.types.type; O.types.array .name = 'array';
-O.types.object = createObj(); O.types.object.type = O.types.type; O.types.object.name = 'object';
-O.types.native = createObj(); O.types.native.type = O.types.type; O.types.native.name = 'native';
-   
-O.isType   = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.type  ]); }); };
-O.isNull   = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.null  ]); }); };
-O.isBool   = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.bool  ]); }); };
-O.isNumber = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.number]); }); };
-O.isString = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.string]); }); };
-O.isArray  = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.array ]); }); };
-O.isObject = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.object]); }); };
-O.isNative = function (cb, o) { return tailcall(O.typeof, [o], function (t) { return tailcall(cb, [t === O.types.native]); }); };
-
 O.typeof = function (cb, obj) { return tailcall(cb, [(obj && obj.type) || O.types.null]); };
 
-// TODO: Update funcs to return wrapped values (e.g. O.null, O.true, O.false instead of null, true, false)
-// TODO: Wrap all O properties, probably by doing: O = makeValue(O)
+var types = ['type','null','bool','number','string','array','object','native'];
+while(types.length > 0) {
+   (function makeType(n) {
+      var t = O.types[n] = createObj();
+      t.type = O.types.type;
+      t.name = n;
+      O['is' + n.charAt(0).toUpperCase() + n.substr(1)] = function isTypeN(cb, o) {
+         return tailcall(O.typeof, [o], function (t) {
+            return tailcall(cb, [t === O.types[n]]);
+         });
+      };
+   }(types.shift()));
+}
 
 O.null  = createObj(); O.null .type = O.types.null; O.null .name = 'null';
 O.true  = createObj(); O.true .type = O.types.bool; O.true .name = 'true';
 O.false = createObj(); O.false.type = O.types.bool; O.false.name = 'false';
+
+// TODO: Update funcs to return wrapped values (e.g. O.null, O.true, O.false instead of null, true, false)
+// TODO: Wrap all O properties, probably by doing: O = makeValue(O)
 
 O.eval = function (cb, code, env) {
    return tailcall(O.typeof, [code], function (type) {
