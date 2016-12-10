@@ -93,6 +93,7 @@ O.null  = createObj(); O.null .type = O.types.null; O.null .name = 'null';
 O.true  = createObj(); O.true .type = O.types.bool; O.true .name = 'true';
 O.false = createObj(); O.false.type = O.types.bool; O.false.name = 'false';
 
+// TODO: Maybe args & code & cb should be fields in env. Then "syntax" funcs would take consistent params.
 // TODO: Update funcs to return wrapped values (e.g. O.null, O.true, O.false instead of null, true, false)
 // TODO: Wrap all O properties, probably by doing: O = makeValue(O)
 
