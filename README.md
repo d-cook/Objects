@@ -1,7 +1,7 @@
 # Objects
 **JavaScript POC for a software software that is fully modifiable by the end-user.**
 
-The system acts as tool for creating software entities by manipulating visual objects. These objects can be manipulated to create ad-hoc data-models and behaviors/actions. The system itself is composed of these objects, so you can modify anything about it (how objects are displayed, how you interact with them, how "code" objects are run, etc.) *while you are using it*. The idea is that, instead of editing textual "source code", you actually build & interact directly with the models that "source code" would represent.
+The system acts as tool for creating software entities by manipulating visual objects. These objects can be manipulated to create ad-hoc data-models and behaviors/actions. The system itself is composed of these objects, so you can modify anything about it (how objects are displayed, how you interact with them, how "code" objects are run, etc.) *while you are using it*. The idea is to replace traditional "computer programming" (and textual "source code"), with an interactive model of the software entities being created.
 
 This will start out as a generic visualization of data-trees (boring!), but the idea is to create custom visualizations for different kinds of data. For example, instead of editing textual "code" that describes the size & position of a ball, you actually see a ball that you edit by clicking & dragging. (Brett Victor demonstrates this in "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)", "[Learnable Programming](http://worrydream.com/LearnableProgramming/)", "[Magic Ink](http://worrydream.com/MagicInk)")
 
