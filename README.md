@@ -1,5 +1,5 @@
 # Objects
-JavaScript POC for open-ended "sculpting" of software systems by non-programmers.
+**JavaScript POC for a fully self-modifiable software system (via end-user interaction).**
 
 This is accomplished by facilitating ad-hoc creation & manipulation of arbitrary data-models and processes ("code") through a visual interface (e.g. as objects on your screen instead of as textual code). The entire system is itself composed of the same kind of objects, and thus everything (how it is displayed, how you can interact, and how the "code" is run) is exposed for runtime modification.
 
@@ -7,7 +7,7 @@ It may begin as a generic visualization of data-trees, but the idea is to create
 
 The underlying language is like [Scheme](https://en.wikipedia.org/wiki/Scheme_(programming_language)), but with [JSON](https://en.wikipedia.org/wiki/JSON) in place of [S-Expressions](https://en.wikipedia.org/wiki/S-expression), and with grammar that is context-dependent ([DSLs](https://en.wikipedia.org/wiki/Domain-specific_language)) and modifiable at runtime (like [Forth](https://en.wikipedia.org/wiki/Forth_(programming_language))). Though the goal is a dynamic system for the end-user and not a "magic" language, it is that underlying dynamic language-model that makes such a system possible. ... You might say that I want to bring the power of [Lisp](https://en.wikipedia.org/wiki/Lisp_(programming_language)) beyond the programmer/language level and up to the end-user level.
 
-PLAN:
+**IMPLEMENTATION PLAN / HOW IT WORKS:**
 
 1. **Make an interpreter** that executes code in the form of an [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree) object-graph (rather than parsing textual code). The operations ([grammar](https://en.wikipedia.org/wiki/Formal_grammar)) allowed in the AST consist mainly of the operations for manipulating AST objects (get property, set property, has property, delete property, etc.). These operations are defined as objects within a built-in AST, and can thus all be modified at runtime. This AST is expanded at runtime through layers of "activation frames" (call stacks), so operations only for certain contexts ([DSLs](https://en.wikipedia.org/wiki/Domain-specific_language)). The interpreter can also execute "native" (JavaScript) functions stored within AST code (this is necessary to establish a set of base operations), and thus the system can be extended with new "native" functionality at runtime. The interpreter is also inserted into the built-in AST so that it can *itself* be accessed and modified at runtime (see step 3). **This is the only part of the system coded directly in JavaScript. Everthing else following is coded as AST objects hard-coded into the JavaScript program.**
 
@@ -15,9 +15,9 @@ PLAN:
 
 3. **Create a serializer** that serializes the entire runtime system into JavaScript source code. This is accomplished by serializing the whole system as a single [JSON](https://en.wikipedia.org/wiki/JSON) object, wrapped by JavaScript code which creates this object and initializes the UI (by invoking the interpreter on the UI "startup" code). **From this point, further modification of the system can be done entirely through the interactive UI.**
 
-4. **"[Bootstrap](https://en.wikipedia.org/wiki/Bootstrapping)" the interpreter** by re-coding it as an AST object-graph (like everything else).
+4. **Create a Compiler** that convert AST objects (*at least* the ones needed for step 5) into native JavaScript code. (It might be possible to make this work for *all* ASTs by altering the interpreter to collect (rather than execute) all the "native" code that it encounters ... I'll have to look into that more).
 
-5. **Create a Compiler** that convert AST objects into native JavaScript code. This might only work for a certain subset of code, but it mainly just needs to work on the interpreter. (It might be possible to walk the code-to-compile and collect all the "native" code that would be executed, instead of actually exeucting it ... I'll have to look into that more).
+5. **"[Bootstrap](https://en.wikipedia.org/wiki/Bootstrapping)" the interpreter** by re-coding it as an AST object-graph (like everything else). The intpreter can now be edited entirely in AST form, and then compiled to replace the existing "native" interpreter. (The AST interpreter could also just run on top of the "native" one to test it amid modifications). **Now the *Entire* system is modifiable in AST form.**
 
 6. ... IN THE PROCESS OF EDITING THIS ...
 
