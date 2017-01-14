@@ -1,5 +1,5 @@
 # Objects
-**JavaScript POC for a software software that is fully modifiable by the end-user.**
+**JavaScript POC for a fully user-modifiable software system.**
 
 The system acts as tool for creating ad-hoc software entities (data-models and behaviors) by manipulating visual object-models, rather than by editing textual "source code". The system itself is composed of these objects, so you can modify anything about it (how objects are displayed, how you interact with them, how "code" objects are run, etc.) *while you are using it*.
 
