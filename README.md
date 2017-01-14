@@ -1,5 +1,5 @@
 # Objects
-JavaScript POC for a software system that can be "sculpted" into anything by non-programmers.
+JavaScript POC for open-ended "sculpting" of software systems by non-programmers.
 
 This is accomplished by facilitating ad-hoc creation & manipulation of arbitrary data-models and processes ("code") through a visual interface (e.g. as objects on your screen instead of as textual code). The entire system is itself composed of the same kind of objects, and thus everything (how it is visualized, how to interpret the "code") is exposed for runtime modification.
 
