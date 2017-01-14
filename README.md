@@ -1,7 +1,11 @@
 # Objects
-JavaScript POC for a self-defining open ended software system.
+JavaScript POC for a software system that can be "sculpted" into anything by non-programmers.
 
-The underlying language is like [Scheme](https://en.wikipedia.org/wiki/Scheme_(programming_language)), but with [JSON](https://en.wikipedia.org/wiki/JSON) in place of [S-Expressions](https://en.wikipedia.org/wiki/S-expression). However, the end-goal is not a magic language, but a fully self-modifying system that can be/do whatever you want, however you want. Think [LISP macros](https://en.wikipedia.org/wiki/Macro_(computer_science)#Syntactic_macros) that map betwen code and UI rather than just between code and code. Think [AngularJS](https://en.wikipedia.org/wiki/AngularJS) (or [REACT](https://en.wikipedia.org/wiki/React_(JavaScript_library))) in reverse.
+This is accomplished by facilitating ad-hoc creation & manipulation of arbitrary data-models and processes ("code") through a visual interface (e.g. as objects on your screen instead of as textual code). The entire system is itself composed of the same kind of objects, and thus everything (how it is visualized, how to interpret the "code") is exposed for runtime modification.
+
+It may begin as a generic visualization of data-trees, but the idea is to create custom visualizations for different kinds of data. For example, actually drawing a ball rather than displaying numbers describing it's size & position, and editing the data by clicking and dragging rather than typing numbers. (see Brett Victor's ["Magic Ink"](http://worrydream.com/MagicInk))
+
+The underlying language is like [Scheme](https://en.wikipedia.org/wiki/Scheme_(programming_language)), but with [JSON](https://en.wikipedia.org/wiki/JSON) in place of [S-Expressions](https://en.wikipedia.org/wiki/S-expression), and with grammar defined in a dynamic runtime dictionary instead of hard-coded into the interpreter (like [Forth](https://en.wikipedia.org/wiki/Forth_(programming_language)). The end-goal is not a magic language, but a dynamic system for the end-user; though that is only possible if built upon a language/model that is itself self-modifiable. ... You might say that I want to bring the power of Lisp beyond the programmer/language level and up to the end-user level.
 
 PLAN:
 
