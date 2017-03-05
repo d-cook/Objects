@@ -5,9 +5,7 @@ The goal is to create a software system that escapes the rigid boundaries of con
 
 The user-interface will start out as a visualization of generic data-trees, but can be further modified to create the ideal interface for the task at hand. For example, editing code that controls the size & position of a ball, by clicking and dragging *a ball* rather than by editing numeric data *about* a ball. (Brett Victor demonstrates concept well: "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)", "[Learnable Programming](http://worrydream.com/LearnableProgramming/)", "[Magic Ink](http://worrydream.com/MagicInk)")
 
-Every operation that can be performed on an object (and thus on any part of the system), is itself stored as an object within the system. Everything that happens within the system -- whether it be from user-interaction or from running code -- is accomplished by triggering one or more of these operations. This dissolves the boundary between "programming" (API) and user-interaction (UI), because the end-user can now do anything that code can do, and vice versa.
-
-All executable "code" within the system is also composed of "objects", and executed by a built-in [interpreter](https://en.wikipedia.org/wiki/Interpreter_(computing)). All the operations that can be performed by code, are themselves stored as code-"objects", and the interpreter works simply by looking up operations as they appear in the code. These same operations are invoked as the user interacts with the system, thus making barrier between programmer-interface (API) and user-interace (UI) becomes very thin.
+Every operation that can be performed on an object (and thus on any part of the system), is itself stored as an object within the system. Thus, everything that happens within the system -- whether it be from user-interaction or from running code -- is accomplished by triggering one or more of these operations. This dissolves the boundary between "programming" (API) and user-interaction (UI), because the end-user can now do anything that code can do, and vice versa.
 
 **IMPLEMENTATION PLAN / HOW IT WORKS:**
 
