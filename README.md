@@ -1,7 +1,15 @@
 # Objects
 **JavaScript POC for a fully user-modifiable software system.**
 
-The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through direct-manipulation. The entire system (i.e. all data *and executable code*) will be built up of "objects" that the user can create & modify through a visual interface. Thus, everything about the system (the object-model, the visual interface, and all *behaviors*) can be modified *while you are using it*. 
+The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through direct-manipulation. The entire system (i.e. all data *and executable code*) will be built up of "objects" that the user can create & modify through a visual interface. Thus, everything about the system (the object-model, the visual interface, and all *behaviors*) can be modified *while you are using it*.
+
+**How is this possible?**
+
+Computers cannot contain physical things, only data *about* things. Therefor, the "things" in a computer are all *representations* made of structured information. Conventional computers store everything as raw data, and it is up to the specific software tool to load that data into a structure that can be viewed or manipulated in some meaningful way. If instead everything was stored in a meaningful structure to begin with, and if the software system provided a common means to manipulate that structure in-place, then one becomes free to create any representation for anything. Therefor, the key is choosing a set of building-blocks ("objects") that can be assembled to create any ad-hoc structure of information. (I've chosen [JSON](http://www.json.org/) for its support of ad-hoc "objects").
+
+<*TODO: INSERT EXPLAINATION OF IT DOESNT MATTER WHAT INTERFACE IS USED, SO LONG AS IT PROVIDES INITIAL ACCESS TO OBJECTS*>
+
+<*TODO: INSERT EXPLAINATION OF HOW THIS APPLIES TO CODE AS WELL, AND HOW THAT SIMILARLY ESCAPES ANY SPECIFIC PROGRAMMING LANGUAGE*>
 
 The user-interface will start out as a visualization of generic data-trees, but can be further modified to create the ideal interface for the task at hand. For example, editing the size & position of a ball by clicking and dragging *a ball*, rather than by editing numeric data *about* a ball. (Brett Victor demonstrates concept well: "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)", "[Learnable Programming](http://worrydream.com/LearnableProgramming/)", "[Magic Ink](http://worrydream.com/MagicInk)")
 
@@ -19,9 +27,7 @@ Every operation that can be performed on an object (and thus on any part of the 
 
 5. **"[Bootstrap](https://en.wikipedia.org/wiki/Bootstrapping)" the interpreter** by re-coding it as an AST object-graph (like everything else). The intpreter can now be edited entirely in AST form, and then compiled to replace the existing "native" interpreter. (The AST interpreter could also just run on top of the "native" one to test it amid modifications). **Now the *Entire* system is modifiable in AST form.**
 
-6. ... IN THE PROCESS OF EDITING THIS ...
-
-7. Having fulfilled this POC, the next goal will be to apply this same concept at the machine-level, rather than just in JavaScript. This may be achievable directly from JavaScript by implementing a JIT compiler: The bootstrapper and JIT compiler would be coded in the language of the system rather in "native" JavaScript (they'd be JIT-compiled as part of the bootstrapping process, so that they can actually do their thing). The whole system could then JIT-compile itself into a program for another platform. Since the bootstrapper was written in the language of the system, the compiled system then contains a bootstrapper for that other system. Since the JIT compilers (there'd be at least 2: one for JavaScript, and another for the new platform) "come with" in this process, the whole system would be capable of transferring itself from platform to platform ... Kind of like [Ultron](https://en.wikipedia.org/wiki/Ultron) :)
+6. By creating compilers for other platforms, the entire system can transfer itself to any other environment or machine. And since everything is written in the high-level language of the system, everything from the old system "comes with". In this way, the system becomes capable of transferring itself from platform to platform (and back again) ... Kind of like [Ultron](https://en.wikipedia.org/wiki/Ultron) :)
 
 HOW TO TEST / USE IT:
 
