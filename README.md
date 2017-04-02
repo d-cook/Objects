@@ -9,7 +9,13 @@ Since computers cannot contain physical things, only data *about* things, all th
 
 Also, because "code" (i.e. the stuff that programs are made of) is nothing more than structured information about "what to do", the above statements apply to all behaviors & tools within the system as well. Thus the "[escaping of] the rigid boundaries of conventional software tools" is accomplished both by providing direct access to the shape & structure of data ("things"), *and* by providing the ability to create & modify whatever *tools* are desired.
 
-<*TODO: INSERT EXPLAINATION OF HOW THIS APPLIES TO CODE AS WELL, AND HOW THAT SIMILARLY ESCAPES ANY SPECIFIC PROGRAMMING LANGUAGE*>
+*(TO-DO: INSERT EXPLAINATION OF HOW IT THUS DOESN'T MATTER WHAT THE INITIAL INTERFACE LOOKS LIKE OR HOW IT WORKS)*
+
+*(TO-DO: INSERT EXPLAINATION OF HOW THIS APPLIES TO CODE AS WELL, AND HOW THAT SIMILARLY ESCAPES ANY SPECIFIC PROGRAMMING LANGUAGE)*
+
+*(TO-DO: INSERT A "WHY/MOTIVATION" SECTION)*
+
+*(TO-DO: INSERT A "PROGRAMMING / SOFTWARE DEV IMPLICATIONS" SECTION)*
 
 The user-interface will start out as a visualization of generic data-trees, but can be further modified to create the ideal interface for the task at hand. For example, editing the size & position of a ball by clicking and dragging *a ball*, rather than by editing numeric data *about* a ball. (Brett Victor demonstrates concept well: "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)", "[Learnable Programming](http://worrydream.com/LearnableProgramming/)", "[Magic Ink](http://worrydream.com/MagicInk)")
 
