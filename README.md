@@ -5,7 +5,7 @@ The goal is to create a software system that escapes the rigid boundaries of con
 
 **How is this possible?**
 
-Since computers cannot contain physical things, only data *about* things, all the "things" in a computer are *representations* made of structured information. However, it is typically up to each software tool create that structure from raw data, by converting the data into a structure that can be viewed or manipulated in some meaningful way. If instead everything was stored in a meaningful structure to begin with, then you are no longer limited to the representations provided by specific . Therefor, the key is choosing a set of building-blocks ("objects") that can be assembled to create any ad-hoc structure of information. (I've chosen [JSON](http://www.json.org/) for its support of ad-hoc "objects").
+Since computers cannot contain physical things, only data *about* things, all the "things" in a computer are *representations* made of structured information. However, it is typically up to each software tool create that structure from raw data, by converting the data into a structure that can be viewed or manipulated in some meaningful way. If instead that structure was an inherent part of everything, then creation & manipulation is no longer limited by the capabilities of individual software tools (programs). Therefor, the key is choosing a set of building-blocks ("objects") that can be assembled to create any ad-hoc structure of information. (I've chosen [JSON](http://www.json.org/) for its support of ad-hoc "objects").
 
 <*TODO: INSERT EXPLAINATION OF IT DOESNT MATTER WHAT INTERFACE IS USED, SO LONG AS IT PROVIDES INITIAL ACCESS TO OBJECTS*>
 
