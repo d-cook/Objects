@@ -1,7 +1,7 @@
 # Objects
 **JavaScript POC for a fully user-modifiable software system.**
 
-The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through direct-manipulation. Everything within the system (including all parts of the system *itself*) will be composed of "objects" that can be created & modified through a visual interface. Thus, everything about the system (the object-model, the visual interface, and all *behaviors*) can be modified *while you are using it*.
+The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through direct-manipulation. Everything within the system (including all parts of the system *itself*) will be composed of "objects" that can be created & modified through a visual interface. Thus, everything about the system (the object-model, the visual interface, and all *behaviors*) can be modified *while you are using it*. ^(see **Motivation** further down)^
 
 **How is this possible?**
 
