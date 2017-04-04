@@ -7,7 +7,7 @@ The goal is to create a software system that escapes the rigid boundaries of con
 
 Since computers cannot contain physical things, only data *about* things, all the "things" in a computer are *representations* made of structured information. However, it is typically up to each software tool to create that structure from raw data, by converting the data into a structure that can be viewed or manipulated in some meaningful way. If instead that structure was an inherent part of how everything is stored, then it could all be manipulated in place into *any form*, rather than being limited only to what each software tool allows. Therefor, the key is choosing a set of building-blocks ("objects") that can be assembled to create any ad-hoc structure of information. (I've chosen [JSON](http://www.json.org/) for its support of ad-hoc "objects").
 
-Furthermore, since "code" is *also* structured information (about "what to do"), [Code is data](https://blogs.mulesoft.com/dev/news-dev/code-is-data-data-is-code/). Thus, the "rigid bounaries of conventional software & programming" are escaped both by providing direct access to the shape & structure of data ("things"), *and* by the ability to create & modify whatever *tools & behaviors* are desired.
+Furthermore, since "code" is *also* structured information (i.e. instructions for "what to do"), [Code is data](https://blogs.mulesoft.com/dev/news-dev/code-is-data-data-is-code/). Thus, by providing direct access to the shape & structure of data ("things"), the ability to create & modify *tools & behaviors* is also granted.
 
 *(TO-DO: INSERT EXPLAINATION OF HOW IT THUS DOESN'T MATTER WHAT THE INITIAL INTERFACE LOOKS LIKE OR HOW IT WORKS)*
 
