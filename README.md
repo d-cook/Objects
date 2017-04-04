@@ -1,14 +1,13 @@
 # Objects
 **JavaScript POC for a fully user-modifiable software system.**
 
-The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through direct-manipulation. Everything within the system (including all parts of the system *itself*) will be composed of "objects" that can be created & modified through a visual interface. Thus, everything about the system (the object-model, the visual interface, and all *behaviors*) can be modified *while you are using it*.
-(See **Motivation** further down)
+The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through direct-manipulation. Everything within the system (including all parts of the system *itself*) will be composed of "objects" that can be created & modified through a visual interface. Thus, everything about the system (the object-model, the visual interface, and all *behaviors*) can be modified *while you are using it*. (See **Motivation** further down)
 
 **How is this possible?**
 
 Since computers cannot contain physical things, only data *about* things, all the "things" in a computer are *representations* made of structured information. However, it is typically up to each software tool to create that structure from raw data, by converting the data into a structure that can be viewed or manipulated in some meaningful way. If instead that structure was an inherent part of how everything is stored, then it could all be manipulated in place into *any form*, rather than being limited only to what each software tool allows. Therefor, the key is choosing a set of building-blocks ("objects") that can be assembled to create any ad-hoc structure of information. (I've chosen [JSON](http://www.json.org/) for its support of ad-hoc "objects").
 
-Also, because "code" (i.e. the stuff that programs are made of) is nothing more than structured information about "what to do", the above statements apply to all behaviors & tools within the system as well. Thus the "[escaping of] the rigid boundaries of conventional software tools" is accomplished both by providing direct access to the shape & structure of data ("things"), *and* by providing the ability to create & modify whatever *tools* are desired.
+Furthermore, since "code" is *also* structured information (about "what to do"), [Code is data](https://blogs.mulesoft.com/dev/news-dev/code-is-data-data-is-code/). Thus, the "rigid bounaries of conventional software & programming" are escaped both by providing direct access to the shape & structure of data ("things"), *and* by the ability to create & modify whatever *tools & behaviors* are desired.
 
 *(TO-DO: INSERT EXPLAINATION OF HOW IT THUS DOESN'T MATTER WHAT THE INITIAL INTERFACE LOOKS LIKE OR HOW IT WORKS)*
 
