@@ -15,7 +15,7 @@ Furthermore, since "code" is nothing more than structured information for "what 
 
 The user-interface will start out as a visualization of generic data-trees, but can be further modified to create the ideal interface for the task at hand. For example, editing the size & position of a ball by clicking and dragging *a ball*, rather than by editing numeric data *about* a ball. (Brett Victor demonstrates concept well: "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)", "[Learnable Programming](http://worrydream.com/LearnableProgramming/)", "[Magic Ink](http://worrydream.com/MagicInk)")
 
-**Programming / Development Implications**
+**Implications for Programming**
 
 *(TO-DO: INSERT EXPLAINATION OF HOW THIS ANY SPECIFIC PROGRAMMING LANGUAGE)*
 
