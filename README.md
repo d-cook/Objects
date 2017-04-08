@@ -9,17 +9,21 @@ The "things" in a computer exist only as *representations* -- in other words, it
 
 Furthermore, since "code" is nothing more than structured information for "what to do", it will be representated in the same way as everything else ([code as data](https://blogs.mulesoft.com/dev/news-dev/code-is-data-data-is-code/)). Thus by manipulating the structure of "things", one can also create & modify *tools & behaviors* -- and thus everything about the system (the object-model, the visual interface, and all *behaviors*) can be modified *while you are using it*.
 
-*(TO-DO: INSERT EXPLAINATION OF HOW IT THUS DOESN'T MATTER WHAT THE INITIAL INTERFACE LOOKS LIKE OR HOW IT WORKS)*
+**What will it look like?**
 
-*(TO-DO: INSERT EXPLAINATION OF HOW THIS APPLIES TO CODE AS WELL, AND HOW THAT SIMILARLY ESCAPES ANY SPECIFIC PROGRAMMING LANGUAGE)*
-
-*(TO-DO: INSERT A "WHY/MOTIVATION" SECTION)*
-
-*(TO-DO: INSERT A "PROGRAMMING / SOFTWARE DEV IMPLICATIONS" SECTION)*
+*(TO-DO: INSERT EXPLAINATION OF HOW THIS DOESN'T MATTER, SO LONG AS INITIAL USE IS POSSIBLE)*
 
 The user-interface will start out as a visualization of generic data-trees, but can be further modified to create the ideal interface for the task at hand. For example, editing the size & position of a ball by clicking and dragging *a ball*, rather than by editing numeric data *about* a ball. (Brett Victor demonstrates concept well: "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)", "[Learnable Programming](http://worrydream.com/LearnableProgramming/)", "[Magic Ink](http://worrydream.com/MagicInk)")
 
+**Programming / Development Implications**
+
+*(TO-DO: INSERT EXPLAINATION OF HOW THIS ANY SPECIFIC PROGRAMMING LANGUAGE)*
+
 Every operation that can be performed on an object (and thus on any part of the system), is itself stored as an object within the system. Thus, everything that happens within the system -- whether it be from user-interaction or from running code -- is accomplished by triggering one or more of these operations. This dissolves the boundary between "programming" (API) and user-interaction (UI), because the end-user can now do anything that code can do, and vice versa.
+
+**Motivation**
+
+*(TO-DO: THIS)*
 
 **IMPLEMENTATION PLAN / HOW IT WORKS:**
 
