@@ -1,13 +1,13 @@
 # Objects
 **JavaScript POC for a fully user-modifiable software system.**
 
-The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through [direct-manipulation](https://en.wikipedia.org/wiki/Direct_manipulation_interface). Everything within the system (including all parts of the system *itself*) will be composed of "objects" that can be created & modified through a visual interface. (See **Motivation** further down)
+The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through [direct-manipulation](https://en.wikipedia.org/wiki/Direct_manipulation_interface). Everything within the system (including all parts of the system *itself*) will be composed of "objects" that can be created & modified through a visual interface, and thus everything about the system (including all *behaviors*) can be modified *while you are using it*. (See **Motivation** further down)
 
 **How is this possible?**
 
 The "things" in a computer exist only as *representations* -- in other words, it's all just structured information. Traditionally, everything is stored as raw data without any explicit structure, and software tools must transform it into a structural form that can be viewed or manipulated in some meaningful way. If instead, everything was stored in an explicit structural form *to begin with*, then you could modify everything *directly*, rather than being limited only to each software tools allows you to do. Everything will be composed of "objects" that can be assembled into any ad-hoc form.
 
-Furthermore, since "code" is nothing more than structured information for "what to do", it will be representated in the same way as everything else ([code as data](https://blogs.mulesoft.com/dev/news-dev/code-is-data-data-is-code/)). Thus by manipulating the structure of "things", one can also create & modify *tools & behaviors* -- and thus everything about the system (the object-model, the visual interface, and all *behaviors*) can be modified *while you are using it*.
+Furthermore, since "code" is nothing more than structured information for "what to do", it will be representated in the same way as everything else ([code as data](https://blogs.mulesoft.com/dev/news-dev/code-is-data-data-is-code/)). Thus by manipulating the structure of "things", one can also create & modify all *tools & behaviors*.
 
 **What will it look like?**
 
