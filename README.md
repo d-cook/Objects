@@ -11,8 +11,6 @@ The "things" in a computer exist only as *representations* -- in other words, it
 
 All that matters here is that there is *any* interface to begin with, because the end-user can then manipulate it into whatever they want. This calls for a minimal interface just good enough to allow one to see and manipulate the structure of everything. And by making it a *visual* interface (GUI), the user's ability to modify it also means that they can create whatever *graphical* representation or tool that is most ideal for each scenario. For example, editing the size & position of a ball by *clicking and dragging A BALL*, rather than by *editing NUMERIC DATA about a ball* (see Brett Victor's "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)" and "[Learnable Programming](http://worrydream.com/LearnableProgramming/)").
 
-This will also serve as a catalyst to discover various tools & paradigms through rapid manipulation, rather than through tediously editing a program. The goal of this project is not this system itself, but the ability to *use* such a system to explore & develop new & better ways of creating, modeling, and using software.
-
 **Implications for Programming**
 
 *(TO-DO: INSERT EXPLAINATION OF HOW THIS ESCAPES ANY SPECIFIC PROGRAMMING LANGUAGE)*
