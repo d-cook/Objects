@@ -15,7 +15,7 @@ The user-interface will start out as a visualization of generic data-trees, but 
 
 **Implications for Programming**
 
-*(TO-DO: INSERT EXPLAINATION OF HOW THIS ANY SPECIFIC PROGRAMMING LANGUAGE)*
+*(TO-DO: INSERT EXPLAINATION OF HOW THIS ESCAPES ANY SPECIFIC PROGRAMMING LANGUAGE)*
 
 Every operation that can be performed on an object (and thus on any part of the system), is itself stored as an object within the system. Thus, everything that happens within the system -- whether it be from user-interaction or from running code -- is accomplished by triggering one or more of these operations. This dissolves the boundary between "programming" (API) and user-interaction (UI), because the end-user can now do anything that code can do, and vice versa.
 
