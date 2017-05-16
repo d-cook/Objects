@@ -9,7 +9,7 @@ The "things" in a computer exist only as *representations* -- in other words, it
 
 **What will it look like?**
 
-All that matters here is that there is *any* interface to begin with, because the end-user can then manipulate it into whatever they want. This calls for a minimal interface just good enough to allow one to see and manipulate the structure of everything. And by making it a *visual* interface (GUI), the user's ability to modify it also means that they can create whatever *graphical* representation or tool that is most ideal for each scenario. For example, editing the size & position of a ball by *clicking and dragging A BALL*, rather than by *editing NUMERIC DATA about a ball* (see Brett Victor's "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)" and "[Learnable Programming](http://worrydream.com/LearnableProgramming/)").
+All that matters here is that there is *any* interface to begin with, because the end-user can then manipulate it into whatever they want. This calls for a minimal interface just good enough to allow one to see and manipulate the structure of everything. And by making it a *visual* interface (GUI), the user's ability to modify it also means that they can create whatever *graphical* representation or tool that is most ideal for each scenario. For example, editing the size & position of a ball by clicking and dragging *a ball*, rather than by editing *numeric data* about a ball (see Brett Victor's "[Dynamic Visualizations](http://worrydream.com/DrawingDynamicVisualizationsTalk)" and "[Learnable Programming](http://worrydream.com/LearnableProgramming/)").
 
 **Implications for Programming**
 
@@ -20,6 +20,8 @@ Every operation that can be performed on an object (and thus on any part of the 
 **Motivation**
 
 *(TO-DO: THIS)*
+
+*(Alan Kay's "Computer revolution hasn't happened yet; Kay, Engelbart, Alexander all tried to expand human aspects; Brett Victor; programming is generally awful, and a better interface is needed to see enough to do it right. Also, every other software tool other than programming has a better interface than text. Something non-perscriptive, but open-ended and exploratory)*
 
 **IMPLEMENTATION PLAN / HOW IT WORKS:**
 
