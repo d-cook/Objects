@@ -21,7 +21,7 @@ Every operation that can be performed on an object (and thus on any part of the 
 
 *(TO-DO: THIS)*
 
-*(Alan Kay's "Computer revolution hasn't happened yet; Kay, Engelbart, Alexander all tried to expand human aspects; Brett Victor; programming is generally awful, and a better interface is needed to see enough to do it right. Also, every other software tool other than programming has a better interface than text. Something non-perscriptive, but open-ended and exploratory)*
+*(Alan Kay's "Computer revolution hasn't happened yet"; Kay, Engelbart, Alexander all tried to expand human aspects; Brett Victor; programming is generally awful, and a better interface is needed to see enough to do it right. Also, every other software tool other than programming has a better interface than text. Something non-perscriptive, but open-ended and exploratory)*
 
 **IMPLEMENTATION PLAN / HOW IT WORKS:**
 
