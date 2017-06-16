@@ -44,7 +44,7 @@ function tailcall (func, args, cb) {
 }
 
 function invoke (aTailcall) {
-   var tc = (typeof aTailcall === 'function') ? tailcall.apply(null, arguments) : tc;
+   var tc = (typeof aTailcall === 'function') ? tailcall.apply(null, arguments) : aTailcall;
    while(tc && tc.func) {
       tc = tc.func.apply(null, tc.args || []);
    }
@@ -125,7 +125,7 @@ O.has = function (cb, prop, obj) {
 };
 
 O.get = function (cb, prop, obj) {
-   return tailcall(O.has, [obj, prop], function (h) {
+   return tailcall(O.has, [prop, obj], function (h) {
       return tailcall(cb, [h ? obj[prop] : null]);
    });
 };
