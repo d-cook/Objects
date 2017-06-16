@@ -74,7 +74,7 @@ O.eval = function (cb, code, env) {
          return tailcall(cb, [code]);
       }
       // Execute an operation defined in env
-      return tailcall(O.tryGet, ['op', code], function (hasOp, op) {
+      return tailcall(O.get, ['op', code], function (op, hasOp) {
          // If there is no operation to perform, just return it as a value
          if (!hasOp) {
             return tailcall(cb, [code]);
@@ -126,15 +126,7 @@ O.has = function (cb, prop, obj) {
 
 O.get = function (cb, prop, obj) {
    return tailcall(O.has, [prop, obj], function (h) {
-      return tailcall(cb, [h ? obj[prop] : null]);
-   });
-};
-
-O.tryGet = function (cb, prop, obj) {
-   return tailcall(O.typeof, [obj], function (t) {
-      var h = (t === 'object' || t === 'array') && hasOwn(obj, prop);
-      var v = (h ? obj[prop] : null);
-      return tailcall(cb, [h, v]);
+      return tailcall(cb, [h ? obj[prop] : null, h]);
    });
 };
 
@@ -148,9 +140,9 @@ O.set = function (cb, prop, value, obj) {
 };
 
 O.lookup = function (cb, prop, env) {
-   return tailcall(O.tryGet, [prop, env], function (has, value) {
+   return tailcall(O.get, [prop, env], function (value, has) {
       if (has) { return tailcall(cb, [value]); }
-      return tailcall(O.tryGet, ['parent', env], function (has, parent) {
+      return tailcall(O.get, ['parent', env], function (parent, has) {
          if (!has) { return tailcall(cb, [null]); }
          return tailcall(O.lookup, [prop, parent], cb);
       });
