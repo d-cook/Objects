@@ -1,0 +1,8 @@
+eval(expr:["x",y..], env:{x:{body}}              ) --> eval(body, {parent:env, args:[eval(y,env)..]})
+eval(expr:["x",y..], env:{x:{body, args:["a"..]}}) --> eval(body, {parent:env, args:[eval(y,env)..], a:eval(y,env)..})
+eval(expr:["x",y..], env:{x:{body, syntax}}      ) --> eval(body, {parent:env, args:[y..])
+eval(expr:{"x"..  ], env:{parent:{x:{body}}}     ) --> eval(body, {parent:env})
+eval(expr:[ x ..  ], env                         ) --> // as if "x" were in env
+eval(expr:["x"..  ], {}                          ) --> null // "x" is not in env
+eval(expr:["x",y..], env:{x:func}                ) --> func(eval(y,env)..)
+eval(expr:  x                                    ) --> x // everything else is self-evaluating
