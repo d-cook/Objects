@@ -1,24 +1,22 @@
-(work-in-progress)
-
 eval(expr, env)
-:: ([x,y..], {..}) --> call(lookup(eval(x, env)), [y..], env)
-:: (..           ) --> expr
+:: ([x, y..], {..}) --> call(lookup(eval(x, env)), [y..], env)
+:: (_       , _   ) --> expr
 
 lookup(key, env)
-:: ("x", {x}     ) --> x
-:: ("x", {parent}) --> lookup("x", parent)
-:: (x  , ..      ) --> null
+:: ("x", {x     , ..}) --> x
+:: ("x", {parent, ..}) --> lookup("x", parent)
+:: ( x , _           ) --> null
 
 call(func, args, env)
-:: ({body:native}, ..) --> native.apply(null, getArgs(func, args, env))
-:: ({body}       , ..) --> eval(body, newEnv(getArgs(func, args, env)))
-:: (native       , ..) --> native.apply(null, args)
-:: (..               ) --> null
+:: ({body:native, ..}, _) --> native.apply(null, getArgs(func, args, env))
+:: ({body       , ..}, _) --> eval(body, newEnv(getArgs(func, args, env)))
+:: (native           , _) --> native.apply(null, args)
+:: (_                , _) --> null
 
 getArgs(func, args, env)
-:: ({syntax}, [x..], ..) --> [x..]
-:: (_       , [x..], ..) --> [eval(x, env)..]
+:: ({syntax}, [x..], _) --> [x..]
+:: (_       , [x..], _) --> [eval(x, env)..]
 
 newEnv(func, args env)
 :: ({args:["a"..]}, [x..], _) --> {parent:env, args, a:x..}
-:: (..                      ) --> {parent:env, args}
+:: (_                    , _) --> {parent:env, args}
