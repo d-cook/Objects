@@ -5,7 +5,7 @@ eval(expr, env)
 lookup(key, env)
 :: ("x", {x, ..}     )        --> x
 :: ("x", {parent, ..})        --> lookup("x", parent)
-:: ( x , _           )        --> null
+:: (_  , _           )        --> null
 
 call(func, args, env)
 :: ({body:native, ..}, _)     --> native.apply(null, getArgs(func, args, env))
