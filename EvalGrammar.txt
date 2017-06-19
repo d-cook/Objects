@@ -8,10 +8,10 @@ lookup(key, env)
 :: (_  , _           )        --> null
 
 call(func, args, env)
-:: ({body:native, ..}, _)     --> native.apply(null, getArgs(func, args, env))
-:: ({body, ..}       , _)     --> eval(body, newEnv(getArgs(func, args, env)))
-:: (native           , _)     --> native.apply(null, args)
-:: (_                , _)     --> null
+:: ({body:native, ..}, _, _)  --> apply: native(getArgs(func, args, env))
+:: ({body, ..}       , _, _)  --> eval(body, newEnv(getArgs(func, args, env)))
+:: (native           , _, _)  --> apply: native(args)
+:: (_                , _, _)  --> null
 
 getArgs(func, args, env)
 :: ({syntax}, [x..], _)       --> [x..]
