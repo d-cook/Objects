@@ -123,7 +123,6 @@ O.Test = {
       cb = arguments[arguments.length - 1];
       if (typeof cb !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
-      code = O.js.make(code);
       O.js.invoke(O.eval, [code, env], cb); 
    }
 };
