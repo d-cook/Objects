@@ -68,6 +68,18 @@ var O = window.Objects = {
       }
       return O.js.tailcall(cb, []);
    },
+   each: function(cb, array, code, i) {
+      return O.js.tailcall(O.typeof, [array], function (type) {
+         if (type !== 'array') {
+            return O.js.tailcall(cb);
+         }
+         return O.js.tailcall(O.loop, [0, array.length, function(cb, i) {
+            return O.js.tailcall(O.get, [i, array], function(value) {
+               return O.js.tailcall(code, [i, value], cb);
+            });
+         }], cb);
+      });
+   }
    eval: function (cb, expr, env) {
       return O.js.tailcall(O.typeof, [expr], function (type) {
          if (type !== 'array' || expr.length < 1) {
@@ -81,29 +93,18 @@ var O = window.Objects = {
                         return null;
                      }
                      return O.js.tailcall(O.get, ['syntax', op], function(syntax, isSyntax) {
+                        // applyArgs is declared below (this does not violate JS semantics)
                         var args = expr.slice(1);
-                        function setArg(cb, i) {
-                           if (i < args.length) {
-                              return O.js.tailcall(O.get, [i, args], function(argExpr) {
-                                 return O.js.tailcall(O.eval, [argExpr, env], function(argVal) {
-                                    return O.js.tailcall(O.set, [i, argVal, args], function () {
-                                       return O.js.tailCall(setArg, i+1, cb);
-                                    });
-                                 });
-                              });
-                           }
-                           return O.js.tailcall(cb);
+                        if (isSyntax) {
+                           return O.js.tailcall(applyArgs, [], cb);
                         }
-                        // TODO: use this one (and inline it) instead:
-                        function setArgUsingLoop(cb, i) {
-                           return O.js.tailcall(loop, [0, args.length, function(cb, i) {
-                              return O.js.tailcall(O.get, [i, args], function(argExpr) {
-                                 return O.js.tailcall(O.eval, [argExpr, env], function(argVal) {
-                                    return O.js.tailcall(O.set, [i, argVal, args], cb);
-                                 });
-                              });
-                           }], cb);
-                        }
+                        return O.js.tailcall(O.each, [args, function(cb, i, argExpr) {
+                           return O.js.tailcall(O.eval, [argExpr, env], function(argVal) {
+                              return O.js.tailcall(O.set, [i, argVal, args], cb);
+                           });
+                        }], function() {
+                           return O.js.tailcall(applyArgs, [], cb);
+                        });
                         function applyArgs(cb) {
                            if (opType === 'native') {
                               return O.js.tailcall(op, [args, env], cb);
@@ -116,29 +117,16 @@ var O = window.Objects = {
                                  return O.js.tailcall(O.js.createObj, [], function(newEnv) {
                                     return O.js.tailcall(O.set, ['parent', env, newEnv], function() {
                                        return O.js.tailcall(O.get, ['args', body], function(argNames) {
-                                          return O.js.tailcall(O.typeof, [argNames], function (argNamesType) {
-                                             function setEnvArg(cb, i) {
-                                                if (i < argNames.length) {
-                                                   return O.js.tailcall(O.get, [i, argNames], function(aName) {
-                                                      return O.js.tailCall(O.typeof, [aName], function(nType) {
-                                                         if (nType !== 'string') {
-                                                            return O.js.tailCall(setEnvArg, i+1, cb);
-                                                         }
-                                                         return O.js.tailcall(O.get, [i, args], function(aValue) {
-                                                            return O.js.tailcall(O.set, [aName, aValue, newEnv], function () {
-                                                               return O.js.tailCall(setEnvArg, i+1, cb);
-                                                            });
-                                                         });
-                                                      });
-                                                   });
+                                          return O.js.tailcall(O.each, [argNames, function(cb, i, aName) {
+                                             return O.js.tailCall(O.typeof, [aName], function(nType) {
+                                                if (nType !== 'string') {
+                                                   return O.js.tailCall(cb);
                                                 }
-                                                return O.js.tailcall(cb);
-                                             }
-                                             if (argNamesType === 'array') {
-                                                return O.js.tailcall(setEnvArg, [0], function() {
-                                                   return O.js.tailcall(O.eval, [body, env], cb);
+                                                return O.js.tailcall(O.get, [i, args], function(aValue) {
+                                                   return O.js.tailcall(O.set, [aName, aValue, newEnv], cb);
                                                 });
-                                             }
+                                             });
+                                          }], function() {
                                              return O.js.tailcall(O.eval, [body, env], cb);
                                           });
                                        });
@@ -147,16 +135,6 @@ var O = window.Objects = {
                               });
                            });
                         }
-                        if (isSyntax) {
-                           return O.js.tailcall(applyArgs, [], cb);
-                        }
-                        return O.js.tailcall(setArg, [0], function() {
-                           return O.js.tailcall(applyArgs, [], cb);
-                        });
-                        // TODO: use this one (and inline it) instead:
-                        return O.js.tailcall(setArgUsingLoop, [0, args.length], function() {
-                           return O.js.tailcall(applyArgs, [], cb);
-                        });
                      });
                   });
                });
