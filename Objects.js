@@ -60,6 +60,14 @@ var O = window.Objects = {
          });
       });
    },
+   loop: function(cb, start, end, code) {
+      if (start < end) {
+         return O.js.tailcall(code, [start], function() {
+            return O.js.tailcall(O.loop, [start+1, end], cb);
+         });
+      }
+      return O.js.tailcall(cb, []);
+   },
    eval: function (cb, expr, env) {
       return O.js.tailcall(O.typeof, [expr], function (type) {
          if (type !== 'array' || expr.length < 1) {
@@ -85,6 +93,16 @@ var O = window.Objects = {
                               });
                            }
                            return O.js.tailcall(cb);
+                        }
+                        // TODO: use this one (and inline it) instead:
+                        function setArgUsingLoop(cb, i) {
+                           return O.js.tailcall(loop, [0, args.length, function(cb, i) {
+                              return O.js.tailcall(O.get, [i, args], function(argExpr) {
+                                 return O.js.tailcall(O.eval, [argExpr, env], function(argVal) {
+                                    return O.js.tailcall(O.set, [i, argVal, args], cb);
+                                 });
+                              });
+                           }], cb);
                         }
                         function applyArgs(cb) {
                            if (opType === 'native') {
@@ -133,6 +151,10 @@ var O = window.Objects = {
                            return O.js.tailcall(applyArgs, [], cb);
                         }
                         return O.js.tailcall(setArg, [0], function() {
+                           return O.js.tailcall(applyArgs, [], cb);
+                        });
+                        // TODO: use this one (and inline it) instead:
+                        return O.js.tailcall(setArgUsingLoop, [0, args.length], function() {
                            return O.js.tailcall(applyArgs, [], cb);
                         });
                      });
