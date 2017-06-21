@@ -30,7 +30,7 @@ var O = window.Objects = {
       return O.js.tailcall(cb, [
          (t === 'undefined' || obj === null) ? 'null' :
          (t === 'function') ? 'native' :
-         O.js.isArray(t) ? 'array' : t
+         O.js.isArray(obj) ? 'array' : t
       ]);
    },
    has: function (cb, prop, obj) {
