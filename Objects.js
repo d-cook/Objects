@@ -79,7 +79,7 @@ var O = window.Objects = {
             });
          }], cb);
       });
-   }
+   },
    eval: function (cb, expr, env) {
       return O.js.tailcall(O.typeof, [expr], function (type) {
          if (type !== 'array' || expr.length < 1) {
