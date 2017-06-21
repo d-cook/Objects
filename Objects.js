@@ -92,49 +92,58 @@ var O = window.Objects = {
                      if (opType !== 'object' && opType !== 'native') {
                         return O.js.tailcall(cb, [null]);
                      }
-                     return O.js.tailcall(O.get, ['syntax', op], function(syntax, isSyntax) {
-                        // applyArgs is declared below (this does not violate JS semantics)
-                        var args = expr.slice(1);
-                        if (isSyntax) {
-                           return O.js.tailcall(applyArgs, [], cb);
-                        }
-                        return O.js.tailcall(O.each, [args, function(cb, i, argExpr) {
-                           return O.js.tailcall(O.eval, [argExpr, env], function(argVal) {
-                              return O.js.tailcall(O.set, [i, argVal, args], cb);
-                           });
-                        }], function() {
-                           return O.js.tailcall(applyArgs, [], cb);
-                        });
-                        function applyArgs(cb) {
-                           if (opType === 'native') {
-                              return O.js.tailcall(op, [args, env], cb);
+                     return O.js.tailcall(O.get, ['envArgs', op], function(envArgs, takesEnvArgs) {
+                        return O.js.tailcall(O.get, ['syntax', op], function(syntax, isSyntax) {
+                           // applyArgs is declared below (this does not violate JS semantics)
+                           var args = expr.slice(1);
+                           if (isSyntax) {
+                              // TODO: Maybe the value of syntax can provide something useful?
+                              return O.js.tailcall(applyArgs, [args], cb);
                            }
-                           return O.js.tailcall(O.get, ['body', op], function(body) {
-                              return O.js.tailcall(O.typeof, [body], function(bodyType) {
-                                 if (bodytype === 'native') {
-                                    return O.js.tailcall(body, [args, env], cb);
-                                 }
-                                 return O.js.tailcall(O.js.createObj, [], function(newEnv) {
-                                    return O.js.tailcall(O.set, ['parent', env, newEnv], function() {
-                                       return O.js.tailcall(O.get, ['args', body], function(argNames) {
-                                          return O.js.tailcall(O.each, [argNames, function(cb, i, aName) {
-                                             return O.js.tailCall(O.typeof, [aName], function(nType) {
-                                                if (nType !== 'string') {
-                                                   return O.js.tailCall(cb);
-                                                }
-                                                return O.js.tailcall(O.get, [i, args], function(aValue) {
-                                                   return O.js.tailcall(O.set, [aName, aValue, newEnv], cb);
+                           return O.js.tailcall(O.each, [args, function(cb, i, argExpr) {
+                              return O.js.tailcall(O.eval, [argExpr, env], function(argVal) {
+                                 return O.js.tailcall(O.set, [i, argVal, args], cb);
+                              });
+                           }], function() {
+                              return O.js.tailcall(applyArgs, [args], cb);
+                           });
+                           function callFunc(cb, func, args) {
+                              // TODO: Maybe the value of envArgs can specify which to pass?
+                              return O.js.tailcall(func, (takesEnvArgs ? args : [args, env, cb]), cb);
+                           }
+                           function applyArgs(cb, args) {
+                              if (opType === 'native') {
+                                 return O.js.tailcall(callFunc, [op, args], cb);
+                              }
+                              return O.js.tailcall(O.get, ['body', op], function(body) {
+                                 return O.js.tailcall(O.typeof, [body], function(bodyType) {
+                                    if (bodyType === 'native') {
+                                       return O.js.tailcall(callFunc, [body, args], cb);
+                                    }
+                                    return O.js.tailcall(O.js.createObj, [], function(newEnv) {
+                                       return O.js.tailcall(O.set, ['parent', env, newEnv], function() {
+                                          return O.js.tailcall(O.get, ['args', body], function(argNames) {
+                                             return O.js.tailcall(O.each, [argNames, function(cb, i, aName) {
+                                                return O.js.tailCall(O.typeof, [aName], function(nType) {
+                                                   if (nType !== 'string') {
+                                                      return O.js.tailCall(cb);
+                                                   }
+                                                   return O.js.tailcall(O.get, [i, args], function(aValue) {
+                                                      return O.js.tailcall(O.set, [aName, aValue, newEnv], cb);
+                                                   });
+                                                });
+                                             }], function() {
+                                                return O.js.tailcall(O.set, ['args', args, newEnv], function() {
+                                                   return O.js.tailcall(O.eval, [body, newEnv], cb);
                                                 });
                                              });
-                                          }], function() {
-                                             return O.js.tailcall(O.eval, [body, env], cb);
                                           });
                                        });
                                     });
                                  });
                               });
-                           });
-                        }
+                           }
+                        });
                      });
                   });
                });
