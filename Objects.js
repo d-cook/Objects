@@ -90,7 +90,7 @@ var O = window.Objects = {
                return O.js.tailcall(O.lookup, [opName, env], function(op) {
                   return O.js.tailcall(O.typeof, [op], function(opType) {
                      if (opType !== 'object' && opType !== 'native') {
-                        return null;
+                        return O.js.tailcall(cb, [null]);
                      }
                      return O.js.tailcall(O.get, ['syntax', op], function(syntax, isSyntax) {
                         // applyArgs is declared below (this does not violate JS semantics)
