@@ -22,5 +22,5 @@ newEnv(func, params, env)
 :: (_             , _    , _)  --> {parent:getScope(func), caller:env, args:params}
 
 getScope(func)
-:: ({scope:{..}})              --> {..}
-:: (_           )              --> {}
+:: ({scope})                   --> scope
+:: (_      )                   --> {}
