@@ -1,21 +1,28 @@
 eval(expr, env)
-:: ([x, ..], _)                --> call(lookup(eval(x, env)), [..], env)
+:: ([x, ..], _)                --> call(getFunc(eval(x, env)), [..], env)
 :: (_      , _)                --> expr
+
+getFunc(func, env)
+:: (string, _)                 --> lookup(func, env)
+:: (number, _)                 --> lookup(func, env)
+:: (_     , _)                 --> func
 
 lookup(key, env)
 :: ("x", {x}     )             --> x
 :: ("x", {parent})             --> lookup("x", parent)
 :: (_  , _       )             --> null
 
-call(func, args, env)
-:: (native       , _, _)       --> native(getArgs(func, args, env), env)
-:: ({body:native}, _, _)       --> native(getArgs(func, args, env), env)
-:: ({body}       , _, _)       --> eval(body, newEnv(func, getArgs(func, args, env), env))
-:: (_            , _, _)       --> null
+call(func, args, env)          --> apply(func, getArgs(func, args, env), env)
 
 getArgs(func, args, env)
 :: ({syntax}, [x..], _)        --> [x..]
 :: (_       , [x..], _)        --> [eval(x, env)..]
+
+apply(func, args, env)
+:: (native       , _, _)       --> native(    newEnv(func, args, env))
+:: ({body:native}, _, _)       --> native(    newEnv(func, args, env))
+:: ({body}       , _, _)       --> eval(body, newEnv(func, args, env))
+:: (_            , _, _)       --> null
 
 newEnv(func, params, env)
 :: ({args:["a"..]}, [x..], _)  --> {parent:getScope(func), caller:env, args:params, a:x..}
@@ -23,4 +30,4 @@ newEnv(func, params, env)
 
 getScope(func)
 :: ({scope})                   --> scope
-:: (_      )                   --> {}
+:: (_      )                   --> null

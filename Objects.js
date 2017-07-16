@@ -1,5 +1,5 @@
 (function() {
-
+ 
 // The "root" object of the whole system:
 var O = window.Objects = {
    // Native JS utilities (normal calling convention, i.e. not CPS):
@@ -80,72 +80,82 @@ var O = window.Objects = {
          }], cb);
       });
    },
-   // TODO: make all native funcs take (cb, env, ...)
+   getArgs: function(cb, func, args, env) {
+      return O.js.tailcall(O.get, ['syntax', op], function(syntax, isSyntax) {
+         // TODO: Maybe the value of syntax can provide something useful?
+         return O.js.tailcall(O.each, [(isSyntax ? [] : args), function(cb, i, argExpr) {
+            return O.js.tailcall(O.eval, [argExpr, env], function(argVal) {
+               return O.js.tailcall(O.set, [i, argVal, args], cb);
+            });
+         }], function() {
+            return O.js.tailcall(cb, [args]);
+         });
+      });
+   },
+   newEnv: function (cb, func, args, env) {
+      return O.js.tailcall(O.js.createObj, [], function(env2) {
+         return O.js.tailcall(O.set, ['caller', env, env2], function() {
+            return O.js.tailcall(O.get, ['scope', func], function(scope) {
+               return O.js.tailcall(O.set, ['parent', scope, env2], function() {
+                  return O.js.tailcall(O.get, ['args', func], function(argNames) {
+                     return O.js.tailcall(O.each, [argNames, function(cb, i, aName) {
+                        return O.js.tailCall(O.typeof, [aName], function(nType) {
+                           if (nType !== 'string') {
+                              return O.js.tailCall(cb);
+                           }
+                           return O.js.tailcall(O.get, [i, args], function(aValue) {
+                              return O.js.tailcall(O.set, [aName, aValue, env2], cb);
+                           });
+                        });
+                     }], function() {
+                        return O.js.tailcall(O.set, ['args', args, env2], function() {
+                           return O.js.tailcall(cb, [env2]);
+                        });
+                     });
+                  });
+               });
+            });
+         });
+      });
+   },
+   getFunc: function (cb, func, env) {
+      return O.js.tailcall(O.typeof, [func], function(type) {
+        if (type !== 'string' && type !== 'number') {
+            return O.js.tailcall(cb, [func]);
+        }
+        return O.js.tailcall(O.lookup, [func, env], cb);
+      });
+   },
+   apply: function (cb, func, args, env) {
+      return O.js.tailcall(O.typeof, [func], function(funcType) {
+         if (funcType !== 'object' && funcType !== 'native') {
+            return O.js.tailcall(cb, [null]);
+         }
+         return O.js.tailcall(O.getArgs, [func, args, env], function (cb, args) {
+            return O.js.tailcall(O.get, ['body', func], function(body) {
+               return O.js.tailcall(O.newEnv, [body, args, env], function(env2) {
+                  body = body || func;
+                  return O.js.tailcall(O.typeof, [body], function(type) {
+                     if (type === 'native') {
+                        return O.js.tailcall(body, [env2], cb);
+                     }
+                     return O.js.tailcall(O.eval, [func, env2], cb);
+                  });
+               });
+            });
+         });
+      });
+   },
    eval: function (cb, expr, env) {
       return O.js.tailcall(O.typeof, [expr], function (type) {
          if (type !== 'array' || expr.length < 1) {
             return O.js.tailcall(cb, [expr]);
          }
-         return O.js.tailcall(O.get, [0, expr], function(opExpr) {
-            return O.js.tailcall(O.eval, [opExpr, env], function(opName) {
-               return O.js.tailcall(O.lookup, [opName, env], function(op) {
-                  return O.js.tailcall(O.typeof, [op], function(opType) {
-                     if (opType !== 'object' && opType !== 'native') {
-                        return O.js.tailcall(cb, [null]);
-                     }
-                     return O.js.tailcall(O.get, ['syntax', op], function(syntax, isSyntax) {
-                        // applyArgs is declared below (this does not violate JS semantics)
-                        var args = expr.slice(1);
-                        if (isSyntax) {
-                           // TODO: Maybe the value of syntax can provide something useful?
-                           return O.js.tailcall(applyArgs, [args], cb);
-                        }
-                        return O.js.tailcall(O.each, [args, function(cb, i, argExpr) {
-                           return O.js.tailcall(O.eval, [argExpr, env], function(argVal) {
-                              return O.js.tailcall(O.set, [i, argVal, args], cb);
-                           });
-                        }], function() {
-                           return O.js.tailcall(applyArgs, [args], cb);
-                        });
-                        function callFunc(cb, func, args) {
-                           // TODO: Always pass env to native functions
-                           return O.js.tailcall(func, args, cb);
-                        }
-                        function applyArgs(cb, args) {
-                           if (opType === 'native') {
-                              return O.js.tailcall(callFunc, [op, args], cb);
-                           }
-                           return O.js.tailcall(O.get, ['body', op], function(body) {
-                              return O.js.tailcall(O.typeof, [body], function(bodyType) {
-                                 if (bodyType === 'native') {
-                                    return O.js.tailcall(callFunc, [body, args], cb);
-                                 }
-                                 return O.js.tailcall(O.js.createObj, [], function(newEnv) {
-                                    return O.js.tailcall(O.set, ['parent', env, newEnv], function() {
-                                       return O.js.tailcall(O.get, ['args', body], function(argNames) {
-                                          return O.js.tailcall(O.each, [argNames, function(cb, i, aName) {
-                                             return O.js.tailCall(O.typeof, [aName], function(nType) {
-                                                if (nType !== 'string') {
-                                                   return O.js.tailCall(cb);
-                                                }
-                                                return O.js.tailcall(O.get, [i, args], function(aValue) {
-                                                   return O.js.tailcall(O.set, [aName, aValue, newEnv], cb);
-                                                });
-                                             });
-                                          }], function() {
-                                             return O.js.tailcall(O.set, ['args', args, newEnv], function() {
-                                                return O.js.tailcall(O.eval, [body, newEnv], cb);
-                                             });
-                                          });
-                                       });
-                                    });
-                                 });
-                              });
-                           });
-                        }
-                     });
-                  });
-               });
+         return O.js.tailcall(O.get, [0, expr], function(funcExpr) {
+            return O.js.tailcall(O.eval, [funcExpr, env], function(funcVal) {
+               return O.js.tailcall(O.getFunc, [funcVal], function(func) {
+                  return O.js.tailcall(O.apply, [func, expr.slice(1), env], cb);
+               })
             });
          });
       });
