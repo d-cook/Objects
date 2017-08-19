@@ -1,9 +1,7 @@
 # Objects
 **JavaScript POC for a fully user-modifiable software system.**
 
-(Discussion: https://www.cemetech.net/forum/viewtopic.php?p=253206#253206)
-
-The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through [direct-manipulation](https://en.wikipedia.org/wiki/Direct_manipulation_interface). Everything within the system (including all parts of the system *itself*) will be composed of "objects" that can be created & modified through a visual interface, and thus everything about the system can be modified *while you are using it*. (See **Motivation** further down)
+The goal is to create a software system that escapes the rigid boundaries of conventional software tools and [programming languages](https://en.wikipedia.org/wiki/Programming_language) by empowering the end-user to create their own experience through [direct-manipulation](https://en.wikipedia.org/wiki/Direct_manipulation_interface). Everything within the system (including all parts of the system *itself*) will be composed of "objects" that can be created & modified through a visual interface, and thus everything about the system can be modified *while you are using it*. ([Discuss on forum](https://www.cemetech.net/forum/viewtopic.php?p=253206#253206), or see **Motivation** further down)
 
 **How is this possible?**
 
