@@ -93,7 +93,7 @@ var O = window.Objects = {
       });
    },
    newEnv: function (cb, func, args, env) {
-      return O.js.tailcall(O.js.createObj, [], function(env2) {
+      return O.js.tailcall(O.js.newObj, [], function(env2) {
          return O.js.tailcall(O.set, ['caller', env, env2], function() {
             return O.js.tailcall(O.get, ['scope', func], function(scope) {
                return O.js.tailcall(O.set, ['parent', scope, env2], function() {
@@ -128,19 +128,19 @@ var O = window.Objects = {
    },
    apply: function (cb, func, args, env) {
       return O.js.tailcall(O.typeof, [func], function(funcType) {
-         if (funcType !== 'object' && funcType !== 'native') {
+         if (funcType === 'native') {
+            return O.js.tailcall(cb, [func.apply(null, args)]);
+         }
+         if (funcType !== 'object') {
             return O.js.tailcall(cb, [null]);
          }
-         return O.js.tailcall(O.getArgs, [func, args, env], function (cb, args) {
-            return O.js.tailcall(O.get, ['body', func], function(body) {
-               return O.js.tailcall(O.newEnv, [body, args, env], function(env2) {
-                  body = body || func;
-                  return O.js.tailcall(O.typeof, [body], function(type) {
-                     if (type === 'native') {
-                        return O.js.tailcall(body, [env2], cb);
-                     }
-                     return O.js.tailcall(O.eval, [func, env2], cb);
-                  });
+         return O.js.tailcall(O.get, ['body', func], function(body) {
+            return O.js.tailcall(O.newEnv, [body, args, env], function(env2) {
+               return O.js.tailcall(O.typeof, [body], function(type) {
+                  if (type === 'native') {
+                     return O.js.tailcall(body, [env2], cb);
+                  }
+                  return O.js.tailcall(O.eval, [func, env2], cb);
                });
             });
          });
@@ -154,7 +154,9 @@ var O = window.Objects = {
          return O.js.tailcall(O.get, [0, expr], function(funcExpr) {
             return O.js.tailcall(O.eval, [funcExpr, env], function(funcVal) {
                return O.js.tailcall(O.getFunc, [funcVal], function(func) {
-                  return O.js.tailcall(O.apply, [func, expr.slice(1), env], cb);
+                  return O.js.tailcall(O.getArgs, [func, expr.slice(1), env], function(args) {
+                     return O.js.tailcall(O.apply, [func, args, env], cb);
+                  });
                })
             });
          });

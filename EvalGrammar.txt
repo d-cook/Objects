@@ -19,7 +19,7 @@ getArgs(func, args, env)
 :: (_       , [x..], _)        --> [eval(x, env)..]
 
 apply(func, args, env)
-:: (native       , _, _)       --> native(    newEnv(func, args, env))
+:: (native       , _, _)       --> native(args)
 :: ({body:native}, _, _)       --> native(    newEnv(func, args, env))
 :: ({body}       , _, _)       --> eval(body, newEnv(func, args, env))
 :: (_            , _, _)       --> null
