@@ -83,7 +83,7 @@ var O = window.Objects = {
       var type = env.parent.js.type(env.array);
       if (type !== 'array') { return env.parent.js.tailcall(cb); }
       return env.parent.js.tailcall(env.parent.loop, [env, 0, env.array.length, function(cb, i) {
-         return env.parent.js.tailcall(code, [i, env.array[i]], cb);
+         return env.parent.js.tailcall(env.code, [i, env.array[i]], cb);
       }], cb);
    }},
    getArgs: { scope: O, args: ['func', 'args', 'env'], body: function(cb, env) {
@@ -164,7 +164,7 @@ O.Test = {
       cb = arguments[arguments.length - 1];
       if (typeof cb !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
-      O.js.invoke(O.eval, [expr, env], cb); 
+      O.js.invoke(O.eval, [O, expr, env], cb); 
    }
 };
 
