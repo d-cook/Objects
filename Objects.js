@@ -3,6 +3,8 @@
 // The "root" object of the whole system:
 var O = window.Objects = {
    // Native JS utilities (normal calling convention, i.e. not CPS):
+   // IMPORTANT: These functions should ONLY depend on the global window object so
+   //   that if they if they are modified as strings, their closure does not break.
    js: {
       noop: function () { },
       newObj: function () { return Object.create(null); },
@@ -31,8 +33,7 @@ var O = window.Objects = {
          allArgs.push.apply(allArgs, args);
          return { func: func, args: allArgs };
       },
-      invoke: function (aTailcall) {
-         var tc = (typeof aTailcall === 'function') ? O.js.tailcall.apply(null, arguments) : aTailcall;
+      invoke: function (tc) { // tailcall
          while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
       },
       tryCall: function (func, args) {
@@ -164,7 +165,7 @@ O.Test = {
       cb = arguments[arguments.length - 1];
       if (typeof cb !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
-      O.js.invoke(O.eval, [O, expr, env], cb); 
+      O.js.invoke(O.js.tailcall(O.eval, [O, expr, env], cb)); 
    }
 };
 
