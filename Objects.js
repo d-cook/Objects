@@ -184,6 +184,51 @@ var O = window.Objects = {
       });
    }}
 };
+ 
+//TODO: Use the following to generate a CPS-version of itself, and replace the "compile" function above with the result:
+ var getType = function (o) {
+   var t = (typeof o);
+   if (t === 'undefined' || o === null) { return 'null'; }
+   if (t === 'function') { return 'native'; }
+   var s = Object.prototype.toString.call(o);
+   return (s === '[object Array]' || s === '[object Arguments]') ? 'array' : t;
+};
+
+var compile = function(code) {
+   var calls = [];
+   function getCalls(code) {
+      if (getType(code) !== 'array' || code.length < 1) { return code; }
+      var last = [];
+      for(var i = 0; i < code.length; i++) {
+         var a = code[i];
+         if (getType(a) === 'array') {
+           getCalls(a);
+            last.push(calls.length - 1);
+         } else {
+            last.push(JSON.stringify(a) || '' + a);
+         }
+      }
+      calls.push(last);
+   }
+   getCalls(code);
+   var src = "";
+   while(calls.length) {
+      var c = calls.pop();
+      var t = getType(c[0]);
+      var s = "return window.Objects.js.tailcall(" + (
+         (t !== 'string') ? "r" + c[0] :
+         (c[0].charAt(0) === '"') ? "window.Objects.lookup, [env, " + c[0] + ", env.env], function (f) {\rreturn window.Objects.tailcall(f" :
+         c[0]
+      ) + ", [env, ";
+      for(var i = 1; i < c.length; i++) {
+         s += (i > 1 ? ", " : "") + (getType(c[i]) === 'number' ? "r" : "") + c[i];
+      }
+      src = s + "], " +
+         (src.length < 1 ? "cb]);" : "function(r" + calls.length + ") {\r" + src + "\r});") +
+         (t === "string" && c[0].charAt(0) === '"' ? "\r});" : "");
+   }
+   return src;
+};
 
 // ------------------------------------------ //
 // TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
