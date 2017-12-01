@@ -88,8 +88,7 @@ var O = window.Objects = {
       }], cb);
    }},
    getArgs: { scope: O, args: ['func', 'args', 'env'], body: function(cb, env) {
-      var isSyntax = env.parent.js.has(env.func, 'syntax');
-      return env.parent.js.tailcall(env.parent.each, [env, (isSyntax ? [] : env.args), function(cb, i, argExpr) {
+      return env.parent.js.tailcall(env.parent.each, [env, env.args, function(cb, i, argExpr) {
          return env.parent.js.tailcall(env.parent.eval, [env, argExpr, env.env], function(argVal) {
             env.args[i] = argVal;
             return env.parent.js.tailcall(cb, []);

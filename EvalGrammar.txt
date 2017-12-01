@@ -9,11 +9,8 @@ lookup(key, env)
 :: ("x", {parent})             --> lookup("x", parent)
 :: (_  , _       )             --> null
 
-call(func, args, env)          --> apply(func, getArgs(func, args, env), env)
-
-getArgs(func, args, env)
-:: ({syntax}, [x..], _)        --> [x..]
-:: (_       , [x..], _)        --> [eval(x, env)..]
+call(func, args, env)
+:: (_, [x..], _)               --> apply(func, [eval(x, env)..], env)
 
 apply(func, args, env)
 :: (native       , _, _)       --> native(args)
