@@ -1,11 +1,8 @@
 eval(expr, env)
-:: ([x, ..], _)                --> call(getFunc(eval(x, env)), [..], env)
-:: (_      , _)                --> expr
-
-getFunc(func, env)
-:: (string, _)                 --> lookup(func, env)
-:: (number, _)                 --> lookup(func, env)
-:: (_     , _)                 --> func
+:: ([string, ..], _)       --> call(lookup(string, env), [..], env)
+:: ([number, ..], _)       --> call(lookup(number, env), [..], env)
+:: ([x     , ..], _)       --> call(eval(x, env)       , [..], env)
+:: (_           , _)       --> expr
 
 lookup(key, env)
 :: ("x", {x}     )             --> x

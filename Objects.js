@@ -116,13 +116,6 @@ var O = window.Objects = {
          return env.parent.js.tailcall(cb, [env2]);
       });
    }},
-   getFunc: { scope: O, args: ['func', 'env'], body: function (cb, env) {
-      var type = env.parent.js.type(env.func);
-      if (type !== 'string' && type !== 'number') {
-         return env.parent.js.tailcall(cb, [env.func]);
-      }
-      return env.parent.js.tailcall(env.parent.lookup, [env, env.func, env.env], cb);
-   }},
    apply: { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
       var funcType = env.parent.js.type(env.func);
       if (funcType === 'native') {
@@ -146,11 +139,11 @@ var O = window.Objects = {
          return env.parent.js.tailcall(cb, [env.expr]);
       }
       var funcExpr = env.expr[0];
-      return env.parent.js.tailcall(env.parent.eval, [env, funcExpr, env.env], function(funcVal) {
-         return env.parent.js.tailcall(env.parent.getFunc, [env, funcVal], function(func) {
-            return env.parent.js.tailcall(env.parent.getArgs, [env, func, env.expr.slice(1), env.env], function(args) {
-               return env.parent.js.tailcall(env.parent.apply, [env, func, args, env.env], cb);
-            });
+      var funcType = env.parent.js.type(funcExpr);
+      var getter = (funcType === 'string' || funcType === 'number') ? env.parent.lookup : env.parent.eval;
+      return env.parent.js.tailcall(getter, [env, funcExpr, env.env], function(func) {
+         return env.parent.js.tailcall(env.parent.getArgs, [env, func, env.expr.slice(1), env.env], function(args) {
+            return env.parent.js.tailcall(env.parent.apply, [env, func, args, env.env], cb);
          });
       });
    }},
