@@ -19,9 +19,5 @@ apply(func, args, env)
 :: (_            , _, _)       --> null
 
 newEnv(func, params, env)
-:: ({args:["a"..]}, [x..], _)  --> {parent:getScope(func), caller:env, args:params, a:x..}
-:: (_             , _    , _)  --> {parent:getScope(func), caller:env, args:params}
-
-getScope(func)
-:: ({scope})                   --> scope
-:: (_      )                   --> null
+:: ({args:["a"..]}, [x..], _)  --> {parent:func.scope, caller:env, args:params, a:x..}
+:: (_             , _    , _)  --> {parent:func.scope, caller:env, args:params}
