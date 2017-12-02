@@ -146,23 +146,15 @@ var O = window.Objects = {
 };
  
 //TODO: Use the following to generate a CPS-version of itself, and replace the "compile" function above with the result:
- var getType = function (o) {
-   var t = (typeof o);
-   if (t === 'undefined' || o === null) { return 'null'; }
-   if (t === 'function') { return 'native'; }
-   var s = Object.prototype.toString.call(o);
-   return (s === '[object Array]' || s === '[object Arguments]') ? 'array' : t;
-};
-
 var compile = function(code) {
    var calls = [];
    function getCalls(code) {
-      if (getType(code) !== 'array' || code.length < 1) { return code; }
+      if (O.js.type(code) !== 'array' || code.length < 1) { return code; }
       var last = [];
       for(var i = 0; i < code.length; i++) {
          var a = code[i];
-         if (getType(a) === 'array') {
-           getCalls(a);
+         if (O.js.type(a) === 'array') {
+            getCalls(a);
             last.push(calls.length - 1);
          } else {
             last.push(JSON.stringify(a) || '' + a);
