@@ -37,7 +37,7 @@ var O = window.Objects = {
    // System functions, all written in Continuation Passing Style (CPS):
    // (values are returned by calling a callback provided by the caller)
 
-   typeof: { scope: O, args: ['obj'], body: function (cb, env) {
+   type: { scope: O, args: ['obj'], body: function (cb, env) {
       return env.parent.js.tailcall(cb, env, [env.parent.js.type(env.obj)]);
    }},
    has: { scope: O, args: ['prop', 'obj'], body: function (cb, env) {
