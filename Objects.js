@@ -16,18 +16,10 @@ var O = window.Objects = {
          var s = Object.prototype.toString.call(o);
          return (s === '[object Array]' || s === '[object Arguments]') ? 'array' : t;
       },
-      tailcall: function (func, args, cb) {
+      tailcall: function (func, env, args, cb) {
+         if (O.type(env) === 'array') { cb = args; args = env; env = null; }
          if (typeof func !== 'function') {
-            args = [{
-               parent: func.scope || null,
-               caller: args.shift(),
-               args: args
-            }];
-            if (func.args) {
-               for (var i = 0; i < func.args.length; i++) {
-                  args[func.args[i]] = args.args[i];
-               }
-            }
+            return O.js.tailcall(O.apply.body, env, [{func:func, args:args, env:env}], cb);
          }
          var allArgs = cb ? [cb] : [];
          allArgs.push.apply(allArgs, args);
@@ -46,55 +38,55 @@ var O = window.Objects = {
    // (values are returned by calling a callback provided by the caller)
 
    typeof: { scope: O, args: ['obj'], body: function (cb, env) {
-      return env.parent.js.tailcall(cb, [env.parent.js.type(env.obj)]);
+      return env.parent.js.tailcall(cb, env, [env.parent.js.type(env.obj)]);
    }},
    has: { scope: O, args: ['prop', 'obj'], body: function (cb, env) {
       var t = env.parent.js.type(env.obj);
-      return env.parent.js.tailcall(cb, [
+      return env.parent.js.tailcall(cb, env, [
          (t === 'object' || t === 'array') && env.parent.js.has(env.obj, env.prop)
       ]);
    }},
    get: { scope: O, args: ['prop', 'obj'], body: function (cb, env) {
       var h = env.parent.js.has(env.prop, env.obj);
-      return env.parent.js.tailcall(cb, [h ? env.obj[env.prop] : null, h]);
+      return env.parent.js.tailcall(cb, env, [h ? env.obj[env.prop] : null, h]);
    }},
    set: { scope: O, args: ['prop', 'value', 'obj'], body: function (cb, env) {
       var t = env.parent.js.type(env.obj);
       if (t === 'object' || t === 'array') { env.obj[env.prop] = env.value; }
-      return env.parent.js.tailcall(cb, [env.value]);
+      return env.parent.js.tailcall(cb, env, [env.value]);
    }},
    lookup: { scope: O, args: ['prop', 'env'], body: function (cb, env) {
       var e = env.env || env;
       var h = env.parent.js.has(e, env.prop);
-      if (h) { return env.parent.js.tailcall(cb, [e[env.prop]]); }
+      if (h) { return env.parent.js.tailcall(cb, env, [e[env.prop]]); }
       h = env.parent.js.has('parent', e);
-      if (!h) { return env.parent.js.tailcall(cb, [null]); }
-      return env.parent.js.tailcall(env.parent.lookup, [env, env.prop, e.parent], cb);
+      if (!h) { return env.parent.js.tailcall(cb, env, [null]); }
+      return env.parent.js.tailcall(env.parent.lookup, env, [env.prop, e.parent], cb);
    }},
    loop: { scope: O, args: ['start', 'end', 'code'], body: function(cb, env) {
       if (env.start < env.end) {
-         //TODO: should probably call apply(code) rather than just code()
-         return env.parent.js.tailcall(env.code, [env, env.start], function() {
-            return env.parent.js.tailcall(O.loop, [env, env.start+1, env.end], cb);
+         //return env.parent.js.tailcall(env.parent.apply, env, [env.code, [env.start], env], function() {
+         return env.parent.js.tailcall(env.code, env, [env.start], function() {
+            return env.parent.js.tailcall(O.loop, env, [env.start+1, env.end], cb);
          });
       }
-      return env.parent.js.tailcall(cb, []);
+      return env.parent.js.tailcall(cb, env, []);
    }},
    each: { scope: O, args: ['array', 'code'], body: function(cb, env) {
       var type = env.parent.js.type(env.array);
-      if (type !== 'array') { return env.parent.js.tailcall(cb); }
-      return env.parent.js.tailcall(env.parent.loop, [env, 0, env.array.length, function(cb, i) {
-         return env.parent.js.tailcall(env.code, [i, env.array[i]], cb);
+      if (type !== 'array') { return env.parent.js.tailcall(cb, env, []); }
+      return env.parent.js.tailcall(env.parent.loop, env, [0, env.array.length, function(cb, i) {
+         return env.parent.js.tailcall(env.code, env, [i, env.array[i]], cb);
       }], cb);
    }},
    getArgs: { scope: O, args: ['func', 'args', 'env'], body: function(cb, env) {
-      return env.parent.js.tailcall(env.parent.each, [env, env.args, function(cb, i, argExpr) {
-         return env.parent.js.tailcall(env.parent.eval, [env, argExpr, env.env], function(argVal) {
+      return env.parent.js.tailcall(env.parent.each, env, [env.args, function(cb, i, argExpr) {
+         return env.parent.js.tailcall(env.parent.eval, env, [argExpr, env.env], function(argVal) {
             env.args[i] = argVal;
-            return env.parent.js.tailcall(cb, []);
+            return env.parent.js.tailcall(cb, env, []);
          });
       }], function() {
-         return env.parent.js.tailcall(cb, [env.args]);
+         return env.parent.js.tailcall(cb, env, [env.args]);
       });
    }},
    newEnv: { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
@@ -102,76 +94,76 @@ var O = window.Objects = {
       env2.caller = env.env;
       env2.parent = env.func.scope;
       var argNames = env.func.args;
-      return env.parent.js.tailcall(env.parent.each, [env, argNames, function(cb, i, aName) {
+      return env.parent.js.tailcall(env.parent.each, env, [argNames, function(cb, i, aName) {
          var nType = env.parent.js.type(aName);
          if (nType !== 'string') {
-            return env.parent.js.tailCall(cb);
+            return env.parent.js.tailCall(cb, env, []);
          }
          var aValue = env.args[i];
          env2[aName] = aValue;
-         return env.parent.js.tailcall(cb, [aValue]);
+         return env.parent.js.tailcall(cb, env, [aValue]);
       }], function() {
          env2.args = env.args;
-         return env.parent.js.tailcall(cb, [env2]);
+         return env.parent.js.tailcall(cb, env, [env2]);
       });
    }},
    apply: { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
       var funcType = env.parent.js.type(env.func);
       if (funcType === 'native') {
-         return env.parent.js.tailcall(cb, [env.parent.js.tryCall(env.func, env.args)]);
+         return env.parent.js.tailcall(cb, env, [env.parent.js.tryCall(env.func, env.args)]);
       }
       if (funcType !== 'object') {
-         return env.parent.js.tailcall(cb, [null]);
+         return env.parent.js.tailcall(cb, env, [null]);
       }
       var body = env.func.body;
-      return env.parent.js.tailcall(env.parent.newEnv, [env, body, env.args, env.env], function(env2) {
+      return env.parent.js.tailcall(env.parent.newEnv, env, [body, env.args, env.env], function(env2) {
          var type = env.parent.js.type(body);
          if (type === 'native') {
-            return env.parent.js.tailcall(body, [env2], cb);
+            return env.parent.js.tailcall(body, env, [env2], cb);
          }
-         return env.parent.js.tailcall(O.eval, [env, env.func, env2], cb);
+         return env.parent.js.tailcall(O.eval, env, [env.func, env2], cb);
       });
    }},
    eval: { scope: O, args: ['expr', 'env'], body: function (cb, env) {
       var type = env.parent.js.type(env.expr);
       if (type !== 'array' || env.expr.length < 1) {
-         return env.parent.js.tailcall(cb, [env.expr]);
+         return env.parent.js.tailcall(cb, env, [env.expr]);
       }
       var funcExpr = env.expr[0];
       var funcType = env.parent.js.type(funcExpr);
       var getter = (funcType === 'string' || funcType === 'number') ? env.parent.lookup : env.parent.eval;
-      return env.parent.js.tailcall(getter, [env, funcExpr, env.env], function(func) {
-         return env.parent.js.tailcall(env.parent.getArgs, [env, func, env.expr.slice(1), env.env], function(args) {
-            return env.parent.js.tailcall(env.parent.apply, [env, func, args, env.env], cb);
+      return env.parent.js.tailcall(getter, env, [funcExpr, env.env], function(func) {
+         return env.parent.js.tailcall(env.parent.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
+            return env.parent.js.tailcall(env.parent.apply, env, [func, args, env.env], cb);
          });
       });
    }},
    // This probably does not work right at all, but here's what I have so far:
    compile: { scope: O, args: ['code', inner], body: function (cb, env) {
       var type = O.js.type(env.code);
-      if (type !== 'array' || env.code.length < 1) { return O.js.tailcall(cb, JSON.stringify(env.code)); }
+      if (type !== 'array' || env.code.length < 1) { return O.js.tailcall(cb, env, JSON.stringify(env.code)); }
       var op = env.code[0];
       var opType = O.js.type(op);
       var src = (opType === 'array') ? "window.Objects.js.tailcall(r1" :
           (opType === 'object' || opType === 'native') ? "window.Objects.js.tailcall(" + JSON.stringify(op) :
-          "window.Objects.lookup, [env, " + JSON.stringify(op) + ", env.env], function(r1) {\nwindow.Objects.js.tailcall(r1, [";
+          "window.Objects.lookup, env, [" + JSON.stringify(op) + ", env.env], function(r1) {\nwindow.Objects.js.tailcall(r1, [";
       var types = [];
-      return O.js.tailcall(O.loop, [env, 1, env.code.length, function(cb, i) {
+      return O.js.tailcall(O.loop, env, [1, env.code.length, function(cb, i) {
          var t = O.js.type(env.code[i]);
          types.push(t);
          src += (i > 0 ? ", " : "") + (t === 'array' ? "r" + (i+1) : JSON.stringify(env.code[i]));
       }], function() {
          src += "], " + (inner || "cb") + ");" + (opType === 'object' || opType === 'native' ? "\n});" : "");
-         return O.js.tailcall(O.each, [env, types, function(cb, i, t) {
+         return O.js.tailcall(O.each, env, [types, function(cb, i, t) {
             if (t === 'array') {
-               return O.js.tailcall(O.compile, [env, env.code[i+1], src], function (s) {
+               return O.js.tailcall(O.compile, env, [env.code[i+1], src], function (s) {
                   src = s;
-                  O.js.tailcall(cb);
+                  O.js.tailcall(cb, env, []);
                });
             }
-            return O.js.tailcall(cb);
+            return O.js.tailcall(cb, env, []);
          }], function() {
-            return O.js.tailcall(cb, [env, src]);
+            return O.js.tailcall(cb, env, [src]);
          });
       });
    }}
@@ -209,9 +201,9 @@ var compile = function(code) {
       var t = getType(c[0]);
       var s = "return window.Objects.js.tailcall(" + (
          (t !== 'string') ? "r" + c[0] :
-         (c[0].charAt(0) === '"') ? "window.Objects.lookup, [env, " + c[0] + ", env.env], function (f) {\rreturn window.Objects.tailcall(f" :
+         (c[0].charAt(0) === '"') ? "window.Objects.lookup, env, [" + c[0] + ", env.env], function (f) {\rreturn window.Objects.js.tailcall(f" :
          c[0]
-      ) + ", [env, ";
+      ) + ", env, [";
       for(var i = 1; i < c.length; i++) {
          s += (i > 1 ? ", " : "") + (getType(c[i]) === 'number' ? "r" : "") + c[i];
       }
@@ -231,7 +223,7 @@ O.Test = {
       cb = arguments[arguments.length - 1];
       if (typeof cb !== 'function') { cb = function (v) { console.log(v); }; }
       if (typeof env !== 'object' || !env) { env = O; }
-      O.js.invoke(O.js.tailcall(O.eval, [O, expr, env], cb)); 
+      O.js.invoke(O.js.tailcall(O.eval, null, [O, expr, env], cb)); 
    }
 };
 
