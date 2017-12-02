@@ -140,32 +140,8 @@ var O = window.Objects = {
    }},
    // This probably does not work right at all, but here's what I have so far:
    compile: { scope: O, args: ['code', inner], body: function (cb, env) {
-      var type = O.js.type(env.code);
-      if (type !== 'array' || env.code.length < 1) { return O.js.tailcall(cb, env, JSON.stringify(env.code)); }
-      var op = env.code[0];
-      var opType = O.js.type(op);
-      var src = (opType === 'array') ? "window.Objects.js.tailcall(r1" :
-          (opType === 'object' || opType === 'native') ? "window.Objects.js.tailcall(" + JSON.stringify(op) :
-          "window.Objects.lookup, env, [" + JSON.stringify(op) + ", env.env], function(r1) {\nwindow.Objects.js.tailcall(r1, [";
-      var types = [];
-      return O.js.tailcall(O.loop, env, [1, env.code.length, function(cb, i) {
-         var t = O.js.type(env.code[i]);
-         types.push(t);
-         src += (i > 0 ? ", " : "") + (t === 'array' ? "r" + (i+1) : JSON.stringify(env.code[i]));
-      }], function() {
-         src += "], " + (inner || "cb") + ");" + (opType === 'object' || opType === 'native' ? "\n});" : "");
-         return O.js.tailcall(O.each, env, [types, function(cb, i, t) {
-            if (t === 'array') {
-               return O.js.tailcall(O.compile, env, [env.code[i+1], src], function (s) {
-                  src = s;
-                  O.js.tailcall(cb, env, []);
-               });
-            }
-            return O.js.tailcall(cb, env, []);
-         }], function() {
-            return O.js.tailcall(cb, env, [src]);
-         });
-      });
+      // TODO: rewrite the non-CPS implementation of "compile" (below) in CPS form, here.
+      //     Can be done by rewriting as code-objects, and then having it compile itself.
    }}
 };
  
