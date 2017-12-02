@@ -1,21 +1,18 @@
 eval(expr, env)
-:: ([string, ..], _)       --> call(lookup(string, env), [..], env)
-:: ([number, ..], _)       --> call(lookup(number, env), [..], env)
-:: ([x     , ..], _)       --> call(eval(x, env)       , [..], env)
-:: (_           , _)       --> expr
+:: ([string, x..], _)          --> apply(lookup(string, env), [eval(x, env)..], env)
+:: ([number, x..], _)          --> apply(lookup(number, env), [eval(x, env)..], env)
+:: ([v     , x..], _)          --> apply(eval(v, env)       , [eval(x, env)..], env)
+:: (_            , _)          --> expr
 
 lookup(key, env)
-:: ("x", {x}     )             --> x
+:: ("x", {x     })             --> x
 :: ("x", {parent})             --> lookup("x", parent)
 :: (_  , _       )             --> null
-
-call(func, args, env)
-:: (_, [x..], _)               --> apply(func, [eval(x, env)..], env)
 
 apply(func, args, env)
 :: (native       , _, _)       --> native(args)
 :: ({body:native}, _, _)       --> native(    newEnv(func, args, env))
-:: ({body}       , _, _)       --> eval(body, newEnv(func, args, env))
+:: ({body       }, _, _)       --> eval(body, newEnv(func, args, env))
 :: (_            , _, _)       --> null
 
 newEnv(func, params, env)
