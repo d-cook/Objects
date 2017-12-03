@@ -239,10 +239,16 @@ window.Test = function (expr, env, cb) {
     "['get', 'foo', Objects]",
     "['set', '+', function(a,b){return a+b;}, Objects]",
     "['+', 12, 34]",
-    "['set', '-', {scope:Objects, args:['a','b'], body:function(cb, env){return window.Objects.js.tailcall(cb, [env.a-env.b]);}}, Objects]",
+    "['set', '-', {scope:Objects, args:['a','b'], body:function(cb, env){return env.parent.js.tailcall(cb, [env.a-env.b]);}}, Objects]",
     "['-', 43, 21]",
     "['set', 'alert', function(msg){alert(msg);}, Objects]",
-    "['alert', 'Hello World!']"
+    "['set', 'say', function(msg){document.body.innerHTML += ('<p>'+msg+'</p>');}, Objects]",
+    "['say', 'Howdy!']",
+    "['set', 'twice', {scope:Objects, body:function(cb, env){var r = env.parent.js.tailcall(cb, env.args); env.parent.js.invoke(r); return r;}}, Objects]",
+    "['twice', 'twice test']",
+    "['say', ['twice', 'Testing']]",
+    "['set', 'clear', function(){document.body.innerHTML='';}, Objects]",
+    "['set', 'refresh', function(){location.href=location.href;}, Objects]"
 ]));
 
 }());
