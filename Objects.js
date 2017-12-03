@@ -9,7 +9,7 @@ var O = window.Objects = Object.create(null);
 O.js = {
     noop: function () { },
     newObj: function () { return Object.create(null); },
-    has: function (obj, prop) { return Object.hasOwnProperty.call(obj, prop); },
+    has: function (obj, prop) { return obj ? Object.hasOwnProperty.call(obj, prop) : false; },
     type: function (o) {
         var t = (typeof o);
         if (t === 'undefined' || o === null) { return 'null'; }
@@ -72,7 +72,7 @@ O.has = { scope: O, args: ['prop', 'obj'], body: function (cb, env) {
     ]);
 }};
 O.get = { scope: O, args: ['prop', 'obj'], body: function (cb, env) {
-    var h = env.parent.js.has(env.prop, env.obj);
+    var h = env.parent.js.has(env.obj, env.prop);
     return env.parent.js.tailcall(cb, env, [h ? env.obj[env.prop] : null, h]);
 }};
 O.set = { scope: O, args: ['prop', 'value', 'obj'], body: function (cb, env) {
@@ -84,7 +84,7 @@ O.lookup = { scope: O, args: ['prop', 'env'], body: function (cb, env) {
     var e = env.env || env;
     var h = env.parent.js.has(e, env.prop);
     if (h) { return env.parent.js.tailcall(cb, env, [e[env.prop]]); }
-    h = env.parent.js.has('parent', e);
+    h = env.parent.js.has(e, 'parent');
     if (!h) { return env.parent.js.tailcall(cb, env, [null]); }
     return env.parent.js.tailcall(env.parent.lookup, env, [env.prop, e.parent], cb);
 }};
@@ -92,7 +92,7 @@ O.loop = { scope: O, args: ['start', 'end', 'code'], body: function(cb, env) {
     if (env.start < env.end) {
         //return env.parent.js.tailcall(env.parent.apply, env, [env.code, [env.start], env], function() {
         return env.parent.js.tailcall(env.code, env, [env.start], function() {
-            return env.parent.js.tailcall(O.loop, env, [env.start+1, env.end], cb);
+            return env.parent.js.tailcall(O.loop, env, [env.start+1, env.end, env.code], cb);
         });
     }
     return env.parent.js.tailcall(cb, env, []);
@@ -140,8 +140,8 @@ O.apply = { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
     if (funcType !== 'object') {
         return env.parent.js.tailcall(cb, env, [null]);
     }
-    var body = env.func.body;
-    return env.parent.js.tailcall(env.parent.newEnv, env, [body, env.args, env.env], function(env2) {
+    return env.parent.js.tailcall(env.parent.newEnv, env, [env.func, env.args, env.env], function(env2) {
+        var body = env.func.body;
         var type = env.parent.js.type(body);
         if (type === 'native') {
             return env.parent.js.tailcall(body, env, [env2], cb);
