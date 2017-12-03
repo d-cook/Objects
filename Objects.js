@@ -210,13 +210,39 @@ var compile = function(code) {
 // TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
 // ------------------------------------------ //
 
-O.Test = {
-    run: function (expr, env, cb) {
-        cb = arguments[arguments.length - 1];
-        if (typeof cb !== 'function') { cb = function (v) { console.log(v); }; }
-        if (typeof env !== 'object' || !env) { env = O; }
-        O.js.invoke(O.js.tailcall(O.eval, env, [expr, env], cb)); 
-    }
+window.Test = function (expr, env, cb) {
+    cb = arguments[arguments.length - 1];
+    if (typeof cb !== 'function') { cb = function (v) { console.log("  --> " + v); return v; }; }
+    if (typeof env !== 'object' || !env) { env = O; }
+    O.js.invoke(O.js.tailcall(O.eval, env, [expr, env], cb)); 
 };
+
+(function(tests) {
+    console.log("Running tests:");
+    for(var i = 0; i < tests.length; i++) {
+        console.log("eval(" + tests[i] + ")");
+        var result = null;
+        try { window.Test(eval(tests[i])); }
+        catch(e) { console.log("  !!! " + e) }
+    }
+}([
+    "123",
+    "'test'",
+    "[123]",
+    "['foo']",
+    "['get', 'x', {w:1,x:23}]",
+    "['lookup', 'x', {w:1,x:'IAmX'}]",
+    "['lookup', 'x', {w:1,parent:{x:'IAmParentX'}}]",
+    "['lookup', 'x', {w:1,parent:{parent:{x:'IAmParentParentX'}}}]",
+    "['get', 'foo', Objects]",
+    "['set', 'foo', 'IAmFoo', Objects]",
+    "['get', 'foo', Objects]",
+    "['set', '+', function(a,b){return a+b;}, Objects]",
+    "['+', 12, 34]",
+    "['set', '-', {scope:Objects, args:['a','b'], body:function(cb, env){return window.Objects.js.tailcall(cb, [env.a-env.b]);}}, Objects]",
+    "['-', 43, 21]",
+    "['set', 'alert', function(msg){alert(msg);}, Objects]",
+    "['alert', 'Hello World!']"
+]));
 
 }());
