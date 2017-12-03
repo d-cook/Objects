@@ -19,13 +19,36 @@ O.js = {
     },
     tailcall: function (func, env, args, cb) {
         if (O.js.type(env) === 'array') { cb = args; args = env; env = null; }
-        if (typeof func !== 'function') {
-            env = { parent: O.apply.scope, args: args, func: func, args: args, env: env };
-            return O.js.tailcall(O.apply.body, env, [env], cb);
+        if (O.js.type(func) === 'native') {
+            var allArgs = cb ? [cb] : [];
+            allArgs.push.apply(allArgs, args);
+            return { func: func, args: allArgs };
         }
-        var allArgs = cb ? [cb] : [];
-        allArgs.push.apply(allArgs, args);
-        return { func: func, args: allArgs };
+        if (O.js.type(func) !== 'object') { return null; }
+        if (O.js.type(func.body) === 'native') {
+            var newEnv = {
+                parent: func.scope || null,
+                caller: env || null,
+                args: args
+            };
+            if (func.args) {
+                for (var i = 0; i < func.args.length; i++) {
+                    newEnv[func.args[i]] = args[i];
+                }
+            }
+            return { func: func.body, args: [cb, newEnv] };
+        }
+        // Otherwise call eval on the func object:
+        var expr = [func];
+        expr.push.apply(expr, args);
+        var newEnv = {
+            parent: O.eval.scope || null,
+            caller: env || null,
+            args: [expr, env],
+            expr: expr,
+            env: env
+        };
+        return { func: O.eval, args: [cb, newEnv] };
     },
     invoke: function (tc) { // tailcall
         while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
