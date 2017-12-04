@@ -65,17 +65,17 @@ O.js = {
 O.type = { scope: O, args: ['obj'], body: function (cb, env) {
     return env.parent.js.tailcall(cb, env, [env.parent.js.type(env.obj)]);
 }};
-O.has = { scope: O, args: ['prop', 'obj'], body: function (cb, env) {
+O.has = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
     var t = env.parent.js.type(env.obj);
     return env.parent.js.tailcall(cb, env, [
         (t === 'object' || t === 'array') && env.parent.js.has(env.obj, env.prop)
     ]);
 }};
-O.get = { scope: O, args: ['prop', 'obj'], body: function (cb, env) {
+O.get = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
     var h = env.parent.js.has(env.obj, env.prop);
     return env.parent.js.tailcall(cb, env, [h ? env.obj[env.prop] : null, h]);
 }};
-O.set = { scope: O, args: ['prop', 'value', 'obj'], body: function (cb, env) {
+O.set = { scope: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
     var t = env.parent.js.type(env.obj);
     if (t === 'object' || t === 'array') { env.obj[env.prop] = env.value; }
     return env.parent.js.tailcall(cb, env, [env.value]);
@@ -146,7 +146,7 @@ O.apply = { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
         if (type === 'native') {
             return env.parent.js.tailcall(body, env, [env2], cb);
         }
-        return env.parent.js.tailcall(O.eval, env, [env.func, env2], cb);
+        return env.parent.js.tailcall(O.eval, env, [body, env2], cb);
     });
 }};
 O.eval = { scope: O, args: ['expr', 'env'], body: function (cb, env) {
@@ -230,25 +230,30 @@ window.Test = function (expr, env, cb) {
     "'test'",
     "[123]",
     "['foo']",
-    "['get', 'x', {w:1,x:23}]",
+    "['get', {w:1,x:23}, 'x']",
     "['lookup', 'x', {w:1,x:'IAmX'}]",
     "['lookup', 'x', {w:1,parent:{x:'IAmParentX'}}]",
     "['lookup', 'x', {w:1,parent:{parent:{x:'IAmParentParentX'}}}]",
-    "['get', 'foo', Objects]",
-    "['set', 'foo', 'IAmFoo', Objects]",
-    "['get', 'foo', Objects]",
-    "['set', '+', function(a,b){return a+b;}, Objects]",
+    "['set', Objects, 'def', function(k,v){if(Objects.js.type(v) === 'object' && !v.scope){v.scope=Objects;}Objects[k]=v;return v;}]",
+    "['lookup', 'foo']",
+    "['def', 'foo', 'IAmFoo']",
+    "['lookup', 'foo']",
+    "['def', '+', function(a,b){return a+b;}]",
     "['+', 12, 34]",
-    "['set', '-', {scope:Objects, args:['a','b'], body:function(cb, env){return env.parent.js.tailcall(cb, [env.a-env.b]);}}, Objects]",
+    "['def', '-', {scope:Objects, args:['a','b'], body:function(cb, env){return env.parent.js.tailcall(cb, [env.a-env.b]);}}]",
     "['-', 43, 21]",
-    "['set', 'alert', function(msg){alert(msg);}, Objects]",
-    "['set', 'say', function(msg){document.body.innerHTML += ('<p>'+msg+'</p>');}, Objects]",
+    "['def', 'alert', function(msg){alert(msg);}]",
+    "['def', 'say', function(msg){document.body.innerHTML += ('<p>'+msg+'</p>'); return msg;}]",
     "['say', 'Howdy!']",
-    "['set', 'twice', {scope:Objects, body:function(cb, env){var r = env.parent.js.tailcall(cb, env.args); env.parent.js.invoke(r); return r;}}, Objects]",
-    "['twice', 'twice test']",
-    "['say', ['twice', 'Testing']]",
-    "['set', 'clear', function(){document.body.innerHTML='';}, Objects]",
-    "['set', 'refresh', function(){location.href=location.href;}, Objects]"
+    "['def', 'again', {body:function(cb, env){var r = env.parent.js.tailcall(cb, env, env.args); env.parent.js.invoke(r); return r;}}]",
+    "['again', 'again']",
+    "['say', ['again', 'Testing "say again"']]",
+    "['again', ['say', 'Testing "again say"']]",
+    "['def', 'window', window]",
+    "['def', '.', function(v){for(var i=1; i<arguments.length;i++){v=v[arguments[i]];}return v;}]",
+    "['def', 'clear', {body:['set', ['.', ['lookup', 'window'], 'document', 'body'], 'innerHTML', '']}]",
+    "['def', 'refresh', {body:['set', ['.', ['lookup', 'window'], 'location'], 'href', ['.', ['lookup', 'window'], 'location', 'href']]}]",
+    "['set', ['.', ['lookup', 'window'], 'document', 'body', 'style'], 'backgroundColor', '#CCDDFF']"
 ]));
 
 }());
