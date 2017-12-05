@@ -2,6 +2,7 @@
 
 // The "root" object of the whole system:
 var O = window.Objects = Object.create(null);
+O.root = O;
 
 // Native JS utilities (normal calling convention, i.e. not CPS):
 // IMPORTANT: These functions should ONLY depend on the global window object so
@@ -9,7 +10,7 @@ var O = window.Objects = Object.create(null);
 O.js = {
     noop: function () { },
     newObj: function () { return Object.create(null); },
-    has: function (obj, prop) { return obj ? Object.hasOwnProperty.call(obj, prop) : false; },
+    has: function (obj, prop) { return obj ? (prop in obj) : false; },
     type: function (o) {
         var t = (typeof o);
         if (t === 'undefined' || o === null) { return 'null'; }
@@ -163,7 +164,6 @@ O.eval = { scope: O, args: ['expr', 'env'], body: function (cb, env) {
         });
     });
 }};
-// This probably does not work right at all, but here's what I have so far:
 O.compile = { scope: O, args: ['code', 'inner'], body: function (cb, env) {
     // TODO: rewrite the non-CPS implementation of "compile" (below) in CPS form, here.
     //      Can be done by rewriting as code-objects, and then having it compile itself.
