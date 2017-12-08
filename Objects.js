@@ -10,7 +10,10 @@ O.root = O;
 O.js = {
     noop: function () { },
     newObj: function () { return Object.create(null); },
-    has: function (obj, prop) { return obj ? (prop in obj) : false; },
+    has: function (o, p) { return o ? (p in o) : false; },
+    keys: function (o) { return Object.keys(o) || []; },
+    len: function (o) { var s = (o && o.length); return (typeof s === 'number') ? s : 0; },
+    not: function (v) { return !v; },
     type: function (o) {
         var t = (typeof o);
         if (t === 'undefined' || o === null) { return 'null'; }
@@ -19,6 +22,7 @@ O.js = {
         return (s === '[object Array]' || s === '[object Arguments]') ? 'array' : t;
     },
     tailcall: function (func, env, args, cb) {
+        // NOTE: this function references external entities: type, eval
         if (O.js.type(env) === 'array') { cb = args; args = env; env = null; }
         if (O.js.type(func) === 'native') {
             var allArgs = cb ? [cb] : [];
@@ -27,29 +31,29 @@ O.js = {
         }
         if (O.js.type(func) !== 'object') { return null; }
         if (O.js.type(func.body) === 'native') {
-            var newEnv = {
+            var env2 = {
                 parent: func.scope || null,
                 caller: env || null,
                 args: args
             };
             if (func.args) {
                 for (var i = 0; i < func.args.length; i++) {
-                    newEnv[func.args[i]] = args[i];
+                    env2[func.args[i]] = args[i];
                 }
             }
-            return { func: func.body, args: [cb, newEnv] };
+            return { func: func.body, args: [cb, env2] };
         }
         // Otherwise call eval on the func object:
         var expr = [func];
         expr.push.apply(expr, args);
-        var newEnv = {
+        var env2 = {
             parent: O.eval.scope || null,
             caller: env || null,
             args: [env, expr],
             expr: expr,
             env: env
         };
-        return { func: O.eval, args: [cb, newEnv] };
+        return { func: O.eval, args: [cb, env2] };
     },
     invoke: function (tc) { // tailcall
         while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
@@ -59,6 +63,18 @@ O.js = {
         catch(ex) { return ex; }
     }
 };
+O.js['+']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r += arguments[i]; } return r; };
+O.js['-']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r -= arguments[i]; } return r; };
+O.js['*']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r *= arguments[i]; } return r; };
+O.js['/']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r /= arguments[i]; } return r; };
+O.js.mod   = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r %= arguments[i]; } return r; };
+O.js['=']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (r !== arguments[i]) return false; } return true; };
+O.js['<']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r <  (r = arguments[i]))) return false; } return true; };
+O.js['>']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >  (r = arguments[i]))) return false; } return true; };
+O.js['<='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r <= (r = arguments[i]))) return false; } return true; };
+O.js['>='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >= (r = arguments[i]))) return false; } return true; };
+O.js.and   = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if (!(r = arguments[i])) return r; } return r; };
+O.js.or    = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if ( (r = arguments[i])) return r; } return r; };
 
 // System functions, all written in Continuation Passing Style (CPS):
 // (values are returned by calling a callback provided by the caller)
@@ -144,7 +160,6 @@ O.assign = { scope: O, args: ['obj', 'prop', 'value'], body: function (cb, env) 
 }};
 O.loop = { scope: O, args: ['start', 'end', 'code'], body: function(cb, env) {
     if (env.start < env.end) {
-        //return env.parent.js.tailcall(env.parent.apply, env, [env.code, [env.start], env], function() {
         return env.parent.js.tailcall(env.code, env, [env.start], function() {
             return env.parent.js.tailcall(O.loop, env, [env.start+1, env.end, env.code], cb);
         });
@@ -200,7 +215,7 @@ O.apply = { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
         if (type === 'native') {
             return env.parent.js.tailcall(body, env, [env2], cb);
         }
-        return env.parent.js.tailcall(O.eval, env, [env2, body], cb);
+        return env.parent.js.tailcall(env.parent.eval, env, [env2, body], cb);
     });
 }};
 O.eval = { scope: O, args: ['env', 'expr'], body: function (cb, env) {
@@ -320,7 +335,9 @@ window.Test = function (env, expr, cb) {
     "['assign', null, 'window', 'document', 'body', 'style', 'color', '#0000DD']",
     "['say', \"Try this: Test(null, ['browse', 'https://github.com/d-cook/Objects', 1000, 750])\"]",
     "['say', \"Try this: Test(null, ['refresh'])\"]",
-    "['say', \"Try this: Test(null, ['clear'])\"]"
+    "['say', \"Try this: Test(null, ['clear'])\"]",
+    "['def', 'list', {body:['lookup', null, 'args']}]",
+    "['list', 1, [2, 3], 'four', {five:6}]"
 ]));
 
 }());
