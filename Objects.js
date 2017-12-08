@@ -183,10 +183,18 @@ O.getArgs = { scope: O, args: ['func', 'args', 'env'], body: function(cb, env) {
         return env.parent.js.tailcall(cb, env, [env.args]);
     });
 }};
-O.newEnv = { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
+O.newEnv = { scope: O, args: ['func', 'args', 'env', 'cc'], body: function (cb, env) {
     var env2 = env.parent.js.newObj();
     env2.caller = env.env;
     env2.parent = env.func.scope;
+    env2.continuation = {
+        scope: { parent: env.parent, cc: env.cc, env: env.env },
+        body: function (cb, env) { return env.parent.parent.js.tailcall(env.parent.cc, env.parent.env, env.args/*, cb*/); }
+        // TODO: Should cb be passed above? Currently this does not work properly, because it passes cb as the "return" value.
+        //       This might be corrected if the semantics of tailcall required the function to ALWAYS have cb as 1st argument.
+        //       If this is done, as cb is passed above, then a separate func (e.g. "return") must be defined to prevent normal
+        //       continuation from proceeding once the 'continuation' call completes. Else, rename "continuation" to "return"?
+    };
     var argNames = env.func.args;
     return env.parent.js.tailcall(env.parent.each, env, [argNames, function(cb, i, aName) {
         var nType = env.parent.js.type(aName);
@@ -209,7 +217,7 @@ O.apply = { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
     if (funcType !== 'object') {
         return env.parent.js.tailcall(cb, env, [null]);
     }
-    return env.parent.js.tailcall(env.parent.newEnv, env, [env.func, env.args, env.env], function(env2) {
+    return env.parent.js.tailcall(env.parent.newEnv, env, [env.func, env.args, env.env, cb], function(env2) {
         var body = env.func.body;
         var type = env.parent.js.type(body);
         if (type === 'native') {
@@ -280,9 +288,22 @@ var compile = function(code) {
 
 window.Test = function (env, expr, cb) {
     cb = arguments[arguments.length - 1];
-    if (typeof cb !== 'function') { cb = function (v) { console.log("  --> " + v); return v; }; }
+    if (typeof cb !== 'function') {
+        cb = function (v) {
+            if (O.js.type(v) === 'object') {
+                var v2 = {};
+                Object.keys(v).forEach(function(k){ v2[k] = v[k]; });
+                v = v2;
+            }
+            var s = '' + v;
+            try { s = JSON.stringify(v) || s; } catch(e) { }
+            console.log("  --> " + s);
+            return v;
+        };
+    }
     if (typeof env !== 'object' || !env) { env = O; }
-    O.js.invoke(O.js.tailcall(O.eval, env, [env, expr], cb)); 
+    //Wrapping in a function so that continuation works properly at the root level:
+    O.js.invoke(O.js.tailcall(O.apply, env, [{scope:env, body:expr}, [], env], cb));
 };
 
 (function(tests) {
@@ -337,7 +358,13 @@ window.Test = function (env, expr, cb) {
     "['say', \"Try this: Test(null, ['refresh'])\"]",
     "['say', \"Try this: Test(null, ['clear'])\"]",
     "['def', 'list', {body:['lookup', null, 'args']}]",
-    "['list', 1, [2, 3], 'four', {five:6}]"
+    "['list', 1, [2, 3], 'four', {five:6}]",
+    "['+', 1, 2, 3, ['continuation', 4], 5]",
+    "['def', 'ret5', {args:['a','b'], body:['+', ['lookup', null, 'a'], ['lookup', null, 'b'], ['continuation', 5]]}]",
+    "['ret5', 1, 2]",
+    "['+', 3, 4, ['ret5', 1, 2], 5]",
+    "['+', 3, ['continuation', 4], ['ret5', 1, 2], 5]",
+    "['+', 3, 4, ['rets5', 1, 2], ['continuation', 6]]"
 ]));
 
 }());
