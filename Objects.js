@@ -32,6 +32,7 @@ O.js = {
         if (O.js.type(func) !== 'object') { return null; }
         if (O.js.type(func.body) === 'native') {
             var env2 = {
+                thisFunc: func,
                 parent: func.parent || null,
                 caller: env || null,
                 args: args
@@ -48,6 +49,7 @@ O.js = {
         var expr = [func];
         expr.push.apply(expr, args);
         var env2 = {
+            thisFunc: func,
             parent: O.eval.parent || null,
             caller: env || null,
             args: [env, expr],
@@ -208,6 +210,7 @@ O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], body: function (cb,
     env2.scope = env2;
     env2.caller = env.env;
     env2.parent = env.func.parent;
+    env2.thisFunc = env.func;
     env2.return = {
         parent: { parent: env.parent, cc: env.cc, env: env.env },
         body: function (cb, env) { return env.parent.parent.js.tailcall(env.parent.cc, env.parent.env, env.args); }
@@ -380,7 +383,14 @@ window.Test = function (env, expr, cb) {
     "['+', 3, 4, ['rets5', 1, 2], ['return', 6]]",
     "['def', 'id', {args:['x'],body:['lookup', null, 'x']}]",
     "['if', ['<', 5, 7], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
-    "['if', ['<', 7, 5], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]"
+    "['if', ['<', 7, 5], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
+    "['def', 'recur', {body:function(cb,env){var x=env.args[0];return(x < 10)?env.parent.js.tailcall(env.thisFunc, env, [x*2], cb):env.parent.js.tailcall(cb, env, [x]);}}]",
+    // TODO: The above test as a non-native function. However, this requires a 'lambda' operator to be created (or for the T/F func-objects to be created programmatically).
+    "['recur', 1]",
+    "['recur', 2]",
+    "['recur', 3]",
+    "['recur', 4]",
+    "['recur', 5]"
 ]));
 
 }());
