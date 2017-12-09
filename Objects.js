@@ -32,10 +32,11 @@ O.js = {
         if (O.js.type(func) !== 'object') { return null; }
         if (O.js.type(func.body) === 'native') {
             var env2 = {
-                parent: func.scope || null,
+                parent: func.parent || null,
                 caller: env || null,
                 args: args
             };
+            env2.scope = env2;
             if (func.args) {
                 for (var i = 0; i < func.args.length; i++) {
                     env2[func.args[i]] = args[i];
@@ -47,12 +48,13 @@ O.js = {
         var expr = [func];
         expr.push.apply(expr, args);
         var env2 = {
-            parent: O.eval.scope || null,
+            parent: O.eval.parent || null,
             caller: env || null,
             args: [env, expr],
             expr: expr,
             env: env
         };
+        env2.scope = env2;
         return { func: O.eval, args: [cb, env2] };
     },
     invoke: function (tc) { // tailcall
@@ -79,10 +81,10 @@ O.js.or    = function () { var r = arguments[0]; for(var i=0; i<arguments.length
 // System functions, all written in Continuation Passing Style (CPS):
 // (values are returned by calling a callback provided by the caller)
 
-O.type = { scope: O, args: ['obj'], body: function (cb, env) {
+O.type = { parent: O, args: ['obj'], body: function (cb, env) {
     return env.parent.js.tailcall(cb, env, [env.parent.js.type(env.obj)]);
 }};
-O.has = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
+O.has = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
         return env.parent.js.tailcall(env.parent.get, env, env.args, function(obj) {
@@ -93,7 +95,7 @@ O.has = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
     var h = env.parent.js.has(obj, env.prop);
     return env.parent.js.tailcall(cb, env, [h]);
 }};
-O.get = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
+O.get = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
         return env.parent.js.tailcall(env.parent.get, env, env.args, function(obj) {
@@ -104,7 +106,7 @@ O.get = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
     var h = env.parent.js.has(obj, env.prop);
     return env.parent.js.tailcall(cb, env, [h ? obj[env.prop] : null, h]);
 }};
-O.set = { scope: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
+O.set = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
     if (env.args.length > 3) {
         var val = env.args.pop();
         var last = env.args.pop();
@@ -117,7 +119,7 @@ O.set = { scope: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
     if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
     return env.parent.js.tailcall(cb, env, [env.value]);
 }};
-O.exists = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
+O.exists = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
         return env.parent.js.tailcall(env.parent.lookup, env, env.args, function(obj) {
@@ -131,7 +133,7 @@ O.exists = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (!h) { return env.parent.js.tailcall(cb, env, [false]); }
     return env.parent.js.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
 }};
-O.lookup = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
+O.lookup = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
         return env.parent.js.tailcall(env.parent.lookup, env, env.args, function(obj) {
@@ -145,7 +147,7 @@ O.lookup = { scope: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (!h) { return env.parent.js.tailcall(cb, env, [null]); }
     return env.parent.js.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
 }};
-O.assign = { scope: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
+O.assign = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
     if (env.args.length > 3) {
         var val = env.args.pop();
         var last = env.args.pop();
@@ -158,7 +160,7 @@ O.assign = { scope: O, args: ['obj', 'prop', 'value'], body: function (cb, env) 
     if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
     return env.parent.js.tailcall(cb, env, [env.value]);
 }};
-O.loop = { scope: O, args: ['start', 'end', 'code'], body: function(cb, env) {
+O.loop = { parent: O, args: ['start', 'end', 'code'], body: function(cb, env) {
     if (env.start < env.end) {
         return env.parent.js.tailcall(env.code, env, [env.start], function() {
             return env.parent.js.tailcall(O.loop, env, [env.start+1, env.end, env.code], cb);
@@ -166,14 +168,14 @@ O.loop = { scope: O, args: ['start', 'end', 'code'], body: function(cb, env) {
     }
     return env.parent.js.tailcall(cb, env, []);
 }};
-O.each = { scope: O, args: ['array', 'code'], body: function(cb, env) {
+O.each = { parent: O, args: ['array', 'code'], body: function(cb, env) {
     var type = env.parent.js.type(env.array);
     if (type !== 'array') { return env.parent.js.tailcall(cb, env, []); }
     return env.parent.js.tailcall(env.parent.loop, env, [0, env.array.length, function(cb, i) {
         return env.parent.js.tailcall(env.code, env, [i, env.array[i]], cb);
     }], cb);
 }};
-O.getArgs = { scope: O, args: ['func', 'args', 'env'], body: function(cb, env) {
+O.getArgs = { parent: O, args: ['func', 'args', 'env'], body: function(cb, env) {
     return env.parent.js.tailcall(env.parent.each, env, [env.args, function(cb, i, argExpr) {
         return env.parent.js.tailcall(env.parent.eval, env, [env.env, argExpr], function(argVal) {
             env.args[i] = argVal;
@@ -183,12 +185,13 @@ O.getArgs = { scope: O, args: ['func', 'args', 'env'], body: function(cb, env) {
         return env.parent.js.tailcall(cb, env, [env.args]);
     });
 }};
-O.newEnv = { scope: O, args: ['func', 'args', 'env', 'cc'], body: function (cb, env) {
+O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], body: function (cb, env) {
     var env2 = env.parent.js.newObj();
+    env2.scope = env2;
     env2.caller = env.env;
-    env2.parent = env.func.scope;
+    env2.parent = env.func.parent;
     env2.return = {
-        scope: { parent: env.parent, cc: env.cc, env: env.env },
+        parent: { parent: env.parent, cc: env.cc, env: env.env },
         body: function (cb, env) { return env.parent.parent.js.tailcall(env.parent.cc, env.parent.env, env.args); }
     };
     var argNames = env.func.args;
@@ -205,7 +208,7 @@ O.newEnv = { scope: O, args: ['func', 'args', 'env', 'cc'], body: function (cb, 
         return env.parent.js.tailcall(cb, env, [env2]);
     });
 }};
-O.apply = { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
+O.apply = { parent: O, args: ['func', 'args', 'env'], body: function (cb, env) {
     var funcType = env.parent.js.type(env.func);
     if (funcType === 'native') {
         return env.parent.js.tailcall(cb, env, [env.parent.js.tryCall(env.func, env.args)]);
@@ -222,7 +225,7 @@ O.apply = { scope: O, args: ['func', 'args', 'env'], body: function (cb, env) {
         return env.parent.js.tailcall(env.parent.eval, env, [env2, body], cb);
     });
 }};
-O.eval = { scope: O, args: ['env', 'expr'], body: function (cb, env) {
+O.eval = { parent: O, args: ['env', 'expr'], body: function (cb, env) {
     var type = env.parent.js.type(env.expr);
     if (type !== 'array' || env.expr.length < 1) {
         return env.parent.js.tailcall(cb, env, [env.expr]);
@@ -236,7 +239,7 @@ O.eval = { scope: O, args: ['env', 'expr'], body: function (cb, env) {
         });
     });
 }};
-O.compile = { scope: O, args: ['code', 'inner'], body: function (cb, env) {
+O.compile = { parent: O, args: ['code', 'inner'], body: function (cb, env) {
     // TODO: rewrite the non-CPS implementation of "compile" (below) in CPS form, here.
     //      Can be done by rewriting as code-objects, and then having it compile itself.
 }};
@@ -299,7 +302,7 @@ window.Test = function (env, expr, cb) {
     }
     if (typeof env !== 'object' || !env) { env = O; }
     //Wrapping expr in a function allows return to work properly at the root level:
-    O.js.invoke(O.js.tailcall(O.apply, env, [{scope:env, body:expr}, [], env], cb));
+    O.js.invoke(O.js.tailcall(O.apply, env, [{parent:env, body:expr}, [], env], cb));
 };
 
 (function(tests) {
@@ -322,7 +325,7 @@ window.Test = function (env, expr, cb) {
     "['lookup', {w:1,parent:{x:'IAmParentX'}}, 'x']",
     "['lookup', {w:1,parent:{parent:{x:'IAmParentParentX'}}}, 'x']",
     "['lookup', {x:{parent:{y:{z:'xyz'}}}}, 'x', 'y', 'z']",
-    "['set', ['lookup', null, 'root'], 'def', function(k,v){if(Objects.js.type(v) === 'object' && !v.scope){v.scope=Objects;}Objects[k]=v;return v;}]",
+    "['set', ['lookup', null, 'root'], 'def', function(k,v){if(Objects.js.type(v) === 'object' && !v.parent){v.parent=Objects;}Objects[k]=v;return v;}]",
     "['lookup', null, 'foo']",
     "['def', 'foo', 'IAmFoo']",
     "['lookup', null, 'foo']",
