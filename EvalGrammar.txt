@@ -1,20 +1,29 @@
-eval(expr, env)
-:: ([string, x..], _)          --> apply(lookup(string, env), [eval(x, env)..], env)
-:: ([number, x..], _)          --> apply(lookup(number, env), [eval(x, env)..], env)
-:: ([v     , x..], _)          --> apply(eval(v, env)       , [eval(x, env)..], env)
-:: (_            , _)          --> expr
+eval(env, expr)
+:: ([string, x..], _)       --> apply(lookup(string, env), [eval(env, x)..], env)
+:: ([number, x..], _)       --> apply(lookup(number, env), [eval(env, x)..], env)
+:: ([v     , x..], _)       --> apply(eval  (env   , v  ), [eval(env, x)..], env)
+:: (_            , _)       --> expr
 
-lookup(key, env)
-:: ("x", {x     })             --> x
-:: ("x", {parent})             --> lookup("x", parent)
-:: (_  , _       )             --> null
+lookup(env, key)
+:: ("x", {x     })          --> x
+:: ("x", {parent})          --> lookup(parent, "x")
+:: (_  , _       )          --> null
 
 apply(func, args, env)
-:: (native       , _, _)       --> native(args)
-:: ({body:native}, _, _)       --> native(    newEnv(func, args, env))
-:: ({body       }, _, _)       --> eval(body, newEnv(func, args, env))
-:: (_            , _, _)       --> null
+:: (native       , _, _)    --> native(args)
+:: ({body:native}, _, _)    --> native(newEnv(func, args, env, <caller_of_apply>))
+:: ({body       }, _, _)    --> eval  (newEnv(func, args, env, <caller_of_apply>), body)
+:: (_            , _, _)    --> null
 
-newEnv(func, params, env)
-:: ({args:["a"..]}, [x..], _)  --> {parent:func.scope, caller:env, args:params, a:x..}
-:: (_             , _    , _)  --> {parent:func.scope, caller:env, args:params}
+newEnv(func, args, env, cc) --> setArgs(func, args, {
+                                  thisFunc: func,
+                                  parent  : func.parent,
+                                  caller  : env,
+                                  return  : (function that re-routes execution into cc),
+                                  scope   : (this entire outer object),
+                                  args    : args
+                                })
+
+setArgs(func, params, obj)
+:: ({args:["a"..]}, [x..], {p..}) --> {a:x.., p..}
+:: (_             , _    , _    ) --> obj
