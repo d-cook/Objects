@@ -55,7 +55,7 @@ O.js = {
             env: env
         };
         env2.scope = env2;
-        return { func: O.eval, args: [cb, env2] };
+        return { func: O.eval.body, args: [cb, env2] };
     },
     invoke: function (tc) { // tailcall
         while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
