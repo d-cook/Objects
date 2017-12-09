@@ -81,6 +81,20 @@ O.js.or    = function () { var r = arguments[0]; for(var i=0; i<arguments.length
 // System functions, all written in Continuation Passing Style (CPS):
 // (values are returned by calling a callback provided by the caller)
 
+// TODO: Do I really need to create these twice, just so that the non-CPS funcs are in O.js? Maybe erase that distinction for these.
+O['+']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['+' ].apply(null, env.args)]); } };
+O['-']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['-' ].apply(null, env.args)]); } };
+O['*']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['*' ].apply(null, env.args)]); } };
+O['/']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['/' ].apply(null, env.args)]); } };
+O.mod   = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js.mod  .apply(null, env.args)]); } };
+O['=']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['=' ].apply(null, env.args)]); } };
+O['<']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['<' ].apply(null, env.args)]); } };
+O['>']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['>' ].apply(null, env.args)]); } };
+O['<='] = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['<='].apply(null, env.args)]); } };
+O['>='] = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['>='].apply(null, env.args)]); } };
+O.and   = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js.and  .apply(null, env.args)]); } };
+O.or    = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js.or   .apply(null, env.args)]); } };
+
 O.type = { parent: O, args: ['obj'], body: function (cb, env) {
     return env.parent.js.tailcall(cb, env, [env.parent.js.type(env.obj)]);
 }};
@@ -329,10 +343,6 @@ window.Test = function (env, expr, cb) {
     "['lookup', null, 'foo']",
     "['def', 'foo', 'IAmFoo']",
     "['lookup', null, 'foo']",
-    "['def', '+', function(){var r=arguments[0];for(var i=1;i<arguments.length;i++){r+=arguments[i]}return r;}]",
-    "['def', '-', {args:['a','b'], body:function(cb, env){return env.parent.js.tailcall(cb, [env.a-env.b]);}}]",
-    "['def', '*', function(){var r=arguments[0];for(var i=1;i<arguments.length;i++){r*=arguments[i]}return r;}]",
-    "['def', '/', {args:['a','b'], body:function(cb, env){return env.parent.js.tailcall(cb, [env.a/env.b]);}}]",
     "['+', 1, 2, 3, 4]",
     "['-', 43, 21]",
     "['*', 1, 2, 3, 4]",
