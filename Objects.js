@@ -174,6 +174,10 @@ O.assign = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env)
     if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
     return env.parent.js.tailcall(cb, env, [env.value]);
 }};
+O.if = { parent: O, args: ['cond', 'T', 'F'], body: function (cb, env) {
+    var f = (env.cond ? env.T : env.F) || cb;
+    return env.parent.js.tailcall(f, env, [env.cond], (f === cb ? null : cb));
+}};
 O.loop = { parent: O, args: ['start', 'end', 'code'], body: function(cb, env) {
     if (env.start < env.end) {
         return env.parent.js.tailcall(env.code, env, [env.start], function() {
@@ -373,7 +377,10 @@ window.Test = function (env, expr, cb) {
     "['ret5', 1, 2]",
     "['+', 3, 4, ['ret5', 1, 2], 5]",
     "['+', 3, ['return', 4], ['ret5', 1, 2], 5]",
-    "['+', 3, 4, ['rets5', 1, 2], ['return', 6]]"
+    "['+', 3, 4, ['rets5', 1, 2], ['return', 6]]",
+    "['def', 'id', {args:['x'],body:['lookup', null, 'x']}]",
+    "['if', ['<', 5, 7], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
+    "['if', ['<', 7, 5], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]"
 ]));
 
 }());
