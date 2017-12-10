@@ -177,38 +177,22 @@ O.each = { parent: O, args: ['array', 'code'], body: function(cb, env) {
         return env.parent.tailcall(env.code, env, [i, env.array[i]], cb);
     }], cb);
 }};
-O.getArgs = { parent: O, args: ['func', 'args', 'env'], body: function(cb, env) {
-    return env.parent.tailcall(env.parent.each, env, [env.args, function(cb, i, argExpr) {
-        return env.parent.tailcall(env.parent.eval, env, [env.env, argExpr], function(argVal) {
-            env.args[i] = argVal;
-            return env.parent.tailcall(cb, env, []);
+
+// Eval functions:
+// TODO: ['lookup', null, 'args'] does not work properly. I think args gets overridden in one of these funcs:
+
+O.eval = { parent: O, args: ['env', 'expr'], body: function (cb, env) {
+    var type = env.parent.type(env.expr);
+    if (type !== 'array' || env.expr.length < 1) {
+        return env.parent.tailcall(cb, env, [env.expr]);
+    }
+    var funcExpr = env.expr[0];
+    var funcType = env.parent.type(funcExpr);
+    var getter = (funcType === 'string' || funcType === 'number') ? env.parent.lookup : env.parent.eval;
+    return env.parent.tailcall(getter, env, [env.env, funcExpr], function(func) {
+        return env.parent.tailcall(env.parent.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
+            return env.parent.tailcall(env.parent.apply, env, [func, args, env.env], cb);
         });
-    }], function() {
-        return env.parent.tailcall(cb, env, [env.args]);
-    });
-}};
-O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], body: function (cb, env) {
-    var env2 = env.parent.newObj();
-    env2.scope = env2;
-    env2.caller = env.env;
-    env2.parent = env.func.parent;
-    env2.thisFunc = env.func;
-    env2.return = {
-        parent: { parent: env.parent, cc: env.cc, env: env.env },
-        body: function (cb, env) { return env.parent.parent.tailcall(env.parent.cc, env.parent.env, env.args); }
-    };
-    var argNames = env.func.args;
-    return env.parent.tailcall(env.parent.each, env, [argNames, function(cb, i, aName) {
-        var nType = env.parent.type(aName);
-        if (nType !== 'string') {
-            return env.parent.tailCall(cb, env, []);
-        }
-        var aValue = env.args[i];
-        env2[aName] = aValue;
-        return env.parent.tailcall(cb, env, [aValue]);
-    }], function() {
-        env2.args = env.args;
-        return env.parent.tailcall(cb, env, [env2]);
     });
 }};
 O.apply = { parent: O, args: ['func', 'args', 'env'], body: function (cb, env) {
@@ -231,27 +215,44 @@ O.apply = { parent: O, args: ['func', 'args', 'env'], body: function (cb, env) {
         return env.parent.tailcall(env.parent.eval, env, [env2, body], cb);
     });
 }};
-O.eval = { parent: O, args: ['env', 'expr'], body: function (cb, env) {
-    var type = env.parent.type(env.expr);
-    if (type !== 'array' || env.expr.length < 1) {
-        return env.parent.tailcall(cb, env, [env.expr]);
-    }
-    var funcExpr = env.expr[0];
-    var funcType = env.parent.type(funcExpr);
-    var getter = (funcType === 'string' || funcType === 'number') ? env.parent.lookup : env.parent.eval;
-    return env.parent.tailcall(getter, env, [env.env, funcExpr], function(func) {
-        return env.parent.tailcall(env.parent.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
-            return env.parent.tailcall(env.parent.apply, env, [func, args, env.env], cb);
-        });
+O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], body: function (cb, env) {
+    var env2 = env.parent.newObj();
+    env2.scope = env2;
+    env2.caller = env.env;
+    env2.parent = env.func.parent;
+    env2.thisFunc = env.func;
+    env2.return = {
+        parent: { parent: env.parent, cc: env.cc, env: env.env },
+        body: function (cb, env) { return env.parent.parent.tailcall(env.parent.cc, env.parent.env, env.args); }
+    };
+    var argNames = env.func.args;
+    return env.parent.tailcall(env.parent.each, env, [argNames, function(cb, i, aName) {
+        var nType = env.parent.type(aName);
+        if (nType !== 'string') {
+            return env.parent.tailcall(cb, env, []);
+        }
+        var aValue = env.args[i];
+        env2[aName] = aValue;
+        return env.parent.tailcall(cb, env, [aValue]);
+    }], function() {
+        env2.args = env.args;
+        return env.parent.tailcall(cb, env, [env2]);
     });
 }};
-O.compile = { parent: O, args: ['code', 'inner'], body: function (cb, env) {
-    // TODO: rewrite the non-CPS implementation of "compile" (below) in CPS form, here.
-    //      Can be done by rewriting as code-objects, and then having it compile itself.
+O.getArgs = { parent: O, args: ['func', 'args', 'env'], body: function(cb, env) {
+    return env.parent.tailcall(env.parent.each, env, [env.args, function(cb, i, argExpr) {
+        return env.parent.tailcall(env.parent.eval, env, [env.env, argExpr], function(argVal) {
+            env.args[i] = argVal;
+            return env.parent.tailcall(cb, env, []);
+        });
+    }], function() {
+        return env.parent.tailcall(cb, env, [env.args]);
+    });
 }};
- 
-//TODO: Use the following to generate a CPS-version of itself, and replace the "compile" function above with the result:
-var compile = function(code) {
+
+//TODO: 1. Compile this compile function (by running it on itself) to generate a CPS-version of it.
+//      2. Re-write the above functions as objects, and run this to generate the native code.
+O.compile = function(code) {
     var calls = [];
     function getCalls(code) {
         if (O.type(code) !== 'array' || code.length < 1) { return code; }
