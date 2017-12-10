@@ -177,6 +177,26 @@ O.each = { parent: O, args: ['array', 'code'], body: function(cb, env) {
         return env.parent.tailcall(env.code, env, [i, env.array[i]], cb);
     }], cb);
 }};
+O.lambda = { parent: O, args: ['argList', 'body'], body: function (cb, env) {
+    var f = env.body;
+    var t = env.parent.type(f);
+    if (t === 'array') {
+        f = env.parent.newObj();
+        f.body = env.body;
+    }
+    else if (t !== 'object') {
+        f = env.parent.newObj();
+        f.body = [env.body];
+        return env.parent.tailcall(cb, env, [f]);
+    }
+    return env.parent.tailcall(env.parent.has, env, [f, 'parent'], function (h) {
+        if (!h) { f.parent = env.caller; }
+        return env.parent.tailcall(env.parent.has, env, [f, 'argList'], function (h) {
+            if (!h) { f.args = env.argList || []; }
+            return env.parent.tailcall(cb, env, [f]);
+        });
+    });
+}};
 
 // Eval functions:
 // TODO: ['lookup', null, 'args'] does not work properly. I think args gets overridden in one of these funcs:
@@ -371,12 +391,20 @@ window.Test = function (env, expr, cb) {
     "['if', ['<', 5, 7], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
     "['if', ['<', 7, 5], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
     "['def', 'recur', {body:function(cb,env){var x=env.args[0];return(x < 10)?env.parent.tailcall(env.thisFunc, env, [x*2], cb):env.parent.tailcall(cb, env, [x]);}}]",
+    //"['def', 'recur', {args:['x'],body:['if', ['<', ['lookup', null, 'x'], 10], [['thisFunc', ['*', ['lookup', null, 'x'], 2]], ['lookup', null, 'x']]}]",
     // TODO: The above test as a non-native function. However, this requires a 'lambda' operator to be created (or for the T/F func-objects to be created programmatically).
     "['recur', 1]",
     "['recur', 2]",
     "['recur', 3]",
     "['recur', 4]",
-    "['recur', 5]"
+    "['recur', 5]",
+    "[['lambda', ['list', 'x'], ['list', '+', 2, ['list', 'lookup', null, 'x']]], 5]",
+    "['def', '+n', {args:['n'],body:['lambda', ['list', 'x'], ['list', '+', ['list', 'lookup', null, 'n'], ['list', 'lookup', null, 'x']]]}]",
+    "[['+n', 3], 7]",
+    "[['+n', 4], 5]",
+    "['def', '+4', ['+n', 4]]",
+    "['+4', 4]",
+    "['+4', 7]",
 ]));
 
 }());
