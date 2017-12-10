@@ -4,259 +4,244 @@
 var O = window.Objects = Object.create(null);
 O.root = O;
 
-// Native JS utilities (normal calling convention, i.e. not CPS):
-// IMPORTANT: These functions should ONLY depend on the global window object so
-//    that if they if they are modified as strings, their closure does not break.
-O.js = {
-    noop: function () { },
-    newObj: function () { return Object.create(null); },
-    has: function (o, p) { return o ? (p in o) : false; },
-    keys: function (o) { return Object.keys(o) || []; },
-    len: function (o) { var s = (o && o.length); return (typeof s === 'number') ? s : 0; },
-    not: function (v) { return !v; },
-    type: function (o) {
-        var t = (typeof o);
-        if (t === 'undefined' || o === null) { return 'null'; }
-        if (t === 'function') { return 'native'; }
-        var s = Object.prototype.toString.call(o);
-        return (s === '[object Array]' || s === '[object Arguments]') ? 'array' : t;
-    },
-    tailcall: function (func, env, args, cb) {
-        // NOTE: this function references external entities: type, eval
-        if (O.js.type(env) === 'array') { cb = args; args = env; env = null; }
-        if (O.js.type(func) === 'native') {
-            var allArgs = cb ? [cb] : [];
-            allArgs.push.apply(allArgs, args);
-            return { func: func, args: allArgs };
-        }
-        if (O.js.type(func) !== 'object') { return null; }
-        if (O.js.type(func.body) === 'native') {
-            var env2 = {
-                thisFunc: func,
-                parent: func.parent || null,
-                caller: env || null,
-                args: args
-            };
-            env2.scope = env2;
-            if (func.args) {
-                for (var i = 0; i < func.args.length; i++) {
-                    env2[func.args[i]] = args[i];
-                }
-            }
-            return { func: func.body, args: [cb, env2] };
-        }
-        // Otherwise call eval on the func object:
-        var expr = [func];
-        expr.push.apply(expr, args);
+// NOTE: Native functions (non-wrapped) should not refer to external entities other than
+//        the global context ("window"), so that they can be edited as strings, and then
+//        recreated via window.eval(funcString) without breaking their closure context.
+//       Wrapped functions are called with a reference to their "parent" closure scope
+//        passed in as the "env" argument, and arguments accessed as properties of env.
+//        Values are returned by passing them to the "cb" (callback) argument.
+
+// These tailcall and invoke functions drive execution of all wrapped functions, which
+// run in CPS (Continuation Passing Style) (i.e. return execution/values via callbacks).
+// TODO: Convert these to wrapped so that "type" and "eval" are not referenced directly.
+O.tailcall = function (func, env, args, cb) {
+    // NOTE: this function references external entities: type, eval
+    if (O.type(env) === 'array') { cb = args; args = env; env = null; }
+    if (O.type(func) === 'native') {
+        var allArgs = cb ? [cb] : [];
+        allArgs.push.apply(allArgs, args);
+        return { func: func, args: allArgs };
+    }
+    if (O.type(func) !== 'object') { return null; }
+    if (O.type(func.body) === 'native') {
         var env2 = {
             thisFunc: func,
-            parent: O.eval.parent || null,
+            parent: func.parent || null,
             caller: env || null,
-            args: [env, expr],
-            expr: expr,
-            env: env
+            args: args
         };
         env2.scope = env2;
-        return { func: O.eval.body, args: [cb, env2] };
-    },
-    invoke: function (tc) { // tailcall
-        while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
-    },
-    tryCall: function (func, args) {
-        try { return func.apply(null, args); }
-        catch(ex) { return ex; }
+        if (func.args) {
+            for (var i = 0; i < func.args.length; i++) {
+                env2[func.args[i]] = args[i];
+            }
+        }
+        return { func: func.body, args: [cb, env2] };
     }
+    // Otherwise call eval on the func object:
+    var expr = [func];
+    expr.push.apply(expr, args);
+    var env2 = {
+        thisFunc: func,
+        parent: O.eval.parent || null,
+        caller: env || null,
+        args: [env, expr],
+        expr: expr,
+        env: env
+    };
+    env2.scope = env2;
+    return { func: O.eval.body, args: [cb, env2] };
 };
-O.js['+']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r += arguments[i]; } return r; };
-O.js['-']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r -= arguments[i]; } return r; };
-O.js['*']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r *= arguments[i]; } return r; };
-O.js['/']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r /= arguments[i]; } return r; };
-O.js.mod   = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { r %= arguments[i]; } return r; };
-O.js['=']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (r !== arguments[i]) return false; } return true; };
-O.js['<']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r <  (r = arguments[i]))) return false; } return true; };
-O.js['>']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >  (r = arguments[i]))) return false; } return true; };
-O.js['<='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r <= (r = arguments[i]))) return false; } return true; };
-O.js['>='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >= (r = arguments[i]))) return false; } return true; };
-O.js.and   = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if (!(r = arguments[i])) return r; } return r; };
-O.js.or    = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if ( (r = arguments[i])) return r; } return r; };
+O.invoke = function (tc) { // tailcall
+    while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
+};
 
-// System functions, all written in Continuation Passing Style (CPS):
-// (values are returned by calling a callback provided by the caller)
+O.newObj  = function () { return Object.create(null); };
+O.hasOnce = function (o, p) { return o ? (p in o) : false; };
+O.keys    = function (o) { return Object.keys(o) || []; };
+O.len     = function (o) { var s = (o && o.length); return (typeof s === 'number') ? s : 0; };
+O.not     = function (v) { return !v; };
 
-// TODO: Do I really need to create these twice, just so that the non-CPS funcs are in O.js? Maybe erase that distinction for these.
-O['+']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['+' ].apply(null, env.args)]); } };
-O['-']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['-' ].apply(null, env.args)]); } };
-O['*']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['*' ].apply(null, env.args)]); } };
-O['/']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['/' ].apply(null, env.args)]); } };
-O.mod   = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js.mod  .apply(null, env.args)]); } };
-O['=']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['=' ].apply(null, env.args)]); } };
-O['<']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['<' ].apply(null, env.args)]); } };
-O['>']  = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['>' ].apply(null, env.args)]); } };
-O['<='] = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['<='].apply(null, env.args)]); } };
-O['>='] = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js['>='].apply(null, env.args)]); } };
-O.and   = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js.and  .apply(null, env.args)]); } };
-O.or    = { parent: O, body: function (cb, env) { return env.parent.js.tailcall(cb, env, [env.parent.js.or   .apply(null, env.args)]); } };
+O['+']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) {       r +=      arguments[i];                 } return r;    };
+O['-']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) {       r -=      arguments[i];                 } return r;    };
+O['*']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) {       r *=      arguments[i];                 } return r;    };
+O['/']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) {       r /=      arguments[i];                 } return r;    };
+O.mod   = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) {       r %=      arguments[i];                 } return r;    };
+O['=']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if ( (r !==(    arguments[i]))) return false; } return true; };
+O['<']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r <  (r = arguments[i]))) return false; } return true; };
+O['>']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >  (r = arguments[i]))) return false; } return true; };
+O['<='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r <= (r = arguments[i]))) return false; } return true; };
+O['>='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >= (r = arguments[i]))) return false; } return true; };
+O.and   = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if (!(     (r = arguments[i]))) return r;     } return r;    };
+O.or    = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if ( (     (r = arguments[i]))) return r;     } return r;    };
 
-O.type = { parent: O, args: ['obj'], body: function (cb, env) {
-    return env.parent.js.tailcall(cb, env, [env.parent.js.type(env.obj)]);
-}};
+O.type    = function (o) {
+    var t = (typeof o);
+    if (t === 'undefined' || o === null) { return 'null'; }
+    if (t === 'function') { return 'native'; }
+    var s = Object.prototype.toString.call(o);
+    return (s === '[object Array]' || s === '[object Arguments]') ? 'array' : t;
+};
 O.has = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
-        return env.parent.js.tailcall(env.parent.get, env, env.args, function(obj) {
-            return env.parent.js.tailcall(env.parent.has, env, [obj, last], cb);
+        return env.parent.tailcall(env.parent.get, env, env.args, function(obj) {
+            return env.parent.tailcall(env.parent.has, env, [obj, last], cb);
         });
     }
     var obj = env.obj || env.parent;
-    var h = env.parent.js.has(obj, env.prop);
-    return env.parent.js.tailcall(cb, env, [h]);
+    var h = env.parent.hasOnce(obj, env.prop);
+    return env.parent.tailcall(cb, env, [h]);
 }};
 O.get = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
-        return env.parent.js.tailcall(env.parent.get, env, env.args, function(obj) {
-            return env.parent.js.tailcall(env.parent.get, env, [obj, last], cb);
+        return env.parent.tailcall(env.parent.get, env, env.args, function(obj) {
+            return env.parent.tailcall(env.parent.get, env, [obj, last], cb);
         });
     }
     var obj = env.obj || env.parent;
-    var h = env.parent.js.has(obj, env.prop);
-    return env.parent.js.tailcall(cb, env, [h ? obj[env.prop] : null, h]);
+    var h = env.parent.hasOnce(obj, env.prop);
+    return env.parent.tailcall(cb, env, [h ? obj[env.prop] : null, h]);
 }};
 O.set = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
     if (env.args.length > 3) {
         var val = env.args.pop();
         var last = env.args.pop();
-        return env.parent.js.tailcall(env.parent.get, env, env.args, function(obj) {
-            return env.parent.js.tailcall(env.parent.set, env, [obj, last, val], cb);
+        return env.parent.tailcall(env.parent.get, env, env.args, function(obj) {
+            return env.parent.tailcall(env.parent.set, env, [obj, last, val], cb);
         });
     }
     var obj = env.obj || env.caller;
-    var t = env.parent.js.type(obj);
+    var t = env.parent.type(obj);
     if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
-    return env.parent.js.tailcall(cb, env, [env.value]);
+    return env.parent.tailcall(cb, env, [env.value]);
 }};
 O.exists = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
-        return env.parent.js.tailcall(env.parent.lookup, env, env.args, function(obj) {
-            return env.parent.js.tailcall(env.parent.exists, env, [obj, last], cb);
+        return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
+            return env.parent.tailcall(env.parent.exists, env, [obj, last], cb);
         });
     }
     var obj = env.obj || env.caller;
-    var h = env.parent.js.has(obj, env.prop);
-    if (h) { return env.parent.js.tailcall(cb, env, [true]); }
-    h = env.parent.js.has(obj, 'parent');
-    if (!h) { return env.parent.js.tailcall(cb, env, [false]); }
-    return env.parent.js.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
+    var h = env.parent.hasOnce(obj, env.prop);
+    if (h) { return env.parent.tailcall(cb, env, [true]); }
+    h = env.parent.hasOnce(obj, 'parent');
+    if (!h) { return env.parent.tailcall(cb, env, [false]); }
+    return env.parent.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
 }};
 O.lookup = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
-        return env.parent.js.tailcall(env.parent.lookup, env, env.args, function(obj) {
-            return env.parent.js.tailcall(env.parent.lookup, env, [obj, last], cb);
+        return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
+            return env.parent.tailcall(env.parent.lookup, env, [obj, last], cb);
         });
     }
     var obj = env.obj || env.caller;
-    var h = env.parent.js.has(obj, env.prop);
-    if (h) { return env.parent.js.tailcall(cb, env, [obj[env.prop]]); }
-    h = env.parent.js.has(obj, 'parent');
-    if (!h) { return env.parent.js.tailcall(cb, env, [null]); }
-    return env.parent.js.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
+    var h = env.parent.hasOnce(obj, env.prop);
+    if (h) { return env.parent.tailcall(cb, env, [obj[env.prop]]); }
+    h = env.parent.hasOnce(obj, 'parent');
+    if (!h) { return env.parent.tailcall(cb, env, [null]); }
+    return env.parent.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
 }};
 O.assign = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
     if (env.args.length > 3) {
         var val = env.args.pop();
         var last = env.args.pop();
-        return env.parent.js.tailcall(env.parent.lookup, env, env.args, function(obj) {
-            return env.parent.js.tailcall(env.parent.assign, env, [obj, last, val], cb);
+        return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
+            return env.parent.tailcall(env.parent.assign, env, [obj, last, val], cb);
         });
     }
     var obj = env.obj || env.caller;
-    var t = env.parent.js.type(obj);
+    var t = env.parent.type(obj);
     if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
-    return env.parent.js.tailcall(cb, env, [env.value]);
+    return env.parent.tailcall(cb, env, [env.value]);
 }};
 O.if = { parent: O, args: ['cond', 'T', 'F'], body: function (cb, env) {
     var f = (env.cond ? env.T : env.F) || cb;
-    return env.parent.js.tailcall(f, env, [env.cond], (f === cb ? null : cb));
+    return env.parent.tailcall(f, env, [env.cond], (f === cb ? null : cb));
 }};
 O.loop = { parent: O, args: ['start', 'end', 'code'], body: function(cb, env) {
     if (env.start < env.end) {
-        return env.parent.js.tailcall(env.code, env, [env.start], function() {
-            return env.parent.js.tailcall(O.loop, env, [env.start+1, env.end, env.code], cb);
+        return env.parent.tailcall(env.code, env, [env.start], function() {
+            return env.parent.tailcall(O.loop, env, [env.start+1, env.end, env.code], cb);
         });
     }
-    return env.parent.js.tailcall(cb, env, []);
+    return env.parent.tailcall(cb, env, []);
 }};
 O.each = { parent: O, args: ['array', 'code'], body: function(cb, env) {
-    var type = env.parent.js.type(env.array);
-    if (type !== 'array') { return env.parent.js.tailcall(cb, env, []); }
-    return env.parent.js.tailcall(env.parent.loop, env, [0, env.array.length, function(cb, i) {
-        return env.parent.js.tailcall(env.code, env, [i, env.array[i]], cb);
+    var type = env.parent.type(env.array);
+    if (type !== 'array') { return env.parent.tailcall(cb, env, []); }
+    return env.parent.tailcall(env.parent.loop, env, [0, env.array.length, function(cb, i) {
+        return env.parent.tailcall(env.code, env, [i, env.array[i]], cb);
     }], cb);
 }};
 O.getArgs = { parent: O, args: ['func', 'args', 'env'], body: function(cb, env) {
-    return env.parent.js.tailcall(env.parent.each, env, [env.args, function(cb, i, argExpr) {
-        return env.parent.js.tailcall(env.parent.eval, env, [env.env, argExpr], function(argVal) {
+    return env.parent.tailcall(env.parent.each, env, [env.args, function(cb, i, argExpr) {
+        return env.parent.tailcall(env.parent.eval, env, [env.env, argExpr], function(argVal) {
             env.args[i] = argVal;
-            return env.parent.js.tailcall(cb, env, []);
+            return env.parent.tailcall(cb, env, []);
         });
     }], function() {
-        return env.parent.js.tailcall(cb, env, [env.args]);
+        return env.parent.tailcall(cb, env, [env.args]);
     });
 }};
 O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], body: function (cb, env) {
-    var env2 = env.parent.js.newObj();
+    var env2 = env.parent.newObj();
     env2.scope = env2;
     env2.caller = env.env;
     env2.parent = env.func.parent;
     env2.thisFunc = env.func;
     env2.return = {
         parent: { parent: env.parent, cc: env.cc, env: env.env },
-        body: function (cb, env) { return env.parent.parent.js.tailcall(env.parent.cc, env.parent.env, env.args); }
+        body: function (cb, env) { return env.parent.parent.tailcall(env.parent.cc, env.parent.env, env.args); }
     };
     var argNames = env.func.args;
-    return env.parent.js.tailcall(env.parent.each, env, [argNames, function(cb, i, aName) {
-        var nType = env.parent.js.type(aName);
+    return env.parent.tailcall(env.parent.each, env, [argNames, function(cb, i, aName) {
+        var nType = env.parent.type(aName);
         if (nType !== 'string') {
-            return env.parent.js.tailCall(cb, env, []);
+            return env.parent.tailCall(cb, env, []);
         }
         var aValue = env.args[i];
         env2[aName] = aValue;
-        return env.parent.js.tailcall(cb, env, [aValue]);
+        return env.parent.tailcall(cb, env, [aValue]);
     }], function() {
         env2.args = env.args;
-        return env.parent.js.tailcall(cb, env, [env2]);
+        return env.parent.tailcall(cb, env, [env2]);
     });
 }};
 O.apply = { parent: O, args: ['func', 'args', 'env'], body: function (cb, env) {
-    var funcType = env.parent.js.type(env.func);
+    var funcType = env.parent.type(env.func);
     if (funcType === 'native') {
-        return env.parent.js.tailcall(cb, env, [env.parent.js.tryCall(env.func, env.args)]);
+        var result = null;
+        try { result = env.func.apply(null, env.args); }
+        catch(ex) { result = ex; }
+        return env.parent.tailcall(cb, env, [result]);
     }
     if (funcType !== 'object') {
-        return env.parent.js.tailcall(cb, env, [null]);
+        return env.parent.tailcall(cb, env, [null]);
     }
-    return env.parent.js.tailcall(env.parent.newEnv, env, [env.func, env.args, env.env, cb], function(env2) {
+    return env.parent.tailcall(env.parent.newEnv, env, [env.func, env.args, env.env, cb], function(env2) {
         var body = env.func.body;
-        var type = env.parent.js.type(body);
+        var type = env.parent.type(body);
         if (type === 'native') {
-            return env.parent.js.tailcall(body, env, [env2], cb);
+            return env.parent.tailcall(body, env, [env2], cb);
         }
-        return env.parent.js.tailcall(env.parent.eval, env, [env2, body], cb);
+        return env.parent.tailcall(env.parent.eval, env, [env2, body], cb);
     });
 }};
 O.eval = { parent: O, args: ['env', 'expr'], body: function (cb, env) {
-    var type = env.parent.js.type(env.expr);
+    var type = env.parent.type(env.expr);
     if (type !== 'array' || env.expr.length < 1) {
-        return env.parent.js.tailcall(cb, env, [env.expr]);
+        return env.parent.tailcall(cb, env, [env.expr]);
     }
     var funcExpr = env.expr[0];
-    var funcType = env.parent.js.type(funcExpr);
+    var funcType = env.parent.type(funcExpr);
     var getter = (funcType === 'string' || funcType === 'number') ? env.parent.lookup : env.parent.eval;
-    return env.parent.js.tailcall(getter, env, [env.env, funcExpr], function(func) {
-        return env.parent.js.tailcall(env.parent.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
-            return env.parent.js.tailcall(env.parent.apply, env, [func, args, env.env], cb);
+    return env.parent.tailcall(getter, env, [env.env, funcExpr], function(func) {
+        return env.parent.tailcall(env.parent.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
+            return env.parent.tailcall(env.parent.apply, env, [func, args, env.env], cb);
         });
     });
 }};
@@ -269,11 +254,11 @@ O.compile = { parent: O, args: ['code', 'inner'], body: function (cb, env) {
 var compile = function(code) {
     var calls = [];
     function getCalls(code) {
-        if (O.js.type(code) !== 'array' || code.length < 1) { return code; }
+        if (O.type(code) !== 'array' || code.length < 1) { return code; }
         var last = [];
         for(var i = 0; i < code.length; i++) {
             var a = code[i];
-            if (O.js.type(a) === 'array') {
+            if (O.type(a) === 'array') {
                 getCalls(a);
                 last.push(calls.length - 1);
             } else {
@@ -287,9 +272,9 @@ var compile = function(code) {
     while(calls.length) {
         var c = calls.pop();
         var t = getType(c[0]);
-        var s = "return window.Objects.js.tailcall(" + (
+        var s = "return window.Objects.tailcall(" + (
             (t !== 'string') ? "r" + c[0] :
-            (c[0].charAt(0) === '"') ? "window.Objects.lookup, env, [env.env, " + c[0] + "], function (f) {\rreturn window.Objects.js.tailcall(f" :
+            (c[0].charAt(0) === '"') ? "window.Objects.lookup, env, [env.env, " + c[0] + "], function (f) {\rreturn window.Objects.tailcall(f" :
             c[0]
         ) + ", env, [";
         for(var i = 1; i < c.length; i++) {
@@ -310,7 +295,7 @@ window.Test = function (env, expr, cb) {
     cb = arguments[arguments.length - 1];
     if (typeof cb !== 'function') {
         cb = function (v) {
-            if (O.js.type(v) === 'object') {
+            if (O.type(v) === 'object') {
                 var v2 = {};
                 Object.keys(v).forEach(function(k){ v2[k] = v[k]; });
                 v = v2;
@@ -323,7 +308,7 @@ window.Test = function (env, expr, cb) {
     }
     if (typeof env !== 'object' || !env) { env = O; }
     //Wrapping expr in a function allows return to work properly at the root level:
-    O.js.invoke(O.js.tailcall(O.apply, env, [{parent:env, body:expr}, [], env], cb));
+    O.invoke(O.tailcall(O.apply, env, [{parent:env, body:expr}, [], env], cb));
 };
 
 (function(tests) {
@@ -346,7 +331,7 @@ window.Test = function (env, expr, cb) {
     "['lookup', {w:1,parent:{x:'IAmParentX'}}, 'x']",
     "['lookup', {w:1,parent:{parent:{x:'IAmParentParentX'}}}, 'x']",
     "['lookup', {x:{parent:{y:{z:'xyz'}}}}, 'x', 'y', 'z']",
-    "['set', ['lookup', null, 'root'], 'def', function(k,v){if(Objects.js.type(v) === 'object' && !v.parent){v.parent=Objects;}Objects[k]=v;return v;}]",
+    "['set', ['lookup', null, 'root'], 'def', function(k,v){if(Objects.type(v) === 'object' && !v.parent){v.parent=Objects;}Objects[k]=v;return v;}]",
     "['lookup', null, 'foo']",
     "['def', 'foo', 'IAmFoo']",
     "['lookup', null, 'foo']",
@@ -357,7 +342,7 @@ window.Test = function (env, expr, cb) {
     "['def', 'alert', function(msg){alert(msg);}]",
     "['def', 'say', function(msg){document.body.innerHTML += ('<p>'+msg+'</p>'); return msg;}]",
     "['say', 'Howdy!']",
-    "['def', 'again', {body:function(cb, env){var r = env.parent.js.tailcall(cb, env, env.args); env.parent.js.invoke(r); return r;}}]",
+    "['def', 'again', {body:function(cb, env){var r = env.parent.tailcall(cb, env, env.args); env.parent.invoke(r); return r;}}]",
     "['again', 'again']",
     "['say', ['again', 'Testing \"say again\"']]",
     "['again', ['say', 'Testing \"again say\"']]",
@@ -384,7 +369,7 @@ window.Test = function (env, expr, cb) {
     "['def', 'id', {args:['x'],body:['lookup', null, 'x']}]",
     "['if', ['<', 5, 7], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
     "['if', ['<', 7, 5], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
-    "['def', 'recur', {body:function(cb,env){var x=env.args[0];return(x < 10)?env.parent.js.tailcall(env.thisFunc, env, [x*2], cb):env.parent.js.tailcall(cb, env, [x]);}}]",
+    "['def', 'recur', {body:function(cb,env){var x=env.args[0];return(x < 10)?env.parent.tailcall(env.thisFunc, env, [x*2], cb):env.parent.tailcall(cb, env, [x]);}}]",
     // TODO: The above test as a non-native function. However, this requires a 'lambda' operator to be created (or for the T/F func-objects to be created programmatically).
     "['recur', 1]",
     "['recur', 2]",
