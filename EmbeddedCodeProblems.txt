@@ -1,0 +1,43 @@
+PROBLEM:
+
+    How to evaluate cond, but not true/false code (with a "syntax" or "macro" rule) in:
+    ['if', ['cond'..], [true-code], [false-code]]
+
+OPTIONS:
+
+    ['if', ['cond'..], ['returns-a-func'], ['returns-a-func']]       ex: ['lambda', ['returns-args'], ['returns-a-block']]
+    ['if', ['cond'..], ['returns-a-block'], ['returns-a-block']]     ex: ['list', 'a', 'b', ['list', 'c', 'd'], 'e']
+
+    ['if', ['cond'..], {true:['true-code'],false:['false-code']}]    ex: ['a', 'b', ['c', 'd'], 'e']
+
+    ['if', 'cond'.., ['true-code'], ['false-code']  (REBOL syntax and semantics: all code to be evaluated in same
+                                                     context as op ('if') resides within the same block. Nested
+                                                     blocks are data or code, and is NOT automatically evaluated).
+
+    ['if', ['cond'..], {block:['true-code']}, {block:['false-code']}]  (Compromise between REBOL syntax & objects)
+
+    ['if', [['cond'..]], ['true-code'], ['false-code']]  (all args wrapped in a SINGLE block. Any following are not evaled)
+    ['if', ['cond'..], [['true-code'], ['false-code']]]  (Variant of above: the unevaled code-blocks are wrapped instead)
+    {'op':'if', args:[{op:'cond'..}], code:[..]}         (Variant of above: use objects instead of arrays for code)
+
+QUESTIONS:
+
+    If a block, then how is scope preserved?
+        (By manually evaling it within the env of the caller)
+
+    If embedded in an object, how can it refer to external code?
+        (By manually evaling it within the env of the caller)
+
+    Interop between code-blocks, lambdas, and native CPS-functions (e.g. before/after compile)?
+        (Handle different types differently, or pass a block embeds & invokes the function directly)
+        (Compiler recognizes ops and where to look for each)
+        (Special pattern for code-blocks that compiler can identify (danger of false-positives))
+        (Compiler specifically recognizes & optimizes for lambdas)
+
+    How can compiler differentiate between operations in the REBOL syntax?
+        (Compiler must look-up each as it goes)
+        (Some other indicator must be added to make them distinguishable without looking-up ops)
+
+    If separating args and code-blocks explicitly, then how are code-blocks accessed and scoped?
+        (Some special env property. There's already "args[n]", how about "code[n]"?)
+        (Scoping must happen manually (eval within env of caller) to allow for DSLs ("dialects"))
