@@ -405,7 +405,7 @@ window.Test = function (env, expr, cb) {
     "['object', ['list', 'a', 'b', 'c'], ['list', 1, 2, 3, 4]]",
     "[['lambda', ['list', 'x'], ['list', '+', 2, ['list', 'lookup', null, 'x']]], 5]",
     "['def', '+n', {args:['n'],body:['lambda', ['list', 'x'], ['list', '+', ['list', 'lookup', null, 'n'], ['list', 'lookup', null, 'x']]]}]",
-    "['def', '+_n', {args:['n'],body:['object', ['list', 'args', 'body'], ['list', ['list', 'x'], ['list', '+', ['lookup', null, 'n'], ['list', 'lookup', null, 'x']]]]}]",
+    "['def', '+_n', {args:['n'],body:['lambda', ['list', 'x'], ['list', '+', ['lookup', null, 'n'], ['list', 'lookup', null, 'x']]]}]",
     "['lookup', null, '+n', 'body']",
     "['lookup', null, '+_n', 'body']",
     "[['+n', 3], 7]",
