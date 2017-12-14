@@ -393,10 +393,7 @@ window.Test = function (env, expr, cb) {
     "['def', 'id', {args:['x'],body:['lookup', null, 'x']}]",
     "['if', ['<', 5, 7], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
     "['if', ['<', 7, 5], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
-    "['def', 'recur', {args:['x'],body:function(cb,env){return(env.x < 10)?env.parent.tailcall(env.thisFunc, env, [env.x*2], cb):env.parent.tailcall(cb, env, [env.x]);}}]",
-    "['def', 'recur', {args:['x'],body:['if', ['<', ['lookup', null, 'x'], 10], ['lambda', [], ['list', 'recur', ['list', '*', ['list', 'lookup', null, 'x'], 2]]], ['lambda', [], ['list', 'lookup', null, 'x']]]}]",
-    //"['def', 'recur', {args:['x'],body:['if', ['<', ['lookup', null, 'x'], 10], ['lambda', [], ['list', 'thisFunc', ['list', '*', ['list', 'lookup', null, 'x'], 2]]], ['lambda', [], ['list', 'lookup', null, 'x']]]}]",
-    // TODO: The above test as a non-native function. However, this requires a 'lambda' operator to be created (or for the T/F func-objects to be created programmatically).
+    "['def', 'recur', {args:['x'],body:['if', ['<', ['lookup', null, 'x'], 10], ['lambda', [], ['list', ['lookup', null, 'thisFunc'], ['list', '*', ['lookup', null, 'x'], 2]]], ['lambda', [], ['list', 'lookup', null, 'x']]]}]",
     "['recur', 1]",
     "['recur', 2]",
     "['recur', 3]",
