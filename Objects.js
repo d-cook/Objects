@@ -75,7 +75,7 @@ O['>='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i
 O.and   = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if (!(     (r = arguments[i]))) return r;     } return r;    };
 O.or    = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if ( (     (r = arguments[i]))) return r;     } return r;    };
 
-O.type    = function (o) {
+O.type = function (o) {
     var t = (typeof o);
     if (t === 'undefined' || o === null) { return 'null'; }
     if (t === 'function') { return 'native'; }
@@ -199,7 +199,6 @@ O.lambda = { parent: O, args: ['argList', 'body'], body: function (cb, env) {
 }};
 
 // Eval functions:
-// TODO: ['lookup', null, 'args'] does not work properly. I think args gets overridden in one of these funcs:
 
 O.eval = { parent: O, args: ['env', 'expr'], body: function (cb, env) {
     var type = env.parent.type(env.expr);
@@ -363,6 +362,10 @@ window.Test = function (env, expr, cb) {
     "['def', 'alert', function(msg){alert(msg);}]",
     "['def', 'say', function(msg){document.body.innerHTML += ('<p>'+msg+'</p>'); return msg;}]",
     "['say', 'Howdy!']",
+    "['def', 'debug', function(v){debugger;return v;}]",
+    "['say', \"Try this: Test(null, ['debug', 123])\"]",
+    "['say', \"Try this: Test(null, ['debug', ['+', 1, 2]])\"]",
+    "['say', \"Try this: Test(null, ['+', ['debug', 1], ['debug', 2]])\"]",
     "['def', 'again', {body:function(cb, env){var r = env.parent.tailcall(cb, env, env.args); env.parent.invoke(r); return r;}}]",
     "['again', 'again']",
     "['say', ['again', 'Testing \"say again\"']]",
@@ -390,21 +393,32 @@ window.Test = function (env, expr, cb) {
     "['def', 'id', {args:['x'],body:['lookup', null, 'x']}]",
     "['if', ['<', 5, 7], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
     "['if', ['<', 7, 5], {parent:Objects,body:['id', 'T']}, {parent:Objects,body:['id', 'F']}]",
-    "['def', 'recur', {body:function(cb,env){var x=env.args[0];return(x < 10)?env.parent.tailcall(env.thisFunc, env, [x*2], cb):env.parent.tailcall(cb, env, [x]);}}]",
-    //"['def', 'recur', {args:['x'],body:['if', ['<', ['lookup', null, 'x'], 10], [['thisFunc', ['*', ['lookup', null, 'x'], 2]], ['lookup', null, 'x']]}]",
+    "['def', 'recur', {args:['x'],body:function(cb,env){return(env.x < 10)?env.parent.tailcall(env.thisFunc, env, [env.x*2], cb):env.parent.tailcall(cb, env, [env.x]);}}]",
+    "['def', 'recur', {args:['x'],body:['if', ['<', ['lookup', null, 'x'], 10], ['lambda', [], ['list', 'recur', ['list', '*', ['list', 'lookup', null, 'x'], 2]]], ['lambda', [], ['list', 'lookup', null, 'x']]]}]",
+    //"['def', 'recur', {args:['x'],body:['if', ['<', ['lookup', null, 'x'], 10], ['lambda', [], ['list', 'thisFunc', ['list', '*', ['list', 'lookup', null, 'x'], 2]]], ['lambda', [], ['list', 'lookup', null, 'x']]]}]",
     // TODO: The above test as a non-native function. However, this requires a 'lambda' operator to be created (or for the T/F func-objects to be created programmatically).
     "['recur', 1]",
     "['recur', 2]",
     "['recur', 3]",
     "['recur', 4]",
     "['recur', 5]",
+    "['def', 'object', {args:['keys','values'],body:function(cb, env){var o = env.parent.newObj();for(var i=0; i < env.keys.length; i++){o[env.keys[i]] = (env.values&&env.values[i]);}return env.parent.tailcall(cb,env,[o]);}}]",
+    "['object', ['list', 'a', 'b', 'c'], []]",
+    "['object', ['list', 'a', 'b', 'c'], ['list', 1, 2]]",
+    "['object', ['list', 'a', 'b', 'c'], ['list', 1, 2, 3, 4]]",
     "[['lambda', ['list', 'x'], ['list', '+', 2, ['list', 'lookup', null, 'x']]], 5]",
     "['def', '+n', {args:['n'],body:['lambda', ['list', 'x'], ['list', '+', ['list', 'lookup', null, 'n'], ['list', 'lookup', null, 'x']]]}]",
+    "['def', '+_n', {args:['n'],body:['object', ['list', 'args', 'body'], ['list', ['list', 'x'], ['list', '+', ['lookup', null, 'n'], ['list', 'lookup', null, 'x']]]]}]",
+    "['lookup', null, '+n', 'body']",
+    "['lookup', null, '+_n', 'body']",
     "[['+n', 3], 7]",
-    "[['+n', 4], 5]",
+    "[['+_n', 4], 5]",
     "['def', '+4', ['+n', 4]]",
+    "['def', '+_4', ['+_n', 4]]",
     "['+4', 4]",
-    "['+4', 7]",
+    "['+_4', 7]",
+    "['lookup', null, '+4', 'body']",
+    "['lookup', null, '+_4', 'body']"
 ]));
 
 }());
