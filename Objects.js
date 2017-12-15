@@ -40,6 +40,7 @@ O.tailcall = function (func, env, args, cb) {
         }
         return { func: func.body, args: [cb, env2] };
     }
+    // TODO: Revisit the below statement & code:
     // Otherwise call eval on the func object:
     var expr = [func];
     expr.push.apply(expr, args);
@@ -85,6 +86,7 @@ O.type = function (o) {
     return (s === '[object Array]' || s === '[object Arguments]') ? 'array' : t;
 };
 O.has = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
+    // TODO: args.length will always be 2. Instead, 'prop' can be an array.
     if (env.args.length > 2) {
         var last = env.args.pop();
         return env.parent.tailcall(env.parent.get, env, env.args, function(obj) {
@@ -96,6 +98,7 @@ O.has = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     return env.parent.tailcall(cb, env, [h]);
 }};
 O.get = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
+    // TODO: args.length will always be 2. Instead, 'prop' can be an array.
     if (env.args.length > 2) {
         var last = env.args.pop();
         return env.parent.tailcall(env.parent.get, env, env.args, function(obj) {
@@ -107,6 +110,7 @@ O.get = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     return env.parent.tailcall(cb, env, [h ? obj[env.prop] : null, h]);
 }};
 O.set = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
+    // TODO: args.length will always be 2. Instead, 'prop' can be an array.
     if (env.args.length > 3) {
         var val = env.args.pop();
         var last = env.args.pop();
@@ -120,6 +124,7 @@ O.set = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
     return env.parent.tailcall(cb, env, [env.value]);
 }};
 O.exists = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
+    // TODO: args.length will always be 2. Instead, 'prop' can be an array.
     if (env.args.length > 2) {
         var last = env.args.pop();
         return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
@@ -134,6 +139,7 @@ O.exists = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     return env.parent.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
 }};
 O.lookup = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
+    // TODO: args.length will always be 2. Instead, 'prop' can be an array.
     if (env.args.length > 2) {
         var last = env.args.pop();
         return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
@@ -148,6 +154,7 @@ O.lookup = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
     return env.parent.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
 }};
 O.assign = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
+    // TODO: args.length will always be 2. Instead, 'prop' can be an array.
     if (env.args.length > 3) {
         var val = env.args.pop();
         var last = env.args.pop();
@@ -179,10 +186,12 @@ O.copy = { parent: O, args: ['obj'], body: function (cb, env) {
     return env.parent.tailcall(cb, env, [env.obj]);
 }};
 O.if = { parent: O, args: ['cond', 'T', 'F'], body: function (cb, env) {
+    // TODO: Convert T and F to blocks that must be explicitly evaled
     var f = (env.cond ? env.T : env.F) || cb;
     return env.parent.tailcall(f, env, [env.cond], (f === cb ? null : cb));
 }};
 O.loop = { parent: O, args: ['start', 'end', 'code'], body: function(cb, env) {
+    // TODO: Convert 'code' to a block that must be explicitly evaled
     if (env.start < env.end) {
         return env.parent.tailcall(env.code, env, [env.start], function() {
             return env.parent.tailcall(O.loop, env, [env.start+1, env.end, env.code], cb);
@@ -191,6 +200,7 @@ O.loop = { parent: O, args: ['start', 'end', 'code'], body: function(cb, env) {
     return env.parent.tailcall(cb, env, []);
 }};
 O.each = { parent: O, args: ['array', 'code'], body: function(cb, env) {
+    // TODO: Convert 'code' to a block that must be explicitly evaled
     var type = env.parent.type(env.array);
     if (type !== 'array') { return env.parent.tailcall(cb, env, []); }
     return env.parent.tailcall(env.parent.loop, env, [0, env.array.length, function(cb, i) {
@@ -217,6 +227,8 @@ O.lambda = { parent: O, args: ['argList', 'body'], body: function (cb, env) {
 // Eval functions:
 
 O.eval = { parent: O, args: ['env', 'expr'], body: function (cb, env) {
+    // TODO: expr may now be a block containing MULTIPLE expressions. If so, then lookup the function in
+    //       the first position to determine how many arguments to take. Repeat from the next position.
     var type = env.parent.type(env.expr);
     if (type !== 'array' || env.expr.length < 1) {
         return env.parent.tailcall(cb, env, [env.expr]);
@@ -247,6 +259,7 @@ O.apply = { parent: O, args: ['func', 'args', 'env'], body: function (cb, env) {
         if (type === 'native') {
             return env.parent.tailcall(body, env, [env2], cb);
         }
+        // TODO: Revisit how this applies to blocks
         return env.parent.tailcall(env.parent.eval, env, [env2, body], cb);
     });
 }};
@@ -291,6 +304,7 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], body: function(cb, env) 
     });
 }};
 
+//TODO: Reform this to work with the new REBOL-style syntax & semantics.
 //TODO: 1. Compile this compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
 O.compile = function(code) {
@@ -353,6 +367,7 @@ window.Test = function (env, expr, cb) {
     O.invoke(O.tailcall(O.apply, env, [{parent:env, body:expr}, [], env], cb));
 };
 
+// TODO: Reform these tests to the new REBOL-style syntax & semantics
 (function(tests) {
     console.log("Running tests:");
     for(var i = 0; i < tests.length; i++) {

@@ -1,3 +1,5 @@
+TODO: Reform these rules to fit the new REBOL-style syntax & semantics
+
 eval(env, expr)
 :: ([string, x..], _)       --> apply(lookup(string, env), [eval(env, x)..], env)
 :: ([number, x..], _)       --> apply(lookup(number, env), [eval(env, x)..], env)
