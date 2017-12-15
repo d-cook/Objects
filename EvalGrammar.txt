@@ -1,9 +1,8 @@
-TODO: Reform these rules to fit the new REBOL-style syntax & semantics
-
 eval(env, expr)
-:: ([string, x..], _)       --> apply(lookup(string, env), [eval(env, x)..], env)
-:: ([number, x..], _)       --> apply(lookup(number, env), [eval(env, x)..], env)
-:: ([v     , x..], _)       --> apply(eval  (env   , v  ), [eval(env, x)..], env)
+:: ([string, x..], _)       --> apply(lookup(string, env), eval(env, [x..]), env)
+:: ([number, x..], _)       --> apply(lookup(number, env), eval(env, [x..]), env)
+:: ([other      ], _)       --> other
+:: ([other , x..], _)       --> eval(env, [x..])
 :: (_            , _)       --> expr
 
 lookup(env, key)
@@ -11,11 +10,12 @@ lookup(env, key)
 :: ("x", {parent})          --> lookup(parent, "x")
 :: (_  , _       )          --> null
 
-apply(func, args, env)
-:: (native       , _, _)    --> native(args)
-:: ({body:native}, _, _)    --> native(newEnv(func, args, env, <caller_of_apply>))
-:: ({body       }, _, _)    --> eval  (newEnv(func, args, env, <caller_of_apply>), body)
-:: (_            , _, _)    --> null
+apply(func, params, env)
+## NOTE: params always gets advanced with each eval (i.e. processing skips past elements "consumed" as arguments)
+:: (native                   , _, _)    --> native(params)
+:: ({body:native, args:[x..]}, _, _)    --> native(newEnv(func, [eval(env, params)..], env, <caller_of_apply>), body)
+:: ({body       , args:[x..]}, _, _)    --> eval  (newEnv(func, [eval(env, params)..], env, <caller_of_apply>), body)
+:: (_                        , _, _)    --> null
 
 newEnv(func, args, env, cc) --> setArgs(func, args, {
                                   thisFunc: func,
