@@ -1,6 +1,6 @@
 PROBLEM:
 
-    How to evaluate cond, but not true/false code (with a "syntax" or "macro" rule) in:
+    How to evaluate cond, but not true/false code (without a "syntax" or "macro" rule) in:
     ['if', ['cond'..], [true-code], [false-code]]
 
 OPTIONS:
@@ -10,9 +10,9 @@ OPTIONS:
 
     ['if', ['cond'..], {true:['true-code'],false:['false-code']}]    ex: ['a', 'b', ['c', 'd'], 'e']
 
-    ['if', 'cond'.., ['true-code'], ['false-code']  (REBOL syntax and semantics: all code to be evaluated in same
-                                                     context as op ('if') resides within the same block. Nested
-                                                     blocks are data or code, and is NOT automatically evaluated).
+    ['if', 'cond'.., ['true-code'], ['false-code']]      (REBOL syntax and semantics: all code to be evaluated in same
+                                                          context as op ('if') resides within the same block. Nested
+                                                          blocks are data or code, and is NOT automatically evaluated).
 
     ['if', ['cond'..], {block:['true-code']}, {block:['false-code']}]  (Compromise between REBOL syntax & objects)
 
