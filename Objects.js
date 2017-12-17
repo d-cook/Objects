@@ -92,7 +92,7 @@ O.has = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
         });
     }
     var obj = env.obj || env.parent;
-    var h = env.parent.hasOnce(obj, env.prop);
+    var h = env.parent.hasOwn(obj, env.prop);
     return env.parent.tailcall(cb, env, [h]);
 }};
 O.get = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
@@ -103,7 +103,7 @@ O.get = { parent: O, args: ['obj', 'prop'], body: function (cb, env) {
         });
     }
     var obj = env.obj || env.parent;
-    var h = env.parent.hasOnce(obj, env.prop);
+    var h = env.parent.hasOwn(obj, env.prop);
     return env.parent.tailcall(cb, env, [h ? obj[env.prop] : null, h]);
 }};
 O.set = { parent: O, args: ['obj', 'prop', 'value'], body: function (cb, env) {
