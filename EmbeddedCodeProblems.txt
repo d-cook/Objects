@@ -41,3 +41,25 @@ QUESTIONS:
     If separating args and code-blocks explicitly, then how are code-blocks accessed and scoped?
         (Some special env property. There's already "args[n]", how about "code[n]"?)
         (Scoping must happen manually (eval within env of caller) to allow for DSLs ("dialects"))
+
+-----------------------------------------------------
+
+REBOL-style:
+-----------
++ block literals (and thus, code literals)
++ symbols auto-eval
++ distinction between evaled and non-evaled code
+
+Scheme-style:
+------------
++ simple strings
++ distinction between operations
++ compiler does not have to lookup specific functions
+
+OVERALL "BEST":
+* Compiler does not need to lookup funcs to be able to call them (bc they can change at runtime).
+* Ergo, need to be able to statically distinguish between args of one call and another.
+* Ergo, non-eval items (e.g. nested code-blocks) must be identifiable in a static/syntactic way.
+* Need to allow non-eval items to be passed amid normal arguments, so indication must be on items themsevles, not on overall command
+* Prefer indication that does not require special handling by interpreter (e.g. so any "thing" can be passed as what it is)
+* Possible solution: ['if', condition, {code:[..true..]}, {code:[..false..]}]
