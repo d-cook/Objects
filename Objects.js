@@ -60,8 +60,8 @@ O.invoke = function (tc) { // tailcall
 
 O.newObj = function () { return Object.create(null); };
 O.hasOwn = function (o, p) { return o ? (p in o) : false; };
-O.keys   = function (o) { return Object.keys(o) || []; };
-O.len    = function (o) { var s = (o && o.length); return (typeof s === 'number') ? s : 0; };
+O.keys   = function (o) { return Object.keys(o||{}) || []; };
+O.len    = function (o) { return(Object.keys(o||{}) || []).length; };
 O.not    = function (v) { return !v; };
 
 O['+']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) {       r +=      arguments[i];                 } return r;    };
@@ -179,8 +179,9 @@ O.copy = { parent: O, args: ['obj'], body: function (cb, env) {
     return env.parent.tailcall(cb, env, [env.obj]);
 }};
 O.if = { parent: O, args: ['cond', 'T', 'F'], body: function (cb, env) {
-    var f = (env.cond ? env.T : env.F) || cb;
-    return env.parent.tailcall(f, env, [env.cond], (f === cb ? null : cb));
+    var f = (env.cond ? env.T : env.F);
+    if (f) { return env.parent.tailcall(f, env, [env.cond], cb); }
+    return env.parent.tailcall(cb, env, [null]); // No valid code to run, so nothing to return
 }};
 O.loop = { parent: O, args: ['start', 'end', 'code'], body: function(cb, env) {
     if (env.start < env.end) {
