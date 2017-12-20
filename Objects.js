@@ -183,20 +183,35 @@ O.if = { parent: O, args: ['cond', 'T', 'F'], body: function (cb, env) {
     if (f) { return env.parent.tailcall(f, env, [env.cond], cb); }
     return env.parent.tailcall(cb, env, [null]); // No valid code to run, so nothing to return
 }};
-O.loop = { parent: O, args: ['start', 'end', 'code'], body: function(cb, env) {
-    if (env.start < env.end) {
-        return env.parent.tailcall(env.code, env, [env.start], function() {
-            return env.parent.tailcall(O.loop, env, [env.start+1, env.end, env.code], cb);
+O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], body: function(cb, env) {
+    // code | end, code | start, end, code | start, end, inc, code
+    var a = env.args;
+    var start = (a.length > 2) ? a[0] : 0;
+    var end = (a.length === 2) ? a[0] : (a.length > 2) ? a[1] : 0;
+    var inc = (a.length > 3) ? a[2] : (a.length < 3 && start > end) ? -1 : (a.length < 2) ? 0 : 1;
+    var code = (a.length > 3) ? a[3] : (a.length > 0) ? a[a.length - 1] : null;
+    if ((inc > 0 && start < end) || (inc < 0 && start > end) || inc === 0) {
+        return env.parent.tailcall(code, env, [start], function(v) {
+            return env.parent.tailcall(env.parent.loop, env, [start+inc, end, inc, code, v], cb);
         });
     }
-    return env.parent.tailcall(cb, env, []);
+    return env.parent.tailcall(cb, env, [env.value]);
 }};
-O.each = { parent: O, args: ['array', 'code'], body: function(cb, env) {
-    var type = env.parent.type(env.array);
-    if (type !== 'array') { return env.parent.tailcall(cb, env, []); }
-    return env.parent.tailcall(env.parent.loop, env, [0, env.array.length, function(cb, i) {
-        return env.parent.tailcall(env.code, env, [i, env.array[i]], cb);
-    }], cb);
+O.each = { parent: O, args: ['container', 'code'], body: function(cb, env) {
+    var c = env.container;
+    var t = env.parent.type(c);
+    if (t === 'array') {
+        return env.parent.tailcall(env.parent.loop, env, [0, c.length, function(cb, k) {
+            return env.parent.tailcall(env.code, env, [k, c[k]], cb);
+        }], cb);
+    }
+    if (t !== 'object') { return env.parent.tailcall(cb, env, [null]); }
+    return env.parent.tailcall(env.parent.keys, env, [c], function(keys) {
+        return env.parent.tailcall(env.parent.loop, env, [0, keys.length, function(cb, k) {
+            k = keys[k];
+            return env.parent.tailcall(env.code, env, [k, c[k]], cb);
+        }], cb);
+    });
 }};
 O.lambda = { parent: O, args: ['argList', 'body'], body: function (cb, env) {
     var f, t = env.parent.type(env.body);
