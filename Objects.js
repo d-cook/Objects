@@ -503,7 +503,10 @@ window.Test = function (env, expr, cb) {
     "['loop', 1, -3, {args:['i'],code:['say', ['+', 'loop 1,-3: ', ['lookup', null, 'i']]]}]",
     "['loop', 1, -3, -2, {args:['i'],code:['say', ['+', 'loop 1,-3,-2: ', ['lookup', null, 'i']]]}]",
     "['each', ['list', 11, 22, 33, 44], {args:['k', 'v'],code:['say', ['+', '(11, 22, 33, 44)[', ['lookup', null, 'k'], '] is ', ['lookup', null, 'v']]]}]",
-    "['each', ['lookup', null, 'root'], {args:['k', 'v'],code:['say', ['+', ['type', ['lookup', null, 'v']], ': ', ['lookup', null, 'k']]]}]"
+    "['each', ['lookup', null, 'root'], {args:['k', 'v'],code:['say', ['+', ['type', ['lookup', null, 'v']], ': ', ['lookup', null, 'k']]]}]",
+    "['say', ['+', '+_4 is: ', ['type', ['lookup', null, '+_4']]]]",
+    "['remove', null, '+_4']",
+    "['say', ['+', '+_4 has been removed, and now is: ', ['type', ['lookup', null, '+_4']]]]"
 ]));
 
 }());
