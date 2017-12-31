@@ -14,14 +14,17 @@ O.root = O;
 // These tailcall and invoke functions drive execution of all wrapped functions, which
 // run in CPS (Continuation Passing Style) (i.e. return execution/values via callbacks).
 // TODO: Convert these to wrapped so that "type" and "eval" are not referenced directly.
-O.tailcall = function (func, env, args, cb) {
+O.tailcall = function tailcall(func, env, args, cb) {
     // NOTE: this function references external entities: type, eval
     // TODO: Optimize the case for evaling a call to eval.
     if (O.type(env) === 'array') { cb = args; args = env; env = null; }
     var ft = O.type(func);
     if (ft === 'native') {
-        var allArgs = cb ? [cb] : [];
+        // Detect if func takes a cb. TODO: this better (it's a hack with potential false-positives)
+        var hasCb = (''+func).replace(/^[^(]+\(/, '').replace(/\).*$/, '').substring(0,3) === 'cb,';
+        var allArgs = (cb && hasCb) ? [cb] : [];
         allArgs.push.apply(allArgs, args);
+        if (cb && !hasCb) { return tailcall(cb, env, [func.apply(null, allArgs)]); }
         return { func: func, args: allArgs };
     }
     if (ft !== 'object') { return null; }
@@ -242,11 +245,12 @@ O.each = { parent: O, args: ['container', 'code'], code: function(cb, env) {
         }], cb);
     }
     if (t !== 'object') { return env.parent.tailcall(cb, env, [null]); }
-    var keys = env.parent.keys(c);
-    return env.parent.tailcall(env.parent.loop, env, [0, keys.length, function(cb, k) {
-        k = keys[k];
-        return env.parent.tailcall(env.code, env.caller, [k, c[k]], cb);
-    }], cb);
+    return env.parent.tailcall(env.parent.keys, env, [c], function(keys) {
+        return env.parent.tailcall(env.parent.loop, env, [0, keys.length, function(cb, k) {
+            k = keys[k];
+            return env.parent.tailcall(env.code, env.caller, [k, c[k]], cb);
+        }], cb);
+    });
 }};
 O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
     var f, t = env.parent.type(env.code);
