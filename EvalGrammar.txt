@@ -1,21 +1,22 @@
 eval(env, expr)
-:: ([string, x..], _)       --> apply(lookup(string, env), [eval(env, x)..], env)
-:: ([number, x..], _)       --> apply(lookup(number, env), [eval(env, x)..], env)
-:: ([v     , x..], _)       --> apply(eval  (env   , v  ), [eval(env, x)..], env)
+:: ([string, x..], _)       --> apply(lookup(env, string), [eval(env, x)..], env)
+:: ([number, x..], _)       --> apply(lookup(env, number), [eval(env, x)..], env)
+:: ([v     , x..], _)       --> apply(eval  (env, v     ), [eval(env, x)..], env)
 :: (_            , _)       --> expr
 
 lookup(env, key)
-:: ("x", {x     })          --> x
-:: ("x", {parent})          --> lookup(parent, "x")
-:: (_  , _       )          --> null
+:: ({x     }, "x")          --> x
+:: ({parent}, "x")          --> lookup(parent, "x")
+:: (_       , _  )          --> null
 
 apply(func, args, env)
 :: (native       , _, _)    --> native(args)
-:: ({body:native}, _, _)    --> native(newEnv(func, args, env, <caller_of_apply>))
-:: ({body       }, _, _)    --> eval  (newEnv(func, args, env, <caller_of_apply>), body)
+:: ({code:native}, _, _)    --> code(newEnv(func, args, env, <caller_of_apply>))
+:: ({code       }, _, _)    --> eval(newEnv(func, args, env, <caller_of_apply>), code)
 :: (_            , _, _)    --> null
 
-newEnv(func, args, env, cc) --> setArgs(func, args, {
+newEnv(func, args, env, cc)
+:: ({parent}, _, _, _)      --> setArgs(func, args, {
                                   thisFunc: func,
                                   parent  : func.parent,
                                   caller  : env,
@@ -23,6 +24,7 @@ newEnv(func, args, env, cc) --> setArgs(func, args, {
                                   scope   : (this entire outer object),
                                   args    : args
                                 })
+:: (_       , _, _, _)      --> setArgs(func, args, {parent:env, scope:(this), args:args})
 
 setArgs(func, params, obj)
 :: ({args:["a"..]}, [x..], {p..}) --> {a:x.., p..}
