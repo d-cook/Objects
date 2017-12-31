@@ -217,6 +217,9 @@ O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
     }
     return env.parent.tailcall(cb, env, [env.obj]);
 }};
+O.do = { parent: O, code: function (cb, env) {
+    return env.parent.tailcall(cb, env, [env.args[env.args.length-1]]);
+}};
 O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     var f = (env.cond ? env.T : env.F);
     if (f) { return env.parent.tailcall(f, env.caller, [env.cond], cb); }
@@ -510,7 +513,8 @@ window.Test = function (env, expr, cb) {
     "['each', ['lookup', null, 'root'], {args:['k', 'v'],code:['say', ['+', ['type', ['lookup', null, 'v']], ': ', ['lookup', null, 'k']]]}]",
     "['say', ['+', '+_4 is: ', ['type', ['lookup', null, '+_4']]]]",
     "['remove', null, '+_4']",
-    "['say', ['+', '+_4 has been removed, and now is: ', ['type', ['lookup', null, '+_4']]]]"
+    "['say', ['+', '+_4 has been removed, and now is: ', ['type', ['lookup', null, '+_4']]]]",
+    "['do', ['set', null, 'x', 5], ['set', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]"
 ]));
 
 }());
