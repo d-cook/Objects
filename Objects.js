@@ -188,16 +188,15 @@ O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     if (f) { return env.parent.tailcall(f, env.caller, [env.cond], cb); }
     return env.parent.tailcall(cb, env, [null]); // No valid code to run, so nothing to return
 }};
-// TODO: revise "loop" and "each" to evaluate "code" within caller-context, as "if" does:
 O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
     // code | end, code | start, end, code | start, end, inc, code
     var a = env.args;
     var start = (a.length > 2) ? a[0] : 0;
     var end = (a.length === 2) ? a[0] : (a.length > 2) ? a[1] : 0;
-    var inc = (a.length > 3) ? a[2] : (a.length < 3 && start > end) ? -1 : (a.length < 2) ? 0 : 1;
+    var inc = (a.length > 3) ? a[2] : (a.length <= 3 && start > end) ? -1 : (a.length < 2) ? 0 : 1;
     var code = (a.length > 3) ? a[3] : (a.length > 0) ? a[a.length - 1] : null;
     if ((inc > 0 && start < end) || (inc < 0 && start > end) || inc === 0) {
-        return env.parent.tailcall(code, env, [start], function(v) {
+        return env.parent.tailcall(code, env.caller, [start], function(v) {
             return env.parent.tailcall(env.parent.loop, env, [start+inc, end, inc, code, v], cb);
         });
     }
@@ -208,16 +207,15 @@ O.each = { parent: O, args: ['container', 'code'], code: function(cb, env) {
     var t = env.parent.type(c);
     if (t === 'array') {
         return env.parent.tailcall(env.parent.loop, env, [0, c.length, function(cb, k) {
-            return env.parent.tailcall(env.code, env, [k, c[k]], cb);
+            return env.parent.tailcall(env.code, env.caller, [k, c[k]], cb);
         }], cb);
     }
     if (t !== 'object') { return env.parent.tailcall(cb, env, [null]); }
-    return env.parent.tailcall(env.parent.keys, env, [c], function(keys) {
-        return env.parent.tailcall(env.parent.loop, env, [0, keys.length, function(cb, k) {
-            k = keys[k];
-            return env.parent.tailcall(env.code, env, [k, c[k]], cb);
-        }], cb);
-    });
+    var keys = env.parent.keys(c);
+    return env.parent.tailcall(env.parent.loop, env, [0, keys.length, function(cb, k) {
+        k = keys[k];
+        return env.parent.tailcall(env.code, env.caller, [k, c[k]], cb);
+    }], cb);
 }};
 O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
     var f, t = env.parent.type(env.code);
@@ -466,7 +464,15 @@ window.Test = function (env, expr, cb) {
     "['lookup', null, '+_4', 'code']",
     "[{parent:{parent:Objects,x:7}, code:['lookup', null, 'x']}]",
     "[{parent:{parent:Objects,x:7}, code:['if', true, {code:['say', ['+', 'True! X is: ', ['lookup', null, 'x']]]}, {code:['say', 'Uhoh! This code should NOT have been evaled!']}]}]",
-    "[{parent:{parent:Objects,x:7}, code:['if', false, {code:['say', 'Uhoh! This code should NOT have been evaled!']}, {code:['say', ['+', 'False! X is: ', ['lookup', null, 'x']]]}]}]"
+    "[{parent:{parent:Objects,x:7}, code:['if', false, {code:['say', 'Uhoh! This code should NOT have been evaled!']}, {code:['say', ['+', 'False! X is: ', ['lookup', null, 'x']]]}]}]",
+    "['loop', 4, {args:['i'],code:['say', ['+', 'loop 4: ', ['lookup', null, 'i']]]}]",
+    "['loop', 1, 4, {args:['i'],code:['say', ['+', 'loop 1,4: ', ['lookup', null, 'i']]]}]",
+    "['loop', 1, 4, 2, {args:['i'],code:['say', ['+', 'loop 1,4,2: ', ['lookup', null, 'i']]]}]",
+    "['loop', -3, {args:['i'],code:['say', ['+', 'loop -3: ', ['lookup', null, 'i']]]}]",
+    "['loop', 1, -3, {args:['i'],code:['say', ['+', 'loop 1,-3: ', ['lookup', null, 'i']]]}]",
+    "['loop', 1, -3, -2, {args:['i'],code:['say', ['+', 'loop 1,-3,-2: ', ['lookup', null, 'i']]]}]",
+    "['each', ['list', 11, 22, 33, 44], {args:['k', 'v'],code:['say', ['+', '(11, 22, 33, 44)[', ['lookup', null, 'k'], '] is ', ['lookup', null, 'v']]]}]",
+    "['each', ['lookup', null, 'root'], {args:['k', 'v'],code:['say', ['+', ['type', ['lookup', null, 'v']], ': ', ['lookup', null, 'k']]]}]"
 ]));
 
 }());
