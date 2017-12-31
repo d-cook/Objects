@@ -26,13 +26,18 @@ O.tailcall = function (func, env, args, cb) {
     }
     if (ft !== 'object') { return null; }
     if (O.type(func.code) === 'native') {
+        // If func has no parent, then assume it is a nested code-block and inherit from current execution scope:
         var env2 = {
-            thisFunc: func,
             parent: func.parent || env || null,
-            caller: env || null,
             args: args
         };
         env2.scope = env2;
+        if (func.parent) {
+            // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
+            env2.caller = env;
+            env2.thisFunc = func;
+            // TODO: Should a "return" property be getting set here?
+        }
         if (func.args) {
             for (var i = 0; i < func.args.length; i++) {
                 env2[func.args[i]] = args[i];
@@ -183,6 +188,7 @@ O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     if (f) { return env.parent.tailcall(f, env.caller, [env.cond], cb); }
     return env.parent.tailcall(cb, env, [null]); // No valid code to run, so nothing to return
 }};
+// TODO: revise "loop" and "each" to evaluate "code" within caller-context, as "if" does:
 O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
     // code | end, code | start, end, code | start, end, inc, code
     var a = env.args;
@@ -269,13 +275,17 @@ O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
 O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb, env) {
     var env2 = env.parent.newObj();
     env2.scope = env2;
-    env2.caller = env.env;
+    // If func has no parent, then assume it is a nested code-block and inherit from the current execution scope:
     env2.parent = env.func.parent || env.env;
-    env2.thisFunc = env.func;
-    env2.return = {
-        parent: { parent: env.parent, cc: env.cc, env: env.env },
-        code: function (cb, env) { return env.parent.parent.tailcall(env.parent.cc, env.parent.env, env.args); }
-    };
+    if (env.func.parent) {
+        // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
+        env2.caller = env.env;
+        env2.thisFunc = env.func;
+        env2.return = {
+            parent: { parent: env.parent, cc: env.cc, env: env.env },
+            code: function (cb, env) { return env.parent.parent.tailcall(env.parent.cc, env.parent.env, env.args); }
+        };
+    }
     var argNames = env.func.args;
     return env.parent.tailcall(env.parent.each, env, [argNames, function(cb, i, aName) {
         var nType = env.parent.type(aName);
@@ -431,6 +441,12 @@ window.Test = function (env, expr, cb) {
     "['recur', 3]",
     "['recur', 4]",
     "['recur', 5]",
+    "['def', 'recur', {args:['x'],code:['if', ['<', ['lookup', null, 'x'], 10], {code:['thisFunc', ['*', ['lookup', null, 'x'], 2]]}, {code:['lookup', null, 'x']}]}]",
+    "['recur', 1]",
+    "['recur', 2]",
+    "['recur', 3]",
+    "['recur', 4]",
+    "['recur', 5]",
     "['def', 'object', {args:['keys','values'],code:function(cb, env){var o = env.parent.newObj();for(var i=0; i < env.keys.length; i++){o[env.keys[i]] = (env.values&&env.values[i]);}return env.parent.tailcall(cb,env,[o]);}}]",
     "['object', ['list', 'a', 'b', 'c'], []]",
     "['object', ['list', 'a', 'b', 'c'], ['list', 1, 2]]",
@@ -454,4 +470,3 @@ window.Test = function (env, expr, cb) {
 ]));
 
 }());
-// TODO: Wipe out lambda (and verifiy that parent-less funcs serve the same purpose just fine)
