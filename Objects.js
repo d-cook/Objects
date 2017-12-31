@@ -218,7 +218,8 @@ O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
     return env.parent.tailcall(cb, env, [env.obj]);
 }};
 O.do = { parent: O, code: function (cb, env) {
-    return env.parent.tailcall(cb, env, [env.args[env.args.length-1]]);
+    var len = env.args.length;
+    return env.parent.tailcall(cb, env, [len > 0 ? env.args[len-1] : null]);
 }};
 O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     var f = (env.cond ? env.T : env.F);
@@ -270,6 +271,13 @@ O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
             return env.parent.tailcall(cb, env, [f]);
         });
     });
+}};
+O.with = { parent: O, args: ['obj', 'code'], code: function(cb, env) {
+    // obj, code | obj, prop..., value
+    var result = env.parent.tailcall(cb, env, [env.obj]);
+    if (env.args.length < 2) { return result; }
+    if (env.args.length < 3) { return env.parent.tailcall(env.code, env.caller, [env.obj], function() { return result; }); }
+    return env.parent.tailcall(env.parent.set, env, env.args, function() { return result; });
 }};
 
 // Eval functions:
@@ -514,7 +522,12 @@ window.Test = function (env, expr, cb) {
     "['say', ['+', '+_4 is: ', ['type', ['lookup', null, '+_4']]]]",
     "['remove', null, '+_4']",
     "['say', ['+', '+_4 has been removed, and now is: ', ['type', ['lookup', null, '+_4']]]]",
-    "['do', ['set', null, 'x', 5], ['set', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]"
+    "['do', ['set', null, 'x', 5], ['set', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
+    "['do']", // Simulating an empty block of code
+    "['with', {a:1, b:2, c:3}, {args:['o'], code:['set', ['lookup', null, 'o'], 'x', 5]}]",
+    "['with', {a:1, b:2, c:3}, 'y', 7]",
+    "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 'y', 'z', 2]",
+    "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 3]"
 ]));
 
 }());
