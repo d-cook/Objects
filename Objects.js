@@ -180,7 +180,7 @@ O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
 }};
 O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     var f = (env.cond ? env.T : env.F);
-    if (f) { return env.parent.tailcall(f, env, [env.cond], cb); }
+    if (f) { return env.parent.tailcall(f, env.caller, [env.cond], cb); }
     return env.parent.tailcall(cb, env, [null]); // No valid code to run, so nothing to return
 }};
 O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
@@ -264,12 +264,6 @@ O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
             return env.parent.tailcall(code, env, [env2], cb);
         }
         return env.parent.tailcall(env.parent.eval, env, [env2, code], cb);
-    });
-}};
-O.nestedEnv = { parent: O, args: ['env'], code: function (cb, env) {
-    return env.parent.tailcall(env.parent.copy, env, [env.env], function(env2) {
-        env2.parent = env.env;
-        return env.parent.tailcall(cb, env, [env2]);
     });
 }};
 O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb, env) {
@@ -429,8 +423,8 @@ window.Test = function (env, expr, cb) {
     "['+', 3, ['return', 4], ['ret5', 1, 2], 5]",
     "['+', 3, 4, ['rets5', 1, 2], ['return', 6]]",
     "['def', 'id', {args:['x'],code:['lookup', null, 'x']}]",
-    "['if', ['<', 5, 7], {parent:Objects,code:['id', 'T']}, {parent:Objects,code:['id', 'F']}]",
-    "['if', ['<', 7, 5], {parent:Objects,code:['id', 'T']}, {parent:Objects,code:['id', 'F']}]",
+    "['if', ['<', 5, 7], {code:['id', 'T']}, {code:['id', 'F']}]",
+    "['if', ['<', 7, 5], {code:['id', 'T']}, {code:['id', 'F']}]",
     "['def', 'recur', {args:['x'],code:['if', ['<', ['lookup', null, 'x'], 10], ['lambda', [], ['list', ['lookup', null, 'thisFunc'], ['list', '*', ['lookup', null, 'x'], 2]]], ['lambda', [], ['list', 'lookup', null, 'x']]]}]",
     "['recur', 1]",
     "['recur', 2]",
@@ -453,7 +447,11 @@ window.Test = function (env, expr, cb) {
     "['+4', 4]",
     "['+_4', 7]",
     "['lookup', null, '+4', 'code']",
-    "['lookup', null, '+_4', 'code']"
+    "['lookup', null, '+_4', 'code']",
+    "[{parent:{parent:Objects,x:7}, code:['lookup', null, 'x']}]",
+    "[{parent:{parent:Objects,x:7}, code:['if', true, {code:['say', ['+', 'True! X is: ', ['lookup', null, 'x']]]}, {code:['say', 'Uhoh! This code should NOT have been evaled!']}]}]",
+    "[{parent:{parent:Objects,x:7}, code:['if', false, {code:['say', 'Uhoh! This code should NOT have been evaled!']}, {code:['say', ['+', 'False! X is: ', ['lookup', null, 'x']]]}]}]"
 ]));
 
 }());
+// TODO: Wipe out lambda (and verifiy that parent-less funcs serve the same purpose just fine)
