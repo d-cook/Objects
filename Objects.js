@@ -28,7 +28,7 @@ O.tailcall = function (func, env, args, cb) {
     if (O.type(func.code) === 'native') {
         var env2 = {
             thisFunc: func,
-            parent: func.parent || null,
+            parent: func.parent || env || null,
             caller: env || null,
             args: args
         };
@@ -276,7 +276,7 @@ O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb,
     var env2 = env.parent.newObj();
     env2.scope = env2;
     env2.caller = env.env;
-    env2.parent = env.func.parent;
+    env2.parent = env.func.parent || env.env;
     env2.thisFunc = env.func;
     env2.return = {
         parent: { parent: env.parent, cc: env.cc, env: env.env },
