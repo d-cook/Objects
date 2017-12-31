@@ -66,7 +66,6 @@ OVERALL "BEST":
 * Possible solution 2: Just use normal wrapped-functions, but change semantics so that "scopeless" (parentless) funcs evaluate within
   the context of their caller (or within the context of the code within which they are embedded), essentially as lambdas/closures.
   - Arrived at this because the other "potential solution" would require wrapped-native funcs (e.g. in the case of compiled code) to
-    be passed like this: ['if', condition, {code:[{body:func}, ...]}, ...]. Why not just: ['if', condition, {body:func}, ...]
+    be passed like this: ['if', condition, {code:[{code:func}, ...]}, ...]. Why not just: ['if', condition, {code:func}, ...]
   - Also, things like "if" or "loop" could rely on the arg-names of the func rather than by messing directly with the caller's scope.
-    So instead of: ['each', aContainer, 'key', 'val', {code:[...]}], do this: ['each', aContainer, {args:['key', 'val'], body:[...]}]
-  - Also, perhaps alter wrapped-func syntax so that the func body is called "code" instead of "body" ({args:[...], code:[...]}).
+    So instead of: ['each', aContainer, 'key', 'val', {code:[...]}], do this: ['each', aContainer, {args:['key', 'val'], code:[...]}]
