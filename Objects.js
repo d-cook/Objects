@@ -109,7 +109,7 @@ O.get = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     }
     var obj = env.obj || env.parent;
     var h = env.parent.hasOwn(obj, env.prop);
-    return env.parent.tailcall(cb, env, [h ? obj[env.prop] : null, h]);
+    return env.parent.tailcall(cb, env, [h ? obj[env.prop] : null]);
 }};
 O.set = { parent: O, args: ['obj', 'prop', 'value'], code: function (cb, env) {
     if (env.args.length > 3) {
@@ -123,6 +123,19 @@ O.set = { parent: O, args: ['obj', 'prop', 'value'], code: function (cb, env) {
     var t = env.parent.type(obj);
     if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
     return env.parent.tailcall(cb, env, [env.value]);
+}};
+O.delete = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
+    if (env.args.length > 2) {
+        var last = env.args.pop();
+        return env.parent.tailcall(env.parent.get, env, env.args, function(obj) {
+            return env.parent.tailcall(env.parent.delete, env, [obj, last], cb);
+        });
+    }
+    var obj = env.obj || env.parent;
+    var h = env.parent.hasOwn(obj, env.prop);
+    var v = (h) ? obj[env.prop] : null;
+    delete obj[env.prop];
+    return env.parent.tailcall(cb, env, [v]);
 }};
 O.exists = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     if (env.args.length > 2) {
@@ -164,6 +177,24 @@ O.assign = { parent: O, args: ['obj', 'prop', 'value'], code: function (cb, env)
     var t = env.parent.type(obj);
     if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
     return env.parent.tailcall(cb, env, [env.value]);
+}};
+O.remove = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
+    if (env.args.length > 2) {
+        var last = env.args.pop();
+        return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
+            return env.parent.tailcall(env.parent.remove, env, [obj, last], cb);
+        });
+    }
+    var obj = env.obj || env.caller;
+    var h = env.parent.hasOwn(obj, env.prop);
+    if (h) {
+        var v = obj[env.prop];
+        delete obj[env.prop];
+        return env.parent.tailcall(cb, env, [v]);
+    }
+    h = env.parent.hasOwn(obj, 'parent');
+    if (!h) { return env.parent.tailcall(cb, env, [null, false]); }
+    return env.parent.tailcall(env.parent.remove, env, [obj.parent, env.prop], cb);
 }};
 O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
     var t = env.parent.type(env.obj);
