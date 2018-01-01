@@ -532,13 +532,23 @@ window.Tests = [
     "['def', 'do', {code:['get', ['lookup', null, 'args'], ['-', ['len', ['lookup', null, 'args']], 1]]}]",
     "['do', ['set', null, 'x', 5], ['set', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
     "['do']", // Simulating an empty block of code
-    "['def', 'evalJS', function(code){return eval('(function(cb, env) {\\\r' + code + '\\\r})');}]",
 
     // TESTING COMPILATION (by re-coding "do", and recompiling it back):
 
-    "['set', null, 'do', 'code', ['evalJS', ['compile', ['lookup', null, 'do', 'code']]]]",
+    "['def', 'evalJS', function(code){return eval('(function(cb, env) {\\\r' + code + '\\\r})');}]",
+    "['def', 'compileJS', {args:['func'], code:['set', ['lookup', null, 'func'], 'code', ['evalJS', ['compile', ['get', ['lookup', null, 'func'], 'code']]]]}]",
+    //"['set', null, 'do', 'code', ['evalJS', ['compile', ['lookup', null, 'do', 'code']]]]",
+    "['compileJS', ['lookup', null, 'do']]",
     "['do', ['set', null, 'x', 5], ['set', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
     "['do']", // Simulating an empty block of code
+    "['compileJS', ['lookup', null, 'recur']]",
+    "['recur', 1]",
+    "['recur', 2]",
+    "['recur', 3]",
+    "['recur', 4]",
+    "['recur', 5]",
+    "['compileJS', ['lookup', null, 'list']]",
+    "['list', 'a', 'b', 'c', 1, 2, 3]",
 ];
 window.RunTests();
 
