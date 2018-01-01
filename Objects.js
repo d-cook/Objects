@@ -377,17 +377,17 @@ O.compile = function(code) {
     var src = "";
     while(calls.length) {
         var c = calls.pop();
-        var t = getType(c[0]);
-        var s = "return window.Objects.tailcall(" + (
+        var t = O.type(c[0]);
+        var s = "return env.parent.tailcall(" + (
             (t !== 'string') ? "r" + c[0] :
-            (c[0].charAt(0) === '"') ? "window.Objects.lookup, env, [env.env, " + c[0] + "], function (f) {\rreturn window.Objects.tailcall(f" :
+            (c[0].charAt(0) === '"') ? "env.parent.lookup, env, [env.env, " + c[0] + "], function (f) {\rreturn env.parent.tailcall(f" :
             c[0]
         ) + ", env, [";
         for(var i = 1; i < c.length; i++) {
-            s += (i > 1 ? ", " : "") + (getType(c[i]) === 'number' ? "r" : "") + c[i];
+            s += (i > 1 ? ", " : "") + (O.type(c[i]) === 'number' ? "r" : "") + c[i];
         }
         src = s + "], " +
-            (src.length < 1 ? "cb]);" : "function(r" + calls.length + ") {\r" + src + "\r});") +
+            (src.length < 1 ? "cb);" : "function(r" + calls.length + ") {\r" + src + "\r});") +
             (t === "string" && c[0].charAt(0) === '"' ? "\r});" : "");
     }
     return src;
@@ -416,8 +416,8 @@ window.Test = function (env, expr, cb) {
     //Wrapping expr in a function allows return to work properly at the root level:
     O.invoke(O.tailcall(O.apply, env, [{parent:env, code:expr}, [], env], cb));
 };
-
-(function(tests) {
+window.RunTests = function(tests) {
+    tests = tests || window.Tests;
     console.log("Running tests:");
     for(var i = 0; i < tests.length; i++) {
         console.log("Test(null, " + tests[i] + ")");
@@ -425,7 +425,8 @@ window.Test = function (env, expr, cb) {
         try { window.Test(null, eval(tests[i])); }
         catch(e) { console.log("  !!! " + e) }
     }
-}([
+};
+window.Tests = [
     "123",
     "'test'",
     "[123]",
@@ -527,7 +528,18 @@ window.Test = function (env, expr, cb) {
     "['with', {a:1, b:2, c:3}, {args:['o'], code:['set', ['lookup', null, 'o'], 'x', 5]}]",
     "['with', {a:1, b:2, c:3}, 'y', 7]",
     "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 'y', 'z', 2]",
-    "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 3]"
-]));
+    "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 3]",
+    "['def', 'do', {code:['get', ['lookup', null, 'args'], ['-', ['len', ['lookup', null, 'args']], 1]]}]",
+    "['do', ['set', null, 'x', 5], ['set', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
+    "['do']", // Simulating an empty block of code
+    "['def', 'evalJS', function(code){return eval('(function(cb, env) {\\\r' + code + '\\\r})');}]",
+
+    // TESTING COMPILATION (by re-coding "do", and recompiling it back):
+
+    "['set', null, 'do', 'code', ['evalJS', ['compile', ['lookup', null, 'do', 'code']]]]",
+    "['do', ['set', null, 'x', 5], ['set', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
+    "['do']", // Simulating an empty block of code
+];
+window.RunTests();
 
 }());
