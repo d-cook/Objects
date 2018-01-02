@@ -39,7 +39,8 @@ Every operation that can be performed on an object (and thus on any part of the 
 
 HOW TO TEST / USE IT:
 
-There is not much to "see" yet, but you can execute ad-hoc code from this [Test Page](https://rawgit.com/d-cook/Objects/master/Objects.html) (Objects.html in "raw" mode) by executing something of the following form from the F12 Developer Console:
-run(YOUR_AST_OBJECT, YOUR_ENVIRONMENT, YOUR_CALLBACK)); // Either environment or callback (or both) can be omitted
-
-(TODO: Somehow update the above "Test Page" URL to be relative to the current URL / branch ... is that even possible?)
+1. Open a blank tab in your web-browser (enter "about:blank" into the address bar).
+2. Open the developer console (press F12).
+3. Copy the contents of [Objects.js](https://raw.githubusercontent.com/d-cook/Objects/master/Objects.js) and paste it into the developer console, and then hit "enter" or click the "run" button.
+4. Observe the results in the console and on the blank page.
+5. You can try entering single commands by typing "Test(null, [...])" (where "..." is the code to run) into the console. (After step 3, you should already see some examples that have run in the console).
