@@ -360,6 +360,7 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 O.compile = function compile(code) {
     if (O.type(code) === 'object') {
         if (O.type(code.code) === 'array') { code.src = code.code; }
+        if (O.type(code.src) !== 'array') { return null; }
         code.code = compile(code.src);
         return code;
     }
