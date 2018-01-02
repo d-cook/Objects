@@ -555,6 +555,9 @@ window.Tests = [
     "['recur', 5]",
     "['test-compile', 'list']",
     "['list', 'a', 'b', 'c', 1, 2, 3]",
+    "['get', ['compile', {parent:Objects,args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'src']",
+    "['get', ['compile', {parent:Objects,args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'code']",
+    "[['compile', {parent:Objects,args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 5, 7]"
 ];
 window.RunTests();
 
