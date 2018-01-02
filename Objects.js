@@ -357,8 +357,13 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 
 //TODO: 1. Compile this compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
-O.compile = function compile(code) {
+O.compile = function compile(code, saveSrc) {
     if (O.type(code) === 'object') {
+        if (saveSrc === false) {
+            if (O.type(code.code) !== 'array') { return null; }
+            code.code = compile(code.code);
+            return code;
+        }
         if (O.type(code.code) === 'array') { code.src = code.code; }
         if (O.type(code.src) !== 'array') { return null; }
         code.code = compile(code.src);
@@ -366,7 +371,7 @@ O.compile = function compile(code) {
     }
     if (O.type(code) !== 'array') { return null; }
     var calls = [];
-    function getCalls(code) {
+    (function getCalls(code) {
         if (O.type(code) !== 'array' || code.length < 1) { return code; }
         var last = [];
         for(var i = 0; i < code.length; i++) {
@@ -375,12 +380,21 @@ O.compile = function compile(code) {
                 getCalls(a);
                 last.push(calls.length - 1);
             } else {
-                last.push(JSON.stringify(a) || '' + a);
+                if (a && a.code) { compile(a, false); }
+                if (a && O.type(a.code) === 'native') {
+                    var c = '';
+                    for(var p in a) {
+                        c += (c.length ? ',  ' : '  ') + JSON.stringify(p) + ':' +
+                             (JSON.stringify(a[p]) || '' + a[p]).replace(/\n/g, '\n    ') + '\n';
+                    }
+                    last.push(c.length ? '{\n' + c + '}' : '{}');
+                } else {
+                    last.push(JSON.stringify(a) || '' + a);
+                }
             }
         }
         calls.push(last);
-    }
-    getCalls(code);
+    }(code));
     var src = "";
     while(calls.length) {
         var c = calls.pop();
