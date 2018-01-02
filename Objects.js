@@ -357,7 +357,14 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 
 //TODO: 1. Compile this compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
-O.compile = function(code) {
+// "['def', 'compileJS', {args:['func'], code:['set', ['lookup', null, 'func'], 'code', ['evalJS', ['compile', ['get', ['lookup', null, 'func'], 'code']]]]}]",
+O.compile = function compile(code) {
+    if (O.type(code) === 'object') {
+        if (O.type(code.code) === 'array') { code.src = code.code; }
+        code.code = compile(code.src);
+        return code;
+    }
+    if (O.type(code) !== 'array') { return null; }
     var calls = [];
     function getCalls(code) {
         if (O.type(code) !== 'array' || code.length < 1) { return code; }
@@ -380,17 +387,17 @@ O.compile = function(code) {
         var t = O.type(c[0]);
         var s = "return env.parent.tailcall(" + (
             (t !== 'string') ? "r" + c[0] :
-            (c[0].charAt(0) === '"') ? "env.parent.lookup, env, [env.env, " + c[0] + "], function (f) {\rreturn env.parent.tailcall(f" :
+            (c[0].charAt(0) === '"') ? "env.parent.lookup, env, [env.env, " + c[0] + "], function (f) {\nreturn env.parent.tailcall(f" :
             c[0]
         ) + ", env, [";
         for(var i = 1; i < c.length; i++) {
             s += (i > 1 ? ", " : "") + (O.type(c[i]) === 'number' ? "r" : "") + c[i];
         }
         src = s + "], " +
-            (src.length < 1 ? "cb);" : "function(r" + calls.length + ") {\r" + src + "\r});") +
-            (t === "string" && c[0].charAt(0) === '"' ? "\r});" : "");
+            (src.length < 1 ? "cb);" : "function(r" + calls.length + ") {\n" + src + "\n});") +
+            (t === "string" && c[0].charAt(0) === '"' ? "\n});" : "");
     }
-    return src;
+    return eval('(function(cb, env) {\n' + src + '\n})');
 };
 
 // ------------------------------------------ //
@@ -535,19 +542,18 @@ window.Tests = [
 
     // TESTING COMPILATION (by re-coding "do", and recompiling it back):
 
-    "['def', 'evalJS', function(code){return eval('(function(cb, env) {\\\r' + code + '\\\r})');}]",
-    "['def', 'compileJS', {args:['func'], code:['set', ['lookup', null, 'func'], 'code', ['evalJS', ['compile', ['get', ['lookup', null, 'func'], 'code']]]]}]",
-    //"['set', null, 'do', 'code', ['evalJS', ['compile', ['lookup', null, 'do', 'code']]]]",
-    "['compileJS', ['lookup', null, 'do']]",
+    "['def', 'test-compile', {args:['code'],code:['get', ['compile', ['lookup', null, ['lookup', null, 'code']]], 'code']}]",
+    "['test-compile', 'do']",
     "['do', ['set', null, 'x', 5], ['set', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
     "['do']", // Simulating an empty block of code
-    "['compileJS', ['lookup', null, 'recur']]",
+    "['test-compile', 'recur']",
+    "['test-compile', 'recur']", // Compile twice to verify that src gets set properly so that re-compile works properly
     "['recur', 1]",
     "['recur', 2]",
     "['recur', 3]",
     "['recur', 4]",
     "['recur', 5]",
-    "['compileJS', ['lookup', null, 'list']]",
+    "['test-compile', 'list']",
     "['list', 'a', 'b', 'c', 1, 2, 3]",
 ];
 window.RunTests();
