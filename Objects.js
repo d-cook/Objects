@@ -384,10 +384,10 @@ O.compile = function compile(code, saveSrc) {
                 if (a && O.type(a.code) === 'native') {
                     var c = '';
                     for(var p in a) {
-                        c += (c.length ? ',  ' : '  ') + JSON.stringify(p) + ':' +
-                             (JSON.stringify(a[p]) || '' + a[p]).replace(/\n/g, '\n    ') + '\n';
+                        c += (c.length ? ',\n  ' : '\n  ') + JSON.stringify(p) + ':' +
+                             (JSON.stringify(a[p]) || '' + a[p]).replace(/\n/g, '\n    ');
                     }
-                    last.push(c.length ? '{\n' + c + '}' : '{}');
+                    last.push(c.length ? '{' + c + '\n}' : '{}');
                 } else {
                     last.push(JSON.stringify(a) || '' + a);
                 }
@@ -573,7 +573,8 @@ window.Tests = [
     "['get', ['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'code']",
     "[['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 5, 7]",
     "[['compile', {code:['if', true, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
-    "[['compile', {code:['if', false, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]"
+    "[['compile', {code:['if', false, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
+    "['get', ['compile', {args:['x'],code:['if', true, {args:['v1'],code:['if', true, {args:['v2'],code:['+', 'x:', ['lookup', null, 'x'], ', v1:', ['lookup', null, 'v1'], ', v2:', ['lookup', null, 'v2']]}]}]}], 'code']"
 ];
 window.RunTests();
 
