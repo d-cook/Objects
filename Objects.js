@@ -357,7 +357,6 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 
 //TODO: 1. Compile this compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
-// "['def', 'compileJS', {args:['func'], code:['set', ['lookup', null, 'func'], 'code', ['evalJS', ['compile', ['get', ['lookup', null, 'func'], 'code']]]]}]",
 O.compile = function compile(code) {
     if (O.type(code) === 'object') {
         if (O.type(code.code) === 'array') { code.src = code.code; }
@@ -385,9 +384,9 @@ O.compile = function compile(code) {
     while(calls.length) {
         var c = calls.pop();
         var t = O.type(c[0]);
-        var s = "return env.parent.tailcall(" + (
+        var s = "return O.tailcall(" + (
             (t !== 'string') ? "r" + c[0] :
-            (c[0].charAt(0) === '"') ? "env.parent.lookup, env, [env.env, " + c[0] + "], function (f) {\nreturn env.parent.tailcall(f" :
+            (c[0].charAt(0) === '"') ? "O.lookup, env, [env.env, " + c[0] + "], function (f) {\nreturn O.tailcall(f" :
             c[0]
         ) + ", env, [";
         for(var i = 1; i < c.length; i++) {
@@ -555,9 +554,11 @@ window.Tests = [
     "['recur', 5]",
     "['test-compile', 'list']",
     "['list', 'a', 'b', 'c', 1, 2, 3]",
-    "['get', ['compile', {parent:Objects,args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'src']",
-    "['get', ['compile', {parent:Objects,args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'code']",
-    "[['compile', {parent:Objects,args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 5, 7]"
+    "['get', ['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'src']",
+    "['get', ['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'code']",
+    "[['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 5, 7]",
+    "[['compile', {code:['if', true, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
+    "[['compile', {code:['if', false, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]"
 ];
 window.RunTests();
 
