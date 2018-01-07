@@ -6,22 +6,11 @@ O.root = O;
 
 // Functions that must be native-defined:
 
-O.has = function (o, p) { return o ? (p in o) : false; };
-O.get = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
-    var h = env.parent.has(env.obj, env.prop);
-    return env.parent.tailcall(cb, env, [h ? env.obj[env.prop] : null]);
-}};
-O.set = { parent: O, args: ['obj', 'prop', 'value'], code: function (cb, env) {
-    var t = env.parent.type(env.obj);
-    if (t === 'object' || t === 'array') { env.obj[env.prop] = env.value; }
-    return env.parent.tailcall(cb, env, [env.value]);
-}};
-O.delete = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
-    var h = env.parent.has(env.obj, env.prop);
-    var v = (h) ? env.obj[env.prop] : null;
-    delete env.obj[env.prop];
-    return env.parent.tailcall(cb, env, [v]);
-}};
+O.has    = function (o, p   ) { return o ? (p in o) : false; };
+O.get    = function (o, p   ) { return O.has(o, p) ? o[p] : null; };
+O.set    = function (o, p, v) { var t = O.type(o); if (t === 'object' || t === 'array') { o[p] = v; } return v; };
+O.delete = function (o, p   ) { var v = (O.has(o, p) ? o[p] : null); delete o[p]; return v; };
+
 O.type = function (o) {
     var t = (typeof o);
     if (t === 'undefined' || o === null) { return 'null'; }
@@ -29,6 +18,7 @@ O.type = function (o) {
     var s = Object.prototype.toString.call(o);
     return (s === '[object Array]' || s === '[object Arguments]') ? 'array' : t;
 };
+
 O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     var f = (env.cond ? env.T : env.F);
     if (f) { return env.parent.tailcall(f, env.caller, [env.cond], cb); }
