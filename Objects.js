@@ -21,8 +21,8 @@ O.type = function (o) {
 
 O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     var f = (env.cond ? env.T : env.F);
-    if (f) { return env.parent.tailcall(f, env.caller, [env.cond], cb); }
-    return env.parent.tailcall(cb, env, [null]); // No valid code to run, so nothing to return
+    if (f) { return O.tailcall(f, env.caller, [env.cond], cb); }
+    return O.tailcall(cb, env, [null]); // No valid code to run, so nothing to return
 }};
 
 O.newObj = function ( ) { return Object.create(null); };
@@ -369,38 +369,31 @@ O.compile = function compile(code, saveSrc) {
     return eval('(function(cb, env) {\n' + src + '\n})');
 };
 
+O.run = function (expr, env, cb) {
+    console.log('run:', expr);
+    try {
+        if (typeof expr === 'string') { expr = eval(expr); }
+        if (arguments.length === 2 && typeof env === 'function') { cb = env; env = null; }
+        if (typeof env !== 'object' || !env) { env = O; }
+        //Wrapping expr in a function allows return to work properly at the root level:
+        O.invoke(O.tailcall(O.apply, env, [{parent:env, code:expr}, [], env], function (v) {
+            console.log(' -->', v);
+            if (typeof cb === 'function') { try { cb(v); } catch(e) { } };
+            return v;
+        }));
+    } catch(e) { (console.warn||console.log)(' !!!' + e); }
+};
+
 // ------------------------------------------ //
 // TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
 // ------------------------------------------ //
 
-window.Test = function (env, expr, cb) {
-    cb = arguments[arguments.length - 1];
-    if (typeof cb !== 'function') {
-        cb = function (v) {
-            if (O.type(v) === 'object') {
-                var v2 = {};
-                Object.keys(v).forEach(function(k){ v2[k] = v[k]; });
-                v = v2;
-            }
-            var s = '' + v;
-            try { s = JSON.stringify(v) || s; } catch(e) { }
-            console.log("  --> " + s);
-            return v;
-        };
-    }
-    if (typeof env !== 'object' || !env) { env = O; }
-    //Wrapping expr in a function allows return to work properly at the root level:
-    O.invoke(O.tailcall(O.apply, env, [{parent:env, code:expr}, [], env], cb));
-};
+window.Test = O.run;
 window.RunTests = function(tests) {
     tests = tests || window.Tests;
+    if (O.type(tests) !== 'array') { tests = [tests]; }
     console.log("Running tests:");
-    for(var i = 0; i < tests.length; i++) {
-        console.log("Test(null, " + tests[i] + ")");
-        var result = null;
-        try { window.Test(null, eval(tests[i])); }
-        catch(e) { console.log("  !!! " + e) }
-    }
+    for(var i = 0; i < tests.length; i++) { window.Test(tests[i]); }
 };
 window.Tests = [
     "123",
