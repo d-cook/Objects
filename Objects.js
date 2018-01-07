@@ -19,7 +19,8 @@ O.tailcall = function tailcall(func, env, args, cb) {
     // TODO: Optimize the case for evaling a call to eval.
     if (O.type(env) === 'array') { cb = args; args = env; env = null; }
     var ft = O.type(func);
-    if (ft === 'native') {
+    if (ft !== 'object') {
+        if (ft !== 'native') { func = (function(value){return function(){return value;}})(func); }
         // Detect if func takes a cb. TODO: this better (it's a hack with potential false-positives)
         var hasCb = (''+func).replace(/^[^(]+\(/, '').replace(/\).*$/, '').substring(0,3) === 'cb,';
         var allArgs = (cb && hasCb) ? [cb] : [];
