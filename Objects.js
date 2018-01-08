@@ -20,9 +20,7 @@ O.type = function (o) {
 };
 
 O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
-    var f = (env.cond ? env.T : env.F);
-    if (f) { return O.tailcall(f, env.caller, [env.cond], cb); }
-    return O.tailcall(cb, env, [null]); // No valid code to run, so nothing to return
+    return O.tailcall((env.cond ? env.T : env.F), env.caller, [env.cond], cb);
 }};
 
 O.newObj = function ( ) { return Object.create(null); };
@@ -45,61 +43,19 @@ O['>='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i
 O.and   = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if (O.falsey(r = arguments[i])) return r;     } return r;    };
 O.or    = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if (O.truthy(r = arguments[i])) return r;     } return r;    };
 
-// These tailcall and invoke functions drive execution of all wrapped functions, which
-// run in CPS (Continuation Passing Style) (i.e. return execution/values via callbacks)
-O.tailcall = function tailcall(func, env, args, cb) {
-    // NOTE: this function references external entities: type, eval
-    // TODO: Optimize the case for evaling a call to eval.
-    if (O.type(env) === 'array') { cb = args; args = env; env = null; }
-    var ft = O.type(func);
-    if (ft !== 'object') {
-        if (ft !== 'native') { func = (function(value){return function(){return value;}})(func); }
-        // Detect if func takes a cb. TODO: this better (it's a hack with potential false-positives)
-        var hasCb = (''+func).replace(/^[^(]+\(/, '').replace(/\).*$/, '').substring(0,3) === 'cb,';
-        var allArgs = (cb && hasCb) ? [cb] : [];
-        allArgs.push.apply(allArgs, args);
-        if (cb && !hasCb) { return tailcall(cb, env, [func.apply(null, allArgs)]); }
-        return { func: func, args: allArgs };
-    }
-    if (ft !== 'object') { return null; }
-    if (O.type(func.code) === 'native') {
-        // If func has no parent, then assume it is a nested code-block and inherit from current execution scope:
-        var env2 = {
-            parent: func.parent || env || null,
-            args: args
-        };
-        env2.scope = env2;
-        if (func.parent) {
-            // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
-            env2.caller = env;
-            env2.thisFunc = func;
-            // TODO: Should a "return" property be getting set here?
-        }
-        if (func.args) {
-            for (var i = 0; i < func.args.length; i++) {
-                env2[func.args[i]] = args[i];
-            }
-        }
-        return { func: func.code, args: [cb, env2] };
-    }
-    // Otherwise call eval on the func object:
-    var expr = [func];
-    expr.push.apply(expr, args);
-    var env2 = {
-        thisFunc: O.eval,
-        parent: O.eval.parent,
-        caller: env || null,
-        args: [env, expr],
-        expr: expr,
-        env: env
-    };
-    env2.scope = env2;
-    return { func: O.eval.code, args: [cb, env2] };
-};
-O.invoke = function (tc) { // tailcall
-    while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
-};
+O.slice   = function (a,s,e) { return (O.type(a) !== 'array') ? null : [].slice  .apply(a, [].slice.call(arguments, 1)); };
+O.push    = function (a    ) { return (O.type(a) !== 'array') ? null : [].push   .apply(a, [].slice.call(arguments, 1)); };
+O.unshift = function (a    ) { return (O.type(a) !== 'array') ? null : [].unshift.apply(a, [].slice.call(arguments, 1)); };
+O.pop     = function (a    ) { return (O.type(a) !== 'array') ? null : [].pop    .apply(a); };
+O.shift   = function (a    ) { return (O.type(a) !== 'array') ? null : [].shift  .apply(a); };
 
+// The exists, lookup, assign, and remove are just like has, get, set, and delete,
+//   except that property-search continues up the "parent" chain until it is found.
+//   They also allow a series of properties to be listed, for convenience.
+// TODO: These MIGHT not have to be native-provided, if "compile" is updated to
+//   replace calls to native-provided funcs (especially "lookup") are either replaced
+//   with direct references or with their native-code equivalent; Or if the semantics
+//   of get & set are altered to operate on the "caller" when the "obj" param is null.
 O.exists = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
@@ -159,6 +115,64 @@ O.remove = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     if (!h) { return env.parent.tailcall(cb, env, [null, false]); }
     return env.parent.tailcall(env.parent.remove, env, [obj.parent, env.prop], cb);
 }};
+
+// These tailcall and invoke functions drive execution of all wrapped functions, which
+// run in CPS (Continuation Passing Style) (i.e. return execution/values via callbacks)
+O.tailcall = function tailcall(func, env, args, cb) {
+    // NOTE: this function references external entities: type, eval
+    // TODO: Optimize the case for evaling a call to eval.
+    if (O.type(env) === 'array') { cb = args; args = env; env = null; }
+    var ft = O.type(func);
+    if (ft !== 'object') {
+        if (ft !== 'native') { func = (function(value){return function(){return value;}})(func); }
+        // Detect if func takes a cb. TODO: this better (it's a hack with potential false-positives)
+        var hasCb = (''+func).replace(/^[^(]+\(/, '').replace(/\).*$/, '').substring(0,3) === 'cb,';
+        var allArgs = (cb && hasCb) ? [cb] : [];
+        allArgs.push.apply(allArgs, args);
+        if (cb && !hasCb) { return tailcall(cb, env, [func.apply(null, allArgs)]); }
+        return { func: func, args: allArgs };
+    }
+    if (ft !== 'object') { return null; }
+    if (O.type(func.code) === 'native') {
+        // If func has no parent, then assume it is a nested code-block and inherit from current execution scope:
+        var env2 = {
+            parent: func.parent || env || null,
+            args: args
+        };
+        env2.scope = env2;
+        if (func.parent) {
+            // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
+            env2.caller = env;
+            env2.thisFunc = func;
+            // TODO: Should a "return" property be getting set here?
+        }
+        if (func.args) {
+            for (var i = 0; i < func.args.length; i++) {
+                env2[func.args[i]] = args[i];
+            }
+        }
+        return { func: func.code, args: [cb, env2] };
+    }
+    // Otherwise call eval on the func object:
+    var expr = [func];
+    expr.push.apply(expr, args);
+    var env2 = {
+        thisFunc: O.eval,
+        parent: O.eval.parent,
+        caller: env || null,
+        args: [env, expr],
+        expr: expr,
+        env: env
+    };
+    env2.scope = env2;
+    return { func: O.eval.code, args: [cb, env2] };
+};
+O.invoke = function (tc) { // tailcall
+    while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
+};
+
+O.list = { parent: O, code: ['lookup', null, 'args'] };
+
 O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
     var t = env.parent.type(env.obj);
     if (t === 'array') {
@@ -369,6 +383,7 @@ O.compile = function compile(code, saveSrc) {
     return eval('(function(cb, env) {\n' + src + '\n})');
 };
 
+// External interface for running code
 O.run = function (expr, env, cb) {
     console.log('run:', expr);
     try {
@@ -383,6 +398,21 @@ O.run = function (expr, env, cb) {
         }));
     } catch(e) { (console.warn||console.log)(' !!!' + e); }
 };
+
+// TODO: Convert the above funcs (not including the must-be-native ones) to the following format:
+//   The original plan was to do this with ALL funcs, and then "compile" a base-set of them.
+//   However, now I may just let the "native-provided" ones sit as is, and the rest may not
+//   NEED to be compiled at all. Either way, many funcs above need to be rewritten in this form: 
+
+O.run(['set', ['lookup', null, 'root'], 'def', {
+    args:['k', 'v'],
+    code:['do',
+        ['if', ['and', ['=', ['type', ['lookup', null, 'v']], 'object'], ['not', ['has', ['lookup', null, 'v'], 'parent']]], {code:['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root']]}],
+        ['set', ['lookup', null, 'root'], ['lookup', null, 'k'], ['lookup', null, 'v']]
+    ]
+}]);
+
+O.run(['def', 'do', {code:['get', ['lookup', null, 'args'], ['-', ['length', ['lookup', null, 'args']], 1]]}]);
 
 // ------------------------------------------ //
 // TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
@@ -407,7 +437,6 @@ window.Tests = [
     "['lookup', {w:1,parent:{x:'IAmParentX'}}, 'x']",
     "['lookup', {w:1,parent:{parent:{x:'IAmParentParentX'}}}, 'x']",
     "['lookup', {x:{parent:{y:{z:'xyz'}}}}, 'x', 'y', 'z']",
-    "['set', ['lookup', null, 'root'], 'def', function(k,v){if(Objects.type(v) === 'object' && !v.parent){v.parent=Objects;}Objects[k]=v;return v;}]",
     "['lookup', null, 'foo']",
     "['def', 'foo', 'IAmFoo']",
     "['lookup', null, 'foo']",
@@ -498,7 +527,6 @@ window.Tests = [
     "['with', {a:1, b:2, c:3}, 'y', 7]",
     "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 'y', 'z', 2]",
     "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 3]",
-    "['def', 'do', {code:['get', ['lookup', null, 'args'], ['-', ['length', ['lookup', null, 'args']], 1]]}]",
     "['do', ['assign', null, 'x', 5], ['assign', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
     "['do']", // Simulating an empty block of code
 
