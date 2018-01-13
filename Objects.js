@@ -376,7 +376,8 @@ O.compile = function compile(code, saveSrc) {
             last = pattern.replace(/\%\d+/g, function(esc) {
                 // TODO: This is not mapping out properly
                 var n = parseInt(esc.substring(1));
-                return (n ? '!!!(((' + n + ')))' : null); //(n ? last[n] : 'null');
+                var v = (n && n <= last.length ? last[n-1] : 'null');
+                return O.type(v) === 'number' ? 'r' + v : v;
             });
         }
         calls.push(last);
@@ -409,7 +410,7 @@ O.compile = function compile(code, saveSrc) {
     return eval('(function(cb, env) {\n' + src + '\n})');
 };
 O.cp = {
-    if: '(%1) ? (%2) : (%3)'
+    if: '(%1 ? %2 : %3)'
 };
 O.compilePatterns = {};
 
