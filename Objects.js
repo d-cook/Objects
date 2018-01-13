@@ -438,7 +438,13 @@ O.run = function (expr, env, cb) {
 O.run(['set', ['lookup', null, 'root'], 'def', {
     args:['k', 'v'],
     code:['do',
-        ['if', ['and', ['=', ['type', ['lookup', null, 'v']], 'object'], ['not', ['has', ['lookup', null, 'v'], 'parent']]], {code:['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root']]}],
+        ['if',
+            ['and',
+                ['has', ['lookup', null, 'v'], 'code'],
+                ['not', ['has', ['lookup', null, 'v'], 'parent']]
+            ],
+            { code: ['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root'] ] }
+        ],
         ['set', ['lookup', null, 'root'], ['lookup', null, 'k'], ['lookup', null, 'v']]
     ]
 }]);
