@@ -345,9 +345,12 @@ O.compile = function compile(code, saveSrc) {
         var calls = [];
         if (O.type(code) !== 'array' || code.length < 1) { return calls; }
         for(var i = 0; i < O.compilePatterns.length; i++) {
-            var c = O.compilePatterns[i](code, getCalls);
+            var c = O.compilePatterns[i](code, getCalls, function appendCalls(innerCode) {
+                calls.push.apply(calls, getCalls(innerCode));
+                return 'r' + (calls.length - 1);
+            });
+            if (O.type(c) === 'string') { c = { pattern: c }; }
             if (O.type(c) === 'object') {
-                calls.push.apply(calls, c.pre || []);
                 calls.push(c);
                 return calls;
             }
@@ -376,16 +379,18 @@ O.compile = function compile(code, saveSrc) {
         calls.push(last);
         return calls;
     }(code));
-    //breakpoint: calls = [['"cond"', "123"],{pattern:"if(r22) {\n`T`\n}\nreturn next;",T:[['"foo"', "456"]]}]
+    //breakpoint: calls = [['"cond"', "123"],{pattern:"if(r22) {\n`T`\n}\nreturn cb;",T:[['"foo"', "456"]]}]
     var src = (function buildCalls(calls) {
         var src = '';
         while(calls.length) {
             var c = calls.pop();
             if (c && c.pattern) {
-                src = 'return (function(next){\n' + c.pattern.replace(/[^`]`\w+`/g, function(esc){
+                src = src.replace(/^(\;\s)*|(\;|\s)*$/g, '').replace(/\n/g, '\n    ');
+                src = (src.length ? 'return (function(cb){\n' : '') +
+                    c.pattern.replace(/[^`]`\w+`/g, function(esc){
                         var p = esc.substring(2, esc.length-1);
                         return (c[p]) ? esc.charAt(0) + buildCalls(c[p]) : esc;
-                    }) + '\n}(' + src.replace(/\;\s*$/g, '').replace(/^(\s|\;)*$/g, 'O.tailcall(cb, env, [null])').replace(/\n/g, '\n    ') + '));';
+                    }) + (src.length ? '\n}(' + src + '));' : '');
             } else {
                 var t = O.type(c[0]);
                 var s = 'return O.tailcall(' + (
@@ -406,20 +411,15 @@ O.compile = function compile(code, saveSrc) {
     return eval('(function(cb, env) {\n' + src + '\n})');
 };
 O.cp = [
-    function(code, getCalls) {
-        if (code[0] !== 'if' && code[0] !== O.if) { return false; }
-        var pre = (code.length > 1) && getCalls(code[1]);
-        return {
-            pattern:
-                (code.length > 2 ? 'if(r' + (pre.length-1) + ') {\n`T`\n}\n' : '') +
-                (code.length > 3 ? ' else {\n`F`}\n' : '') +
-                'return next;',
-            pre: pre,
-            T: getCalls(code[2] && (code[2].code || code[2])),
-            F: getCalls(code[3] && (code[3].code || code[3]))
-        };
+    function(code, getCalls, appendCalls) {
+        return (code[0] === 'if' || code[0] === O.if) && (
+            'return O.tailcall(cb, env, [' + (code.length > 1 && appendCalls(code[1])) +
+            ' ? ' + (code.length > 2 ? appendCalls(code[2]) : null) +
+            ' : ' + (code.length > 3 ? appendCalls(code[3]) : null) + ']);'
+        );
     }
 ];
+// O.cp = { if: [ null, null, 'if (%0) {\n%1\n} %n', 'if (%0) {\n%1\n} else {\n%2\n} %n'] };
 O.compilePatterns = [];
 
 // External interface for running code
