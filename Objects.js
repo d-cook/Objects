@@ -327,6 +327,8 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 //TODO: 1. Compile this compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
 O.compile = function compile(code, saveSrc) {
+    // CALL WITH (and then breakpoint below): Test(null, ['get', ['compile', {code:['foo', 'bar']}], 'code'])
+    // breakpoint: Objects.compilePatterns = Objects.cp;
     if (O.type(code) === 'object') {
         if (saveSrc === false) {
             if (O.type(code.code) !== 'array') { return null; }
@@ -339,21 +341,30 @@ O.compile = function compile(code, saveSrc) {
         return code;
     }
     if (O.type(code) !== 'array') { return null; }
-    var calls = [];
-    (function getCalls(code) {
-        if (O.type(code) !== 'array' || code.length < 1) { return code; }
+    var calls = (function getCalls(code) {
+        var calls = [];
+        if (O.type(code) !== 'array' || code.length < 1) { return calls; }
+        for(var i = 0; i < O.compilePatterns.length; i++) {
+            var c = O.compilePatterns[i](code, getCalls);
+            if (O.type(c) === 'object') {
+                calls.push.apply(calls, c.pre || []);
+                calls.push(c);
+                return calls;
+            }
+        }
         var last = [];
         for(var i = 0; i < code.length; i++) {
             var a = code[i];
             if (O.type(a) === 'array') {
-                getCalls(a);
+                var c = getCalls(a);
+                calls.push.apply(calls, c);
                 last.push(calls.length - 1);
             } else {
                 if (a && a.code) { compile(a, false); }
                 if (a && O.type(a.code) === 'native') {
                     var c = '';
                     for(var p in a) {
-                        c += (c.length ? ',\n  ' : '\n  ') + JSON.stringify(p) + ':' +
+                        c += (c.length ? ',\n  ' : '\n  ') + JSON.stringify(p) + ': ' +
                              (JSON.stringify(a[p]) || '' + a[p]).replace(/\n/g, '\n    ');
                     }
                     last.push(c.length ? '{' + c + '\n}' : '{}');
@@ -363,25 +374,53 @@ O.compile = function compile(code, saveSrc) {
             }
         }
         calls.push(last);
+        return calls;
     }(code));
-    var src = "";
-    while(calls.length) {
-        var c = calls.pop();
-        var t = O.type(c[0]);
-        var s = "return O.tailcall(" + (
-            (t !== 'string') ? "r" + c[0] :
-            (c[0].charAt(0) === '"') ? "O.lookup, env, [env.env, " + c[0] + "], function (f) {\nreturn O.tailcall(f" :
-            c[0]
-        ) + ", env, [";
-        for(var i = 1; i < c.length; i++) {
-            s += (i > 1 ? ", " : "") + (O.type(c[i]) === 'number' ? "r" : "") + c[i];
+    //breakpoint: calls = [['"cond"', "123"],{pattern:"if(r22) {\n`T`\n}\nreturn next;",T:[['"foo"', "456"]]}]
+    var src = (function buildCalls(calls) {
+        var src = '';
+        while(calls.length) {
+            var c = calls.pop();
+            if (c && c.pattern) {
+                src = 'return (function(next){\n' + c.pattern.replace(/[^`]`\w+`/g, function(esc){
+                        var p = esc.substring(2, esc.length-1);
+                        return (c[p]) ? esc.charAt(0) + buildCalls(c[p]) : esc;
+                    }) + '\n}(' + src.replace(/\;\s*$/g, '').replace(/^(\s|\;)*$/g, 'O.tailcall(cb, env, [null])').replace(/\n/g, '\n    ') + '));';
+            } else {
+                var t = O.type(c[0]);
+                var s = 'return O.tailcall(' + (
+                    (t !== 'string') ? 'r' + c[0] :
+                    (c[0].charAt(0) === '"') ? 'O.lookup, env, [env.env, ' + c[0] + '], function (f) {\nreturn O.tailcall(f' :
+                    c[0]
+                ) + ', env, [';
+                for(var i = 1; i < c.length; i++) {
+                    s += (i > 1 ? ', ' : '') + (O.type(c[i]) === 'number' ? 'r' : '') + c[i];
+                }
+                src = s + '], ' +
+                    (src.length < 1 ? 'cb);' : 'function(r' + calls.length + ') {\n' + src + '\n});') +
+                    (t === 'string' && c[0].charAt(0) === '"' ? '\n});' : '');
+            }
         }
-        src = s + "], " +
-            (src.length < 1 ? "cb);" : "function(r" + calls.length + ") {\n" + src + "\n});") +
-            (t === "string" && c[0].charAt(0) === '"' ? "\n});" : "");
-    }
+        return src;
+    }(calls));
     return eval('(function(cb, env) {\n' + src + '\n})');
 };
+O.cp = [
+    function(code, getCalls) {
+        if (code[0] !== 'if' && code[0] !== O.if) { return false; }
+        var pre = (code.length > 1) && getCalls(code[1]);
+        return {
+            pattern:
+                (code.length > 2 ? 'if(r' + (pre.length-1) + ') {\n`T`\n}\n' : '') +
+                (code.length > 3 ? ' else {\n`F`}\n' : '') +
+                'return next;',
+            pre: pre,
+            T: getCalls(code[2] && (code[2].code || code[2])),
+            F: getCalls(code[3] && (code[3].code || code[3]))
+        };
+    }
+];
+O.compilePatterns = [];
 
 // External interface for running code
 O.run = function (expr, env, cb) {
@@ -550,7 +589,10 @@ window.Tests = [
     "[['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 5, 7]",
     "[['compile', {code:['if', true, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
     "[['compile', {code:['if', false, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
-    "['get', ['compile', {args:['x'],code:['if', true, {args:['v1'],code:['if', true, {args:['v2'],code:['+', 'x:', ['lookup', null, 'x'], ', v1:', ['lookup', null, 'v1'], ', v2:', ['lookup', null, 'v2']]}]}]}], 'code']"
+    "['get', ['compile', {args:['x'],code:['if', true, {args:['v1'],code:['if', true, {args:['v2'],code:['+', 'x:', ['lookup', null, 'x'], ', v1:', ['lookup', null, 'v1'], ', v2:', ['lookup', null, 'v2']]}]}]}], 'code']",
+    "['get', ['compile', {code:['if', ['cond', 123], {code:['foo', 456]}]}], 'code']",
+    "['def', 'compilePatterns', ['lookup', null, 'cp']]",
+    "['get', ['compile', {code:['if', ['cond', 123], {code:['foo', 456]}]}], 'code']"
 ];
 window.RunTests();
 
