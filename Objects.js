@@ -344,19 +344,15 @@ O.compile = function compile(code, saveSrc) {
     var calls = (function getCalls(code) {
         var calls = [];
         if (O.type(code) !== 'array' || code.length < 1) { return calls; }
-        for(var i = 0; i < O.compilePatterns.length; i++) {
-            var c = O.compilePatterns[i](code, getCalls, function appendCalls(innerCode) {
-                calls.push.apply(calls, getCalls(innerCode));
-                return 'r' + (calls.length - 1);
-            });
-            if (O.type(c) === 'string') { c = { pattern: c }; }
-            if (O.type(c) === 'object') {
-                calls.push(c);
-                return calls;
+        var pattern = null;
+        for(var p in O.compilePatterns) {
+            if (code[0] === p || (O[p] && code[0] === O[p])) {
+                pattern = O.compilePatterns[p];
+                break;
             }
         }
         var last = [];
-        for(var i = 0; i < code.length; i++) {
+        for(var i = (pattern ? 1 : 0); i < code.length; i++) {
             var a = code[i];
             if (O.type(a) === 'array') {
                 var c = getCalls(a);
@@ -376,6 +372,13 @@ O.compile = function compile(code, saveSrc) {
                 }
             }
         }
+        if (pattern) {
+            last = pattern.replace(/\%\d+/g, function(esc) {
+                // TODO: This is not mapping out properly
+                var n = parseInt(esc.substring(1));
+                return (n ? '!!!(((' + n + ')))' : null); //(n ? last[n] : 'null');
+            });
+        }
         calls.push(last);
         return calls;
     }(code));
@@ -384,43 +387,31 @@ O.compile = function compile(code, saveSrc) {
         var src = '';
         while(calls.length) {
             var c = calls.pop();
-            if (c && c.pattern) {
-                src = src.replace(/^(\;\s)*|(\;|\s)*$/g, '').replace(/\n/g, '\n    ');
-                src = (src.length ? 'return (function(cb){\n' : '') +
-                    c.pattern.replace(/[^`]`\w+`/g, function(esc){
-                        var p = esc.substring(2, esc.length-1);
-                        return (c[p]) ? esc.charAt(0) + buildCalls(c[p]) : esc;
-                    }) + (src.length ? '\n}(' + src + '));' : '');
-            } else {
-                var t = O.type(c[0]);
-                var s = 'return O.tailcall(' + (
-                    (t !== 'string') ? 'r' + c[0] :
-                    (c[0].charAt(0) === '"') ? 'O.lookup, env, [env.env, ' + c[0] + '], function (f) {\nreturn O.tailcall(f' :
-                    c[0]
-                ) + ', env, [';
-                for(var i = 1; i < c.length; i++) {
-                    s += (i > 1 ? ', ' : '') + (O.type(c[i]) === 'number' ? 'r' : '') + c[i];
-                }
-                src = s + '], ' +
-                    (src.length < 1 ? 'cb);' : 'function(r' + calls.length + ') {\n' + src + '\n});') +
-                    (t === 'string' && c[0].charAt(0) === '"' ? '\n});' : '');
+            var tc = O.type(c);
+            if (tc !== 'string' && tc !== 'array') { continue; }
+            var t0 = (tc === 'array') && O.type(c[0]);
+            var s = 'return O.tailcall(' + (
+                (tc === 'string') ? 'function(){ return ' + c + ';}' :
+                (t0 !== 'string') ? 'r' + c[0] :
+                (c[0].charAt(0) === '"') ? 'O.lookup, env, [env.env, ' + c[0] + '], function (f) {\nreturn O.tailcall(f' :
+                c[0]
+            ) + ', env, [';
+            var args = (tc === 'array') ? c.slice(1) : [];
+            for(var i = 0; i < args.length; i++) {
+                s += (i > 0 ? ', ' : '') + (O.type(args[i]) === 'number' ? 'r' : '') + args[i];
             }
+            src = s + '], ' +
+                (src.length < 1 ? 'cb);' : 'function(r' + calls.length + ') {\n' + src + '\n});') +
+                (t0 === 'string' && c[0].charAt(0) === '"' ? '\n});' : '');
         }
         return src;
     }(calls));
     return eval('(function(cb, env) {\n' + src + '\n})');
 };
-O.cp = [
-    function(code, getCalls, appendCalls) {
-        return (code[0] === 'if' || code[0] === O.if) && (
-            'return O.tailcall(cb, env, [' + (code.length > 1 && appendCalls(code[1])) +
-            ' ? ' + (code.length > 2 ? appendCalls(code[2]) : null) +
-            ' : ' + (code.length > 3 ? appendCalls(code[3]) : null) + ']);'
-        );
-    }
-];
-// O.cp = { if: [ null, null, 'if (%0) {\n%1\n} %n', 'if (%0) {\n%1\n} else {\n%2\n} %n'] };
-O.compilePatterns = [];
+O.cp = {
+    if: '(%1) ? (%2) : (%3)'
+};
+O.compilePatterns = {};
 
 // External interface for running code
 O.run = function (expr, env, cb) {
