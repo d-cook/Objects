@@ -409,8 +409,29 @@ O.compile = function compile(code, saveSrc) {
     }(calls));
     return eval('(function(cb, env) {\n' + src + '\n})');
 };
+//TODO: Revise compilePatters (and compile) as follows:
+// \%v\d+\b  (ex: %v2)     value
+// \%r\d*\b  (ex: %r2, %r) return value, return (nothing)
+// \%c\d+\b  (ex: %c2)     compile/code
+//
+// %v = (someValue)          , src = ""  -->  return O.tailcall(cb, [%v2]);
+// %v = (someValue)          , src = ... -->  var v2 = %v2; ...
+// %v = {code:[A],args:[x,y]}, src = ... -->  var vx = ..; var vy = ..; (compile-code with src = ...)
+//
+// if (cond) { return O.tailcall(cb, [v   ]); }
+// else      { return O.tailcall(cb, [null]); }
+//
+// if (cond) { var v2 = v;    }
+// else      { var v2 = null; }
+//
+// //wrap into func when detect multiple returns:
+// return (function(cb) {
+//     if (cond) { (compile-code and return into cb) }
+//     else      { (compile-code and return into cb) }
+// }(...));
+//
 O.cp = {
-    if: '(%1 ? %2 : %3)'
+    if: '(%1 ? %2 : %3)' // 'if (%v1) { %c2 } else { %c3 }'
 };
 O.compilePatterns = {};
 
