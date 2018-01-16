@@ -410,26 +410,51 @@ O.compile = function compile(code, saveSrc) {
     return eval('(function(cb, env) {\n' + src + '\n})');
 };
 //TODO: Revise compilePatters (and compile) as follows:
-// \%v\d+\b  (ex: %v2)     value
-// \%r\d*\b  (ex: %r2, %r) return value, return (nothing)
-// \%c\d+\b  (ex: %c2)     compile/code
+// %v# (e.g. %v2) insert #th value as-is
+// %r# (e.g. %r3) insert code to return the #th value to the outer expression
+// %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
+// %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
 //
-// %v = (someValue)          , src = ""  -->  return O.tailcall(cb, [%v2]);
-// %v = (someValue)          , src = ... -->  var v2 = %v2; ...
-// %v = {code:[A],args:[x,y]}, src = ... -->  var vx = ..; var vy = ..; (compile-code with src = ...)
+// EXAMPLES:
 //
-// if (cond) { return O.tailcall(cb, [v   ]); }
-// else      { return O.tailcall(cb, [null]); }
+// (Note: "Outer expressions" (e.g. the 'foo' in ['foo', ['bar', x]]) are represented below as "...".
+//        When there is no "outer expression", then values are just passed to the "cb" callback.
+//        Examples below have TWO outputs when the presence/absense of an outer expression matters)
+// 
+// (Note: Inner values get computed into vars to be consumed by outer code, denoted below as "RESULT")
 //
-// if (cond) { var v2 = v;    }
-// else      { var v2 = null; }
+// (Note: "var RES = x; ..." is an optimized stand-in for what would otherwise compile to:
+//        "return O.tailcall(function(){ return x; }, function(RES) {...});")
 //
-// //wrap into func when detect multiple returns:
-// return (function(cb) {
-//     if (cond) { (compile-code and return into cb) }
-//     else      { (compile-code and return into cb) }
-// }(...));
+// (Note: When a single value (other than a simple literal) is embedded MULTIPLE times within a pattern,
+//        then the output will be wrapped like this: "return (function(val){...}(INSERT_VALUE_HERE));")
 //
+// --Pattern----    --Example-Code-------------    --Resulting-Compiled-Code---------------------------
+// "foo { %v1 }"    ['foo', 123]                   foo { 123 }                                         
+// "foo { %v1 }"    ['foo', ['bar', x]]            foo { RESULT }                                      
+// "foo { %v1 }"    ['foo', {code:['A',['B']]}]    foo { {code:['bar']} }                              
+//                                                                                                     
+// "foo { %r1 }"    ['foo', 123]                   foo { return O.tailcall(cb, [123]); }               
+//                                                 foo { var RESULT = 123; ... }                       
+//                                                                                                     
+// "foo { %r1 }"    ['foo', ['bar', x]]            foo { return O.tailcall(cb, [RESULT]); }            
+//                                                 foo { ... } //RESULT gets embedded directly into ...
+//                                                                                                     
+// "foo { %r1 }"    ['foo', {code:['A',['B']]}]    foo { return O.tailcall(cb, [{code:['A',['B']]}]); }
+//                                                 foo { var RESULT = {code:['bar']}; ... }            
+//                                                                                                     
+// "foo { %c1 }"    ['foo', {code:['A',['B']]}]    foo {                                               
+//                                                   return O.tailcall(B, function(rB) {               
+//                                                     return O.tailcall(A, [rB], cb);                 
+//                                                   });                                               
+//                                                 }                                                   
+//                                                 foo {                                               
+//                                                   return O.tailcall(B, function(rB) {               
+//                                                     return O.tailcall(A, [rB], function(rA) {       
+//                                                       ...                                           
+//                                                     });                                             
+//                                                   });                                               
+//                                                 }                                                   
 O.cp = {
     if: '(%1 ? %2 : %3)' // 'if (%v1) { %c2 } else { %c3 }'
 };
