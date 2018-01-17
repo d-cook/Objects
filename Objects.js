@@ -417,18 +417,6 @@ O.compile = function compile(code, saveSrc) {
 //
 // EXAMPLES:
 //
-// (Note: "Outer expressions" (e.g. the 'foo' in ['foo', ['bar', x]]) are represented below as "...".
-//        When there is no "outer expression", then values are just passed to the "cb" callback.
-//        Examples below have TWO outputs when the presence/absense of an outer expression matters)
-// 
-// (Note: Inner values get computed into vars to be consumed by outer code, denoted below as "RESULT")
-//
-// (Note: "var RES = x; ..." is an optimized stand-in for what would otherwise compile to:
-//        "return O.tailcall(function(){ return x; }, function(RES) {...});")
-//
-// (Note: When a single value (other than a simple literal) is embedded MULTIPLE times within a pattern,
-//        then the output will be wrapped like this: "return (function(val){...}(INSERT_VALUE_HERE));")
-//
 // --Pattern----    --Example-Code-------------    --Resulting-Compiled-Code---------------------------
 // "foo { %v1 }"    ['foo', 123]                   foo { 123 }                                         
 // "foo { %v1 }"    ['foo', ['bar', x]]            foo { RESULT }                                      
@@ -455,6 +443,23 @@ O.compile = function compile(code, saveSrc) {
 //                                                     });                                             
 //                                                   });                                               
 //                                                 }                                                   
+// Notes about the above examples:
+//
+//   "Outer expressions" (e.g. the 'foo' in ['foo', ['bar', x]]) are represented below as "...".
+//   When there is no "outer expression", then values are just passed to the "cb" callback.
+//   Examples below have TWO outputs when the presence/absense of an outer expression matters.
+// 
+//   Inner values get computed into vars to be consumed by outer code, denoted below as "RESULT".
+//
+//   "var RESULT = x; ..." is an optimized stand-in for what would otherwise compile to:
+//   "return O.tailcall(function(){ return x; }, function(RESULT) {...});"
+//
+//   When a single value (other than a simple literal) is embedded MULTIPLE times within a pattern,
+//   then the output will be wrapped like this: "return (function(val){...}(VALUE_HERE));".
+//
+//   When there are multiple returns within the same pattern, the outer-expression is wrapped
+//   (like the previous note above, but "VALUE_HERE" may be something like "O.tailcall(...)").
+//
 O.cp = {
     if: '(%1 ? %2 : %3)' // 'if (%v1) { %c2 } else { %c3 }'
 };
