@@ -341,8 +341,8 @@ O.compile = function compile(code, saveSrc) {
         return code;
     }
     if (O.type(code) !== 'array') { return null; }
-    var calls = (function getCalls(code) {
-        var calls = [];
+    var calls = [];
+    (function getCalls(code) {
         if (O.type(code) !== 'array' || code.length < 1) { return calls; }
         var pattern = null;
         for(var p in O.compilePatterns) {
@@ -355,59 +355,60 @@ O.compile = function compile(code, saveSrc) {
         for(var i = (pattern ? 1 : 0); i < code.length; i++) {
             var a = code[i];
             if (O.type(a) === 'array') {
-                var c = getCalls(a);
-                calls.push.apply(calls, c);
-                last.push(calls.length - 1);
+                getCalls(a);
+                last.push('r' + (calls.length - 1));
             } else {
                 if (a && a.code) { compile(a, false); }
-                if (a && O.type(a.code) === 'native') {
-                    var c = '';
-                    for(var p in a) {
-                        c += (c.length ? ',\n  ' : '\n  ') + JSON.stringify(p) + ': ' +
-                             (JSON.stringify(a[p]) || '' + a[p]).replace(/\n/g, '\n    ');
-                    }
-                    last.push(c.length ? '{' + c + '\n}' : '{}');
-                } else {
-                    last.push(JSON.stringify(a) || '' + a);
-                }
+                last.push(stringify(a));
             }
         }
-        if (pattern) {
-            last = pattern.replace(/\%\d+/g, function(esc) {
-                // TODO: This is not mapping out properly
-                var n = parseInt(esc.substring(1));
-                var v = (n && n <= last.length ? last[n-1] : 'null');
-                return O.type(v) === 'number' ? 'r' + v : v;
-            });
-        }
-        calls.push(last);
+        calls.push(pattern ? { pattern: pattern, args: last } : last);
         return calls;
     }(code));
     //breakpoint: calls = [['"cond"', "123"],{pattern:"if(r22) {\n`T`\n}\nreturn cb;",T:[['"foo"', "456"]]}]
     var src = (function buildCalls(calls) {
         var src = '';
+        var refs = calls.length;
         while(calls.length) {
             var c = calls.pop();
-            var tc = O.type(c);
-            if (tc !== 'string' && tc !== 'array') { continue; }
-            var t0 = (tc === 'array') && O.type(c[0]);
-            var s = 'return O.tailcall(' + (
-                (tc === 'string') ? 'function(){ return ' + c + ';}' :
-                (t0 !== 'string') ? 'r' + c[0] :
-                (c[0].charAt(0) === '"') ? 'O.lookup, env, [env.env, ' + c[0] + '], function (f) {\nreturn O.tailcall(f' :
-                c[0]
-            ) + ', env, [';
-            var args = (tc === 'array') ? c.slice(1) : [];
-            for(var i = 0; i < args.length; i++) {
-                s += (i > 0 ? ', ' : '') + (O.type(args[i]) === 'number' ? 'r' : '') + args[i];
+            if (c && c.pattern) {
+                src = c.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
+                    var k = esc.charAt(1).toLowerCase();
+                    var i = parseInt(esc.substring(2));
+                    var v = (i > 0 && i <= c.args.length) ? c.args[i - 1] : 'null';
+                    if (k === 'v') { return v; }
+                    // TODO: if (k === 'c' && v matches {code}) { ... }
+                    if (src.length < 1) { return 'return O.tailcall(cb, env, [' + v + ']);'; }
+                    return /^r\d+$/.test(v) ? '' : 'var r' + (refs++) + ' = ' + v + ';';
+                });
             }
-            src = s + '], ' +
-                (src.length < 1 ? 'cb);' : 'function(r' + calls.length + ') {\n' + src + '\n});') +
-                (t0 === 'string' && c[0].charAt(0) === '"' ? '\n});' : '');
+            else if (O.type(c) === 'array') {
+                var s = 'return O.tailcall(' +
+                    (c[0].charAt(0) !== '"' ? c[0] : 'O.lookup, env, [env.env, ' + c[0] + '], function (f) {\nreturn O.tailcall(f') +
+                    ', env, [';
+                var args = c.slice(1);
+                for(var i = 0; i < args.length; i++) {
+                    s += (i > 0 ? ', ' : '') + args[i];
+                }
+                src = s + '], ' +
+                    (src.length < 1 ? 'cb);' : 'function(r' + calls.length + ') {\n' + src + '\n});') +
+                    (c[0].charAt(0) === '"' ? '\n});' : '');
+            }
         }
         return src;
     }(calls));
     return eval('(function(cb, env) {\n' + src + '\n})');
+
+    function stringify(v) {
+        var t = O.type(v);
+        var a = (t !== 'object');
+        if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
+        var s = '';
+        for(var p in v) { s += ', ' + (a ? '' : stringify(p) + ':') + stringify(v[p]); }
+        return a ?
+            (s.length ? '[' + s.substring(1) + ']' : '[]'):
+            (s.length ? '{ '+ s.substring(1) +' }' : '{}');
+    }
 };
 //TODO: Revise compilePatters (and compile) as follows:
 // %v# (e.g. %v2) insert #th value as-is
@@ -418,31 +419,28 @@ O.compile = function compile(code, saveSrc) {
 // EXAMPLES:
 //
 // --Pattern----    --Example-Code-------------    --Resulting-Compiled-Code---------------------------
-// "foo { %v1 }"    ['foo', 123]                   foo { 123 }                                         
-// "foo { %v1 }"    ['foo', ['bar', x]]            foo { RESULT }                                      
-// "foo { %v1 }"    ['foo', {code:['A',['B']]}]    foo { {code:['bar']} }                              
-//                                                                                                     
-// "foo { %r1 }"    ['foo', 123]                   foo { return O.tailcall(cb, [123]); }               
-//                                                 foo { var RESULT = 123; ... }                       
-//                                                                                                     
-// "foo { %r1 }"    ['foo', ['bar', x]]            foo { return O.tailcall(cb, [RESULT]); }            
-//                                                 foo { ... } //RESULT gets embedded directly into ...
-//                                                                                                     
-// "foo { %r1 }"    ['foo', {code:['A',['B']]}]    foo { return O.tailcall(cb, [{code:['A',['B']]}]); }
-//                                                 foo { var RESULT = {code:['bar']}; ... }            
-//                                                                                                     
-// "foo { %c1 }"    ['foo', {code:['A',['B']]}]    foo {                                               
-//                                                   return O.tailcall(B, function(rB) {               
-//                                                     return O.tailcall(A, [rB], cb);                 
-//                                                   });                                               
-//                                                 }                                                   
-//                                                 foo {                                               
-//                                                   return O.tailcall(B, function(rB) {               
-//                                                     return O.tailcall(A, [rB], function(rA) {       
-//                                                       ...                                           
-//                                                     });                                             
-//                                                   });                                               
-//                                                 }                                                   
+// "foo { %v1 }"    ['foo', 123]                   foo { 123 }
+// "foo { %v1 }"    ['foo', ['bar', x]]            foo { RESULT }
+// "foo { %v1 }"    ['foo', {code:['A',['B']]}]    foo { {code:['bar']} }
+//
+// "foo { %r1 }"    ['foo', 123]                   foo { return O.tailcall(cb, [123]); }
+//                                                 foo { var RESULT = 123; ... }
+//
+// "foo { %r1 }"    ['foo', ['bar', x]]            foo { return O.tailcall(cb, [RESULT]); }
+//                                                 foo { ... } // "..." will directly reference RESULT
+//
+// "foo { %c1 }"    ['foo', {code:['A',['B']]}]    foo {
+//                                                   return O.tailcall(B, function(rB) {
+//                                                     return O.tailcall(A, [rB], cb);
+//                                                   });
+//                                                 }
+//                                                 foo {
+//                                                   return O.tailcall(B, function(rB) {
+//                                                     return O.tailcall(A, [rB], function(rA) {
+//                                                       ...
+//                                                     });
+//                                                   });
+//                                                 }
 // Notes about the above examples:
 //
 //   "Outer expressions" (e.g. the 'foo' in ['foo', ['bar', x]]) are represented below as "...".
@@ -461,7 +459,7 @@ O.compile = function compile(code, saveSrc) {
 //   (like the previous note above, but "VALUE_HERE" may be something like "O.tailcall(...)").
 //
 O.cp = {
-    if: '(%1 ? %2 : %3)' // 'if (%v1) { %c2 } else { %c3 }'
+    if: 'if (%v1) {\n%c2\n} else {\n%c3\n}'
 };
 O.compilePatterns = {};
 
@@ -641,7 +639,8 @@ window.Tests = [
     "['get', ['compile', {args:['x'],code:['if', true, {args:['v1'],code:['if', true, {args:['v2'],code:['+', 'x:', ['lookup', null, 'x'], ', v1:', ['lookup', null, 'v1'], ', v2:', ['lookup', null, 'v2']]}]}]}], 'code']",
     "['get', ['compile', {code:['if', ['cond', 123], {code:['foo', 456]}]}], 'code']",
     "['def', 'compilePatterns', ['lookup', null, 'cp']]",
-    "['get', ['compile', {code:['if', ['cond', 123], {code:['foo', 456]}]}], 'code']"
+    "['get', ['compile', {code:['if', ['cond', 123], {code:['foo', 456]}]}], 'code']",
+    "['get', ['compile', {code:['if', ['cond', 123], ['foo', 456]]}], 'code']"
 ];
 window.RunTests();
 
