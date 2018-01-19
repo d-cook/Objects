@@ -363,9 +363,10 @@ O.compile = function compile(code, saveSrc, innerSrc) {
     while(calls.length) {
         var c = calls.pop();
         if (c && c.pattern) {
-            var inner = src;
+            var rets = c.pattern.match(/\%(r|(v|r|c)\d+)\b/gi);
+            rets = (rets && rets.length > 1);
+            var inner = (rets) ? '' : src;
             //TODO: Wrap (complex) values if used in multiple places: (func(v){...}(THE_VALUE))
-            //TODO: Wrap outer-expression when there are multiple %r: (func(r){...}(O.tailcall(OUTER_EXPR, ...))
             src = c.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
                 var k = esc.charAt(1).toLowerCase();
                 var i = parseInt(esc.substring(2));
@@ -379,6 +380,9 @@ O.compile = function compile(code, saveSrc, innerSrc) {
                     (O.type(v) === 'number' ? '' : 'var r' + (calls.length) + ' = ' + valueStr(v) + ';')
                 );
             });
+            if (rets) {
+                src = 'return (function(cb){\n' + src + '\n}(' + inner.replace(/^return\b\s*|(\;|\s)*$/g, '') + '));';
+            }
         }
         else if (O.type(c) === 'array') {
             var v = valueStr(c[0]);
