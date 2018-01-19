@@ -360,7 +360,6 @@ O.compile = function compile(code, saveSrc, innerSrc) {
         return calls;
     }(code));
     var src = innerSrc || '';
-    var refs = calls.length;
     while(calls.length) {
         var c = calls.pop();
         if (c && c.pattern) {
@@ -377,7 +376,7 @@ O.compile = function compile(code, saveSrc, innerSrc) {
                 return (
                     (k === 'v') ? valueStr(v) :
                     (inner.length < 1) ? 'return O.tailcall(cb, env, [' + valueStr(v) + ']);' :
-                    (O.type(v) === 'number' ? '' : 'var r' + (refs++) + ' = ' + valueStr(v) + ';')
+                    (O.type(v) === 'number' ? '' : 'var r' + (calls.length) + ' = ' + valueStr(v) + ';')
                 );
             });
         }
