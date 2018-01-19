@@ -49,13 +49,64 @@ O.unshift = function (a    ) { return (O.type(a) !== 'array') ? null : [].unshif
 O.pop     = function (a    ) { return (O.type(a) !== 'array') ? null : [].pop    .apply(a); };
 O.shift   = function (a    ) { return (O.type(a) !== 'array') ? null : [].shift  .apply(a); };
 
+// These tailcall and invoke functions drive execution of all wrapped functions, which
+// run in CPS (Continuation Passing Style) (i.e. return execution/values via callbacks)
+O.tailcall = function tailcall(func, env, args, cb) {
+    // NOTE: this function references external entities: type, eval
+    // TODO: Optimize the case for evaling a call to eval.
+    if (O.type(env) === 'array') { cb = args; args = env; env = null; }
+    var ft = O.type(func);
+    if (ft !== 'object') {
+        if (ft !== 'native') { func = (function(value){return function(){return value;}})(func); }
+        // Detect if func takes a cb. TODO: this better (it's a hack with potential false-positives)
+        var hasCb = (''+func).replace(/^[^(]+\(/, '').replace(/\).*$/, '').substring(0,3) === 'cb,';
+        var allArgs = (cb && hasCb) ? [cb] : [];
+        allArgs.push.apply(allArgs, args);
+        if (cb && !hasCb) { return tailcall(cb, env, [func.apply(null, allArgs)]); }
+        return { func: func, args: allArgs };
+    }
+    if (ft !== 'object') { return null; }
+    if (O.type(func.code) === 'native') {
+        // If func has no parent, then assume it is a nested code-block and inherit from current execution scope:
+        var env2 = {
+            parent: func.parent || env || null,
+            args: args
+        };
+        env2.scope = env2;
+        if (func.parent) {
+            // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
+            env2.caller = env;
+            env2.thisFunc = func;
+            // TODO: Should a "return" property be getting set here?
+        }
+        if (func.args) {
+            for (var i = 0; i < func.args.length; i++) {
+                env2[func.args[i]] = args[i];
+            }
+        }
+        return { func: func.code, args: [cb, env2] };
+    }
+    // Otherwise call eval on the func object:
+    var expr = [func];
+    expr.push.apply(expr, args);
+    var env2 = {
+        thisFunc: O.eval,
+        parent: O.eval.parent,
+        caller: env || null,
+        args: [env, expr],
+        expr: expr,
+        env: env
+    };
+    env2.scope = env2;
+    return { func: O.eval.code, args: [cb, env2] };
+};
+O.invoke = function (tc) { // tailcall
+    while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
+};
+
 // The exists, lookup, assign, and remove are just like has, get, set, and delete,
 //   except that property-search continues up the "parent" chain until it is found.
 //   They also allow a series of properties to be listed, for convenience.
-// TODO: These MIGHT not have to be native-provided, if "compile" is updated to
-//   replace calls to native-provided funcs (especially "lookup") are either replaced
-//   with direct references or with their native-code equivalent; Or if the semantics
-//   of get & set are altered to operate on the "caller" when the "obj" param is null.
 O.exists = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     if (env.args.length > 2) {
         var last = env.args.pop();
@@ -115,61 +166,6 @@ O.remove = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     if (!h) { return env.parent.tailcall(cb, env, [null, false]); }
     return env.parent.tailcall(env.parent.remove, env, [obj.parent, env.prop], cb);
 }};
-
-// These tailcall and invoke functions drive execution of all wrapped functions, which
-// run in CPS (Continuation Passing Style) (i.e. return execution/values via callbacks)
-O.tailcall = function tailcall(func, env, args, cb) {
-    // NOTE: this function references external entities: type, eval
-    // TODO: Optimize the case for evaling a call to eval.
-    if (O.type(env) === 'array') { cb = args; args = env; env = null; }
-    var ft = O.type(func);
-    if (ft !== 'object') {
-        if (ft !== 'native') { func = (function(value){return function(){return value;}})(func); }
-        // Detect if func takes a cb. TODO: this better (it's a hack with potential false-positives)
-        var hasCb = (''+func).replace(/^[^(]+\(/, '').replace(/\).*$/, '').substring(0,3) === 'cb,';
-        var allArgs = (cb && hasCb) ? [cb] : [];
-        allArgs.push.apply(allArgs, args);
-        if (cb && !hasCb) { return tailcall(cb, env, [func.apply(null, allArgs)]); }
-        return { func: func, args: allArgs };
-    }
-    if (ft !== 'object') { return null; }
-    if (O.type(func.code) === 'native') {
-        // If func has no parent, then assume it is a nested code-block and inherit from current execution scope:
-        var env2 = {
-            parent: func.parent || env || null,
-            args: args
-        };
-        env2.scope = env2;
-        if (func.parent) {
-            // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
-            env2.caller = env;
-            env2.thisFunc = func;
-            // TODO: Should a "return" property be getting set here?
-        }
-        if (func.args) {
-            for (var i = 0; i < func.args.length; i++) {
-                env2[func.args[i]] = args[i];
-            }
-        }
-        return { func: func.code, args: [cb, env2] };
-    }
-    // Otherwise call eval on the func object:
-    var expr = [func];
-    expr.push.apply(expr, args);
-    var env2 = {
-        thisFunc: O.eval,
-        parent: O.eval.parent,
-        caller: env || null,
-        args: [env, expr],
-        expr: expr,
-        env: env
-    };
-    env2.scope = env2;
-    return { func: O.eval.code, args: [cb, env2] };
-};
-O.invoke = function (tc) { // tailcall
-    while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
-};
 
 O.list = { parent: O, code: ['lookup', null, 'args'] };
 
@@ -326,19 +322,18 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 
 //TODO: 1. Compile this compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
-O.compile = function compile(code, saveSrc) {
-    // CALL WITH (and then breakpoint below): Test(null, ['get', ['compile', {code:['foo', 'bar']}], 'code'])
-    // breakpoint: Objects.compilePatterns = Objects.cp;
+O.compile = function compile(code, saveSrc, innerSrc) {
     if (O.type(code) === 'object') {
-        if (saveSrc === false) {
-            if (O.type(code.code) !== 'array') { return null; }
-            code.code = compile(code.code);
-            return code;
+        var src = O.type(code.code) === 'array' ? code.code :
+                  O.type(code.src ) === 'array' ? code.src  : null;
+        var cc = { code: compile(src) };
+        if (!cc.code) { return null; }
+        if (saveSrc !== false) { cc.src = src; }
+        if (O.type(code.args) === 'array') {
+            cc.args = [];
+            cc.args.push.apply(cc.args, code.args);
         }
-        if (O.type(code.code) === 'array') { code.src = code.code; }
-        if (O.type(code.src) !== 'array') { return null; }
-        code.code = compile(code.src);
-        return code;
+        return cc;
     }
     if (O.type(code) !== 'array') { return null; }
     var calls = [];
@@ -356,48 +351,54 @@ O.compile = function compile(code, saveSrc) {
             var a = code[i];
             if (O.type(a) === 'array') {
                 getCalls(a);
-                last.push('r' + (calls.length - 1));
+                last.push(calls.length - 1);
             } else {
-                if (a && a.code) { compile(a, false); }
-                last.push(stringify(a));
+                last.push({ value: (!pattern && a && a.code && compile(a, false)) || a });
             }
         }
         calls.push(pattern ? { pattern: pattern, args: last } : last);
         return calls;
     }(code));
-    //breakpoint: calls = [['"cond"', "123"],{pattern:"if(r22) {\n`T`\n}\nreturn cb;",T:[['"foo"', "456"]]}]
-    var src = (function buildCalls(calls) {
-        var src = '';
-        var refs = calls.length;
-        while(calls.length) {
-            var c = calls.pop();
-            if (c && c.pattern) {
-                src = c.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
-                    var k = esc.charAt(1).toLowerCase();
-                    var i = parseInt(esc.substring(2));
-                    var v = (i > 0 && i <= c.args.length) ? c.args[i - 1] : 'null';
-                    if (k === 'v') { return v; }
-                    // TODO: if (k === 'c' && v matches {code}) { ... }
-                    if (src.length < 1) { return 'return O.tailcall(cb, env, [' + v + ']);'; }
-                    return /^r\d+$/.test(v) ? '' : 'var r' + (refs++) + ' = ' + v + ';';
-                });
-            }
-            else if (O.type(c) === 'array') {
-                var s = 'return O.tailcall(' +
-                    (c[0].charAt(0) !== '"' ? c[0] : 'O.lookup, env, [env.env, ' + c[0] + '], function (f) {\nreturn O.tailcall(f') +
-                    ', env, [';
-                var args = c.slice(1);
-                for(var i = 0; i < args.length; i++) {
-                    s += (i > 0 ? ', ' : '') + args[i];
-                }
-                src = s + '], ' +
-                    (src.length < 1 ? 'cb);' : 'function(r' + calls.length + ') {\n' + src + '\n});') +
-                    (c[0].charAt(0) === '"' ? '\n});' : '');
-            }
+    var src = innerSrc || '';
+    var refs = calls.length;
+    while(calls.length) {
+        var c = calls.pop();
+        if (c && c.pattern) {
+            var inner = src;
+            //TODO: Wrap (complex) values if used in multiple places: (func(v){...}(THE_VALUE))
+            //TODO: Wrap outer-expression when there are multiple %r: (func(r){...}(O.tailcall(OUTER_EXPR, ...))
+            src = c.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
+                var k = esc.charAt(1).toLowerCase();
+                var i = parseInt(esc.substring(2));
+                var v = (i > 0 && i <= c.args.length) ? c.args[i - 1] : { value: null };
+                var code = v && v.value && v.value.code;
+                if (k ==='c' && code) { return compile(code, false, inner); }
+                v.value = compile(v && v.value, false) || v.value;
+                return (
+                    (k === 'v') ? valueStr(v) :
+                    (inner.length < 1) ? 'return O.tailcall(cb, env, [' + valueStr(v) + ']);' :
+                    (O.type(v) === 'number' ? '' : 'var r' + (refs++) + ' = ' + valueStr(v) + ';')
+                );
+            });
         }
-        return src;
-    }(calls));
-    return eval('(function(cb, env) {\n' + src + '\n})');
+        else if (O.type(c) === 'array') {
+            var v = valueStr(c[0]);
+            var str = (v.charAt(0) === '"');
+            var s = 'return O.tailcall(' +
+                (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
+                ', env, [';
+            var args = c.slice(1);
+            for(var i = 0; i < args.length; i++) {
+                s += (i > 0 ? ', ' : '') + valueStr(args[i]);
+            }
+            src = s + '], ' +
+                (src.length < 1 ? 'cb);' : 'function(r' + calls.length + ') {\n' + src + '\n});') +
+                (str ? '\n});' : '');
+        }
+    }
+    return (O.type(innerSrc) === 'string') ? src : eval('(function(cb, env) {\n' + src + '\n})');
+    
+    function valueStr(v) { return O.type(v) === 'number' ? 'r' + v : stringify(v && v.value); }
 
     function stringify(v) {
         var t = O.type(v);
@@ -410,58 +411,13 @@ O.compile = function compile(code, saveSrc) {
             (s.length ? '{ '+ s.substring(1) +' }' : '{}');
     }
 };
-//TODO: Revise compilePatters (and compile) as follows:
 // %v# (e.g. %v2) insert #th value as-is
 // %r# (e.g. %r3) insert code to return the #th value to the outer expression
 // %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
 // %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
-//
-// EXAMPLES:
-//
-// --Pattern----    --Example-Code-------------    --Resulting-Compiled-Code---------------------------
-// "foo { %v1 }"    ['foo', 123]                   foo { 123 }
-// "foo { %v1 }"    ['foo', ['bar', x]]            foo { RESULT }
-// "foo { %v1 }"    ['foo', {code:['A',['B']]}]    foo { {code:['bar']} }
-//
-// "foo { %r1 }"    ['foo', 123]                   foo { return O.tailcall(cb, [123]); }
-//                                                 foo { var RESULT = 123; ... }
-//
-// "foo { %r1 }"    ['foo', ['bar', x]]            foo { return O.tailcall(cb, [RESULT]); }
-//                                                 foo { ... } // "..." will directly reference RESULT
-//
-// "foo { %c1 }"    ['foo', {code:['A',['B']]}]    foo {
-//                                                   return O.tailcall(B, function(rB) {
-//                                                     return O.tailcall(A, [rB], cb);
-//                                                   });
-//                                                 }
-//                                                 foo {
-//                                                   return O.tailcall(B, function(rB) {
-//                                                     return O.tailcall(A, [rB], function(rA) {
-//                                                       ...
-//                                                     });
-//                                                   });
-//                                                 }
-// Notes about the above examples:
-//
-//   "Outer expressions" (e.g. the 'foo' in ['foo', ['bar', x]]) are represented below as "...".
-//   When there is no "outer expression", then values are just passed to the "cb" callback.
-//   Examples below have TWO outputs when the presence/absense of an outer expression matters.
-// 
-//   Inner values get computed into vars to be consumed by outer code, denoted below as "RESULT".
-//
-//   "var RESULT = x; ..." is an optimized stand-in for what would otherwise compile to:
-//   "return O.tailcall(function(){ return x; }, function(RESULT) {...});"
-//
-//   When a single value (other than a simple literal) is embedded MULTIPLE times within a pattern,
-//   then the output will be wrapped like this: "return (function(val){...}(VALUE_HERE));".
-//
-//   When there are multiple returns within the same pattern, the outer-expression is wrapped
-//   (like the previous note above, but "VALUE_HERE" may be something like "O.tailcall(...)").
-//
-O.cp = {
+O.compilePatterns = {
     if: 'if (%v1) {\n%c2\n} else {\n%c3\n}'
 };
-O.compilePatterns = {};
 
 // External interface for running code
 O.run = function (expr, env, cb) {
@@ -618,7 +574,7 @@ window.Tests = [
 
     // TESTING COMPILATION (by re-coding "do", and recompiling it back):
 
-    "['def', 'test-compile', {args:['code'],code:['get', ['compile', ['lookup', null, ['lookup', null, 'code']]], 'code']}]",
+    "['def', 'test-compile', {args:['code'],code:['get', ['assign', null, ['lookup', null, 'code'], ['compile', ['lookup', null, ['lookup', null, 'code']]]], 'code']}]",
     "['test-compile', 'do']",
     "['do', ['assign', null, 'x', 5], ['assign', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
     "['do']", // Simulating an empty block of code
@@ -637,8 +593,6 @@ window.Tests = [
     "[['compile', {code:['if', true, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
     "[['compile', {code:['if', false, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
     "['get', ['compile', {args:['x'],code:['if', true, {args:['v1'],code:['if', true, {args:['v2'],code:['+', 'x:', ['lookup', null, 'x'], ', v1:', ['lookup', null, 'v1'], ', v2:', ['lookup', null, 'v2']]}]}]}], 'code']",
-    "['get', ['compile', {code:['if', ['cond', 123], {code:['foo', 456]}]}], 'code']",
-    "['def', 'compilePatterns', ['lookup', null, 'cp']]",
     "['get', ['compile', {code:['if', ['cond', 123], {code:['foo', 456]}]}], 'code']",
     "['get', ['compile', {code:['if', ['cond', 123], ['foo', 456]]}], 'code']"
 ];
