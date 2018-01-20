@@ -379,7 +379,7 @@ O.compilers.js = {
     valueStr: function (v, alias) {
         return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
     },
-    compile: function compile(code, saveSrc, innerSrc) {
+    compile: function compile(code, saveSrc) {
         if (O.type(code) === 'object') {
             var src = O.type(code.code) === 'array' ? code.code :
                       O.type(code.src ) === 'array' ? code.src  : null;
@@ -392,10 +392,14 @@ O.compilers.js = {
             }
             return cc;
         }
+        var src = O.compilers.js.compileSrc(code);
+        return src && eval('(function(cb, env) {\n' + src + '\n})');
+    },
+    compileSrc: function(code, innerSrc) {
         if (O.type(code) !== 'array') { return null; }
         var calls = O.compilers.js.getCalls(code);
         var src = O.compilers.js.buildCalls(calls, innerSrc || '');
-        return (O.type(innerSrc) === 'string') ? src : eval('(function(cb, env) {\n' + src + '\n})');
+        return src;
     },
     getCalls: function getCalls(code, calls) {
         calls = calls || [];
@@ -441,7 +445,7 @@ O.compilers.js = {
                         var vs = O.compilers.js.globalStr(v && v.value);
                         if (!vs) {
                             var code = v && v.value && v.value.code;
-                            if (k ==='c' && code) { return O.compilers.js.compile(code, false, inner); }
+                            if (k ==='c' && code) { return O.compilers.js.compileSrc(code, inner); }
                             v.value = O.compilers.js.compile(v && v.value, false) || v.value;
                             vs = O.compilers.js.valueStr(v, false);
                         }
