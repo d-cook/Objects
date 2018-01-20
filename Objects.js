@@ -355,20 +355,29 @@ O.compilers.js = {
     // %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
     // %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
     patterns: [ // TODO: Use WeakMap (if IE9 and other major browsers supports it)
-        { func: O.if, pattern: 'if (%v1) {\n%c2\n} else {\n%c3\n}' }
+        { func: O.if, pattern: 'if (%v1) {\n%c2\n} \n%c3' }
     ],
-    stringify: function stringify(v) {
+    stringify: function stringify(v, alias) {
         var t = O.type(v);
         var a = (t !== 'object');
         if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
-        var s = '';
-        for(var p in v) { s += ', ' + (a ? '' : stringify(p) + ':') + stringify(v[p]); }
+        var s = (alias !== false && O.compilers.js.globalStr(v)) || '';
+        if (s.length > 0) { return s; }
+        for(var p in v) { s += ', ' + (a ? '' : stringify(p) + ':') + stringify(v[p], alias); }
         return a ?
             (s.length ? '[' + s.substring(1) + ']' : '[]'):
             (s.length ? '{ '+ s.substring(1) +' }' : '{}');
     },
-    valueStr: function (v) {
-        return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value);
+    globalStr: function (v) {
+        for(var p in O) {
+            if (v === O[p]) {
+                return 'O' + (/^([A-Za-z]|_)\w*$/g.test(p) ? '.' + p : '["' + p + '"]');
+            }
+        }
+        return null;
+    },
+    valueStr: function (v, alias) {
+        return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
     },
     compile: function compile(code, saveSrc, innerSrc) {
         if (O.type(code) === 'object') {
@@ -407,7 +416,13 @@ O.compilers.js = {
             var c = code[i];
             last.push(O.type(c) === 'array'
                 ? getCalls(c, calls).length - 1
-                : { value: (!pattern && c && c.code && O.compilers.js.compile(c, false)) || c }
+                : {
+                    value: (
+                        !pattern && c && c.code &&
+                        !O.compilers.js.globalStr(c) &&
+                        O.compilers.js.compile(c, false)
+                    ) || c
+                }
             );
         }
         calls.push(pattern ? { pattern: pattern, args: last } : last);
@@ -425,10 +440,13 @@ O.compilers.js = {
                     var k = esc.charAt(1).toLowerCase();
                     var i = parseInt(esc.substring(2));
                     var v = (i > 0 && i <= call.args.length) ? call.args[i - 1] : { value: null };
-                    var code = v && v.value && v.value.code;
-                    if (k ==='c' && code) { return O.compilers.js.compile(code, false, inner); }
-                    v.value = O.compilers.js.compile(v && v.value, false) || v.value;
-                    var vs = O.compilers.js.valueStr(v);
+                    var vs = O.compilers.js.globalStr(v && v.value);
+                    if (!vs) {
+                        var code = v && v.value && v.value.code;
+                        if (k ==='c' && code) { return O.compilers.js.compile(code, false, inner); }
+                        v.value = O.compilers.js.compile(v && v.value, false) || v.value;
+                        vs = O.compilers.js.valueStr(v, false);
+                    }
                     return (
                         (k === 'v') ? vs :
                         (inner.length < 1) ? 'return O.tailcall(cb, env, [' + vs + ']);' :
