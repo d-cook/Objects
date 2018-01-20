@@ -383,8 +383,13 @@ O.compilers.js = {
         if (O.type(code) === 'object') {
             var src = O.type(code.code) === 'array' ? code.code :
                       O.type(code.src ) === 'array' ? code.src  : null;
-            var cc = { code: compile(src) };
+            var cc = { code: (src && compile(src)) };
             if (!cc.code) { return null; }
+            for(p in code) {
+                if (p !== 'src' && p !== 'code') {
+                    cc[p] = code[p];
+                }
+            }
             if (saveSrc !== false) { cc.src = src; }
             if (O.type(code.args) === 'array') {
                 cc.args = [];
