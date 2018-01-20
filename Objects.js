@@ -135,6 +135,32 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     if (!h) { return env.parent.tailcall(cb, env, [null]); }
     return env.parent.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
 }};
+/*
+O.lookup = ( parent: O, args: ['obj', 'prop'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'args']], 3],
+    {code: [ O.do,
+        [O.assign, null, 'last', [O.pop, [O.lookup, null, 'args']]],
+        [O.lookup,
+            [O.apply,
+                O.lookup,
+                [O.lookup, null, 'args'],
+                [O.lookup, null, 'scope']
+            ],
+            [O.lookup, null, 'last']
+        ]
+    ]},
+    {code: [O.do,
+        [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+        [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+            {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
+            {code:[O.if, [O.has, [O.lookup, null, obj], 'parent']
+                {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                null
+            ]}
+        ]
+    ]}
+]};
+*/
 O.assign = { parent: O, args: ['obj', 'prop', 'value'], code: function (cb, env) {
     if (env.args.length > 3) {
         var val = env.args.pop();
@@ -322,97 +348,16 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 
 //TODO: 1. Compile the compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
-O.compilers = { js: {} };
-// %v# (e.g. %v2) insert #th value as-is
-// %r# (e.g. %r3) insert code to return the #th value to the outer expression
-// %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
-// %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
-O.compilers.js.patterns = {
-    if: 'if (%v1) {\n%c2\n} else {\n%c3\n}'
-};
-O.compilers.js.compile = function compile(code, saveSrc, innerSrc) {
-    if (O.type(code) === 'object') {
-        var src = O.type(code.code) === 'array' ? code.code :
-                  O.type(code.src ) === 'array' ? code.src  : null;
-        var cc = { code: compile(src) };
-        if (!cc.code) { return null; }
-        if (saveSrc !== false) { cc.src = src; }
-        if (O.type(code.args) === 'array') {
-            cc.args = [];
-            cc.args.push.apply(cc.args, code.args);
-        }
-        return cc;
-    }
-    if (O.type(code) !== 'array') { return null; }
-    var patterns = O.compilers.js.patterns;
-    var calls = [];
-    (function getCalls(code) {
-        if (O.type(code) !== 'array' || code.length < 1) { return calls; }
-        var pattern = null;
-        for(var p in patterns) {
-            if (code[0] === p || (O[p] && code[0] === O[p])) {
-                pattern = patterns[p];
-                break;
-            }
-        }
-        var last = [];
-        for(var i = (pattern ? 1 : 0); i < code.length; i++) {
-            var a = code[i];
-            if (O.type(a) === 'array') {
-                getCalls(a);
-                last.push(calls.length - 1);
-            } else {
-                last.push({ value: (!pattern && a && a.code && compile(a, false)) || a });
-            }
-        }
-        calls.push(pattern ? { pattern: pattern, args: last } : last);
-        return calls;
-    }(code));
-    var src = innerSrc || '';
-    while(calls.length) {
-        var c = calls.pop();
-        if (c && c.pattern) {
-            var rets = c.pattern.match(/\%(r|(r|c)\d+)\b/gi);
-            rets = (src.length > 1 && rets && rets.length > 1);
-            var inner = (rets) ? '' : src;
-            //TODO: Wrap (complex) values if used in multiple places: (func(v){...}(THE_VALUE))
-            src =
-                (rets ? 'return (function(cb){\n' : '') +
-                c.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
-                    var k = esc.charAt(1).toLowerCase();
-                    var i = parseInt(esc.substring(2));
-                    var v = (i > 0 && i <= c.args.length) ? c.args[i - 1] : { value: null };
-                    var code = v && v.value && v.value.code;
-                    if (k ==='c' && code) { return compile(code, false, inner); }
-                    v.value = compile(v && v.value, false) || v.value;
-                    return (
-                        (k === 'v') ? valueStr(v) :
-                        (inner.length < 1) ? 'return O.tailcall(cb, env, [' + valueStr(v) + ']);' :
-                        (O.type(v) === 'number' ? '' : 'var r' + (calls.length) + ' = ' + valueStr(v) + ';')
-                    );
-                }) +
-                (rets ? '\n}(' + src.replace(/^return\b\s*|(\;|\s)*$/g, '') + '));' : '');
-        }
-        else if (O.type(c) === 'array') {
-            var v = valueStr(c[0]);
-            var str = (v.charAt(0) === '"');
-            var s = 'return O.tailcall(' +
-                (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
-                ', env, [';
-            var args = c.slice(1);
-            for(var i = 0; i < args.length; i++) {
-                s += (i > 0 ? ', ' : '') + valueStr(args[i]);
-            }
-            src = s + '], ' +
-                (src.length < 1 ? 'cb);' : 'function(r' + calls.length + ') {\n' + src + '\n});') +
-                (str ? '\n});' : '');
-        }
-    }
-    return (O.type(innerSrc) === 'string') ? src : eval('(function(cb, env) {\n' + src + '\n})');
-    
-    function valueStr(v) { return O.type(v) === 'number' ? 'r' + v : stringify(v && v.value); }
-
-    function stringify(v) {
+O.compilers = {};
+O.compilers.js = {
+    // %v# (e.g. %v2) insert #th value as-is
+    // %r# (e.g. %r3) insert code to return the #th value to the outer expression
+    // %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
+    // %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
+    patterns: {
+        if: 'if (%v1) {\n%c2\n} else {\n%c3\n}'
+    },
+    stringify: function stringify(v) {
         var t = O.type(v);
         var a = (t !== 'object');
         if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
@@ -421,9 +366,94 @@ O.compilers.js.compile = function compile(code, saveSrc, innerSrc) {
         return a ?
             (s.length ? '[' + s.substring(1) + ']' : '[]'):
             (s.length ? '{ '+ s.substring(1) +' }' : '{}');
+    },
+    valueStr: function (v) {
+        return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value);
+    },
+    compile: function compile(code, saveSrc, innerSrc) {
+        if (O.type(code) === 'object') {
+            var src = O.type(code.code) === 'array' ? code.code :
+                      O.type(code.src ) === 'array' ? code.src  : null;
+            var cc = { code: compile(src) };
+            if (!cc.code) { return null; }
+            if (saveSrc !== false) { cc.src = src; }
+            if (O.type(code.args) === 'array') {
+                cc.args = [];
+                cc.args.push.apply(cc.args, code.args);
+            }
+            return cc;
+        }
+        if (O.type(code) !== 'array') { return null; }
+        var calls = O.compilers.js.getCalls(code);
+        var src = innerSrc || '';
+        for(var i = calls.length - 1; i >= 0; i--) {
+            src = O.compilers.js.buildCall(calls[i], i, src);
+        }
+        return (O.type(innerSrc) === 'string') ? src : eval('(function(cb, env) {\n' + src + '\n})');
+    },
+    getCalls: function getCalls(code, calls) {
+        calls = calls || [];
+        if (O.type(code) !== 'array' || code.length < 1) { return calls; }
+        var pattern = null;
+        for(var p in O.compilers.js.patterns) {
+            if (code[0] === p || (O[p] && code[0] === O[p])) {
+                pattern = O.compilers.js.patterns[p];
+                break;
+            }
+        }
+        var last = [];
+        for(var i = (pattern ? 1 : 0); i < code.length; i++) {
+            var c = code[i];
+            last.push(O.type(c) === 'array'
+                ? getCalls(c, calls).length - 1
+                : { value: (!pattern && c && c.code && O.compilers.js.compile(c, false)) || c }
+            );
+        }
+        calls.push(pattern ? { pattern: pattern, args: last } : last);
+        return calls;
+    },
+    buildCall: function(call, idx, src) {
+        src = src || '';
+        if (call && call.pattern) {
+            var rets = call.pattern.match(/\%(r|(r|c)\d+)\b/gi);
+            rets = (src.length > 1 && rets && rets.length > 1);
+            var inner = (rets) ? '' : src;
+            //TODO: Wrap (complex) values if used in multiple places: (func(v){...}(THE_VALUE))
+            return (rets ? 'return (function(cb){\n' : '') +
+                call.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
+                    var k = esc.charAt(1).toLowerCase();
+                    var i = parseInt(esc.substring(2));
+                    var v = (i > 0 && i <= call.args.length) ? call.args[i - 1] : { value: null };
+                    var code = v && v.value && v.value.code;
+                    if (k ==='c' && code) { return O.compilers.js.compile(code, false, inner); }
+                    v.value = O.compilers.js.compile(v && v.value, false) || v.value;
+                    var vs = O.compilers.js.valueStr(v);
+                    return (
+                        (k === 'v') ? vs :
+                        (inner.length < 1) ? 'return O.tailcall(cb, env, [' + vs + ']);' :
+                        (O.type(v) === 'number' ? '' : 'var r' + idx + ' = ' + vs + ';')
+                    );
+                }) +
+                (rets ? '\n}(' + src.replace(/^return\b\s*|(\;|\s)*$/g, '') + '));' : '');
+        }
+        if (O.type(call) !== 'array') { return src; }
+        var v = O.compilers.js.valueStr(call[0]);
+        var str = (v.charAt(0) === '"');
+        var s = 'return O.tailcall(' +
+            (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
+            ', env, [';
+        var args = call.slice(1);
+        for(var i = 0; i < args.length; i++) {
+            s += (i > 0 ? ', ' : '') + O.compilers.js.valueStr(args[i]);
+        }
+        return s + '], ' +
+            (src.length < 1 ? 'cb);' : 'function(r' + idx + ') {\n' + src + '\n});') +
+            (str ? '\n});' : '');
     }
 };
-O.compile = O.compilers.js.compile;
+O.language = 'js';
+O.compiler = O.compilers[O.language];
+O.compile = O.compiler.compile;
 
 // External interface for running code
 O.run = function (expr, env, cb) {
@@ -575,8 +605,6 @@ window.Tests = [
     "['with', {a:1, b:2, c:3}, 'y', 7]",
     "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 'y', 'z', 2]",
     "['with', {a:1, b:{x:{y:{}}}, c:3}, 'b', 'x', 3]",
-    "['do', ['assign', null, 'x', 5], ['assign', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
-    "['do']", // Simulating an empty block of code
 
     // TESTING COMPILATION (by re-coding "do", and recompiling it back):
 
