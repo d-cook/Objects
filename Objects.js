@@ -354,9 +354,9 @@ O.compilers.js = {
     // %r# (e.g. %r3) insert code to return the #th value to the outer expression
     // %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
     // %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
-    patterns: {
-        if: 'if (%v1) {\n%c2\n} else {\n%c3\n}'
-    },
+    patterns: [ // TODO: Use WeakMap (if IE9 and other major browsers supports it)
+        { func: O.if, pattern: 'if (%v1) {\n%c2\n} else {\n%c3\n}' }
+    ],
     stringify: function stringify(v) {
         var t = O.type(v);
         var a = (t !== 'object');
@@ -394,10 +394,11 @@ O.compilers.js = {
     getCalls: function getCalls(code, calls) {
         calls = calls || [];
         if (O.type(code) !== 'array' || code.length < 1) { return calls; }
+        var patterns = O.compilers.js.patterns;
         var pattern = null;
-        for(var p in O.compilers.js.patterns) {
-            if (code[0] === p || (O[p] && code[0] === O[p])) {
-                pattern = O.compilers.js.patterns[p];
+        for(var i = 0; i < patterns.length; i++) {
+            if (code[0] === patterns[i].func) {
+                pattern = patterns[i].pattern;
                 break;
             }
         }
@@ -479,7 +480,7 @@ O.run = function (expr, env, cb) {
 O.run(['set', ['lookup', null, 'root'], 'def', {
     args:['k', 'v'],
     code:['do',
-        ['if',
+        [O.if,
             ['and',
                 ['has', ['lookup', null, 'v'], 'code'],
                 ['not', ['has', ['lookup', null, 'v'], 'parent']]
@@ -624,11 +625,11 @@ window.Tests = [
     "['get', ['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'src']",
     "['get', ['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'code']",
     "[['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 5, 7]",
-    "[['compile', {code:['if', true, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
-    "[['compile', {code:['if', false, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
-    "['get', ['compile', {args:['x'],code:['if', true, {args:['v1'],code:['if', true, {args:['v2'],code:['+', 'x:', ['lookup', null, 'x'], ', v1:', ['lookup', null, 'v1'], ', v2:', ['lookup', null, 'v2']]}]}]}], 'code']",
-    "['get', ['compile', {code:['if', ['cond', 123], {code:['foo', 456]}]}], 'code']",
-    "['get', ['compile', {code:['if', ['cond', 123], ['foo', 456]]}], 'code']"
+    "[['compile', {code:[O.if, true, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
+    "[['compile', {code:[O.if, false, {code:['id', 'TRUE!']}, {code:['id', 'FALSE!']}]}]]",
+    "['get', ['compile', {args:['x'],code:[O.if, true, {args:['v1'],code:[O.if, true, {args:['v2'],code:['+', 'x:', ['lookup', null, 'x'], ', v1:', ['lookup', null, 'v1'], ', v2:', ['lookup', null, 'v2']]}]}]}], 'code']",
+    "['get', ['compile', {code:[O.if, ['cond', 123], {code:['foo', 456]}]}], 'code']",
+    "['get', ['compile', {code:[O.if, ['cond', 123], ['foo', 456]]}], 'code']"
 ];
 window.RunTests();
 
