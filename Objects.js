@@ -394,10 +394,7 @@ O.compilers.js = {
         }
         if (O.type(code) !== 'array') { return null; }
         var calls = O.compilers.js.getCalls(code);
-        var src = innerSrc || '';
-        for(var i = calls.length - 1; i >= 0; i--) {
-            src = O.compilers.js.buildCall(calls[i], i, src);
-        }
+        var src = O.compilers.js.buildCalls(calls, innerSrc || '');
         return (O.type(innerSrc) === 'string') ? src : eval('(function(cb, env) {\n' + src + '\n})');
     },
     getCalls: function getCalls(code, calls) {
@@ -428,46 +425,51 @@ O.compilers.js = {
         calls.push(pattern ? { pattern: pattern, args: last } : last);
         return calls;
     },
-    buildCall: function(call, idx, src) {
-        src = src || '';
-        if (call && call.pattern) {
-            var rets = call.pattern.match(/\%(r|(r|c)\d+)\b/gi);
-            rets = (src.length > 1 && rets && rets.length > 1);
-            var inner = (rets) ? '' : src;
-            //TODO: Wrap (complex) values if used in multiple places: (func(v){...}(THE_VALUE))
-            return (rets ? 'return (function(cb){\n' : '') +
-                call.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
-                    var k = esc.charAt(1).toLowerCase();
-                    var i = parseInt(esc.substring(2));
-                    var v = (i > 0 && i <= call.args.length) ? call.args[i - 1] : { value: null };
-                    var vs = O.compilers.js.globalStr(v && v.value);
-                    if (!vs) {
-                        var code = v && v.value && v.value.code;
-                        if (k ==='c' && code) { return O.compilers.js.compile(code, false, inner); }
-                        v.value = O.compilers.js.compile(v && v.value, false) || v.value;
-                        vs = O.compilers.js.valueStr(v, false);
-                    }
-                    return (
-                        (k === 'v') ? vs :
-                        (inner.length < 1) ? 'return O.tailcall(cb, env, [' + vs + ']);' :
-                        (O.type(v) === 'number' ? '' : 'var r' + idx + ' = ' + vs + ';')
-                    );
-                }) +
-                (rets ? '\n}(' + src.replace(/^return\b\s*|(\;|\s)*$/g, '') + '));' : '');
+    buildCalls: function(calls, src) {
+        for(var idx = calls.length - 1; idx >= 0; idx--) {
+            var call = calls[idx];
+            if (call && call.pattern) {
+                var rets = call.pattern.match(/\%(r|(r|c)\d+)\b/gi);
+                rets = (src.length > 1 && rets && rets.length > 1);
+                var inner = (rets) ? '' : src;
+                //TODO: Wrap (complex) values if used in multiple places: (func(v){...}(THE_VALUE))
+                src = (rets ? 'return (function(cb){\n' : '') +
+                    call.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
+                        var k = esc.charAt(1).toLowerCase();
+                        var i = parseInt(esc.substring(2));
+                        var v = (i > 0 && i <= call.args.length) ? call.args[i - 1] : { value: null };
+                        var vs = O.compilers.js.globalStr(v && v.value);
+                        if (!vs) {
+                            var code = v && v.value && v.value.code;
+                            if (k ==='c' && code) { return O.compilers.js.compile(code, false, inner); }
+                            v.value = O.compilers.js.compile(v && v.value, false) || v.value;
+                            vs = O.compilers.js.valueStr(v, false);
+                        }
+                        return (
+                            (k === 'v') ? vs :
+                            (inner.length < 1) ? 'return O.tailcall(cb, env, [' + vs + ']);' :
+                            (O.type(v) === 'number' ? '' : 'var r' + idx + ' = ' + vs + ';')
+                        );
+                    }) +
+                    (rets ? '\n}(' + src.replace(/^return\b\s*|(\;|\s)*$/g, '') + '));' : '');
+            }
+            else {
+                if (O.type(call) !== 'array') { return src; }
+                var v = O.compilers.js.valueStr(call[0]);
+                var str = (v.charAt(0) === '"');
+                var s = 'return O.tailcall(' +
+                    (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
+                    ', env, [';
+                var args = call.slice(1);
+                for(var i = 0; i < args.length; i++) {
+                    s += (i > 0 ? ', ' : '') + O.compilers.js.valueStr(args[i]);
+                }
+                src = s + '], ' +
+                    (src.length < 1 ? 'cb);' : 'function(r' + idx + ') {\n' + src + '\n});') +
+                    (str ? '\n});' : '');
+            }
         }
-        if (O.type(call) !== 'array') { return src; }
-        var v = O.compilers.js.valueStr(call[0]);
-        var str = (v.charAt(0) === '"');
-        var s = 'return O.tailcall(' +
-            (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
-            ', env, [';
-        var args = call.slice(1);
-        for(var i = 0; i < args.length; i++) {
-            s += (i > 0 ? ', ' : '') + O.compilers.js.valueStr(args[i]);
-        }
-        return s + '], ' +
-            (src.length < 1 ? 'cb);' : 'function(r' + idx + ') {\n' + src + '\n});') +
-            (str ? '\n});' : '');
+        return src;
     }
 };
 O.language = 'js';
