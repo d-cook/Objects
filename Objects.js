@@ -322,7 +322,15 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 
 //TODO: 1. Compile the compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
-O.compile = function compile(code, saveSrc, innerSrc) {
+O.compilers = { js: {} };
+// %v# (e.g. %v2) insert #th value as-is
+// %r# (e.g. %r3) insert code to return the #th value to the outer expression
+// %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
+// %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
+O.compilers.js.patterns = {
+    if: 'if (%v1) {\n%c2\n} else {\n%c3\n}'
+};
+O.compilers.js.compile = function compile(code, saveSrc, innerSrc) {
     if (O.type(code) === 'object') {
         var src = O.type(code.code) === 'array' ? code.code :
                   O.type(code.src ) === 'array' ? code.src  : null;
@@ -336,13 +344,14 @@ O.compile = function compile(code, saveSrc, innerSrc) {
         return cc;
     }
     if (O.type(code) !== 'array') { return null; }
+    var patterns = O.compilers.js.patterns;
     var calls = [];
     (function getCalls(code) {
         if (O.type(code) !== 'array' || code.length < 1) { return calls; }
         var pattern = null;
-        for(var p in O.compilePatterns) {
+        for(var p in patterns) {
             if (code[0] === p || (O[p] && code[0] === O[p])) {
-                pattern = O.compilePatterns[p];
+                pattern = patterns[p];
                 break;
             }
         }
@@ -414,13 +423,7 @@ O.compile = function compile(code, saveSrc, innerSrc) {
             (s.length ? '{ '+ s.substring(1) +' }' : '{}');
     }
 };
-// %v# (e.g. %v2) insert #th value as-is
-// %r# (e.g. %r3) insert code to return the #th value to the outer expression
-// %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
-// %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
-O.compilePatterns = {
-    if: 'if (%v1) {\n%c2\n} else {\n%c3\n}'
-};
+O.compile = O.compilers.js.compile;
 
 // External interface for running code
 O.run = function (expr, env, cb) {
