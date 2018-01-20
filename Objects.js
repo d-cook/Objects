@@ -320,7 +320,7 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
     });
 }};
 
-//TODO: 1. Compile this compile function (by running it on itself) to generate a CPS-version of it.
+//TODO: 1. Compile the compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
 O.compile = function compile(code, saveSrc, innerSrc) {
     if (O.type(code) === 'object') {
@@ -363,26 +363,26 @@ O.compile = function compile(code, saveSrc, innerSrc) {
     while(calls.length) {
         var c = calls.pop();
         if (c && c.pattern) {
-            var rets = c.pattern.match(/\%(r|(v|r|c)\d+)\b/gi);
-            rets = (rets && rets.length > 1);
+            var rets = c.pattern.match(/\%(r|(r|c)\d+)\b/gi);
+            rets = (src.length > 1 && rets && rets.length > 1);
             var inner = (rets) ? '' : src;
             //TODO: Wrap (complex) values if used in multiple places: (func(v){...}(THE_VALUE))
-            src = c.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
-                var k = esc.charAt(1).toLowerCase();
-                var i = parseInt(esc.substring(2));
-                var v = (i > 0 && i <= c.args.length) ? c.args[i - 1] : { value: null };
-                var code = v && v.value && v.value.code;
-                if (k ==='c' && code) { return compile(code, false, inner); }
-                v.value = compile(v && v.value, false) || v.value;
-                return (
-                    (k === 'v') ? valueStr(v) :
-                    (inner.length < 1) ? 'return O.tailcall(cb, env, [' + valueStr(v) + ']);' :
-                    (O.type(v) === 'number' ? '' : 'var r' + (calls.length) + ' = ' + valueStr(v) + ';')
-                );
-            });
-            if (rets) {
-                src = 'return (function(cb){\n' + src + '\n}(' + inner.replace(/^return\b\s*|(\;|\s)*$/g, '') + '));';
-            }
+            src =
+                (rets ? 'return (function(cb){\n' : '') +
+                c.pattern.replace(/\%(r|(v|r|c)\d+)\b/gi, function(esc) {
+                    var k = esc.charAt(1).toLowerCase();
+                    var i = parseInt(esc.substring(2));
+                    var v = (i > 0 && i <= c.args.length) ? c.args[i - 1] : { value: null };
+                    var code = v && v.value && v.value.code;
+                    if (k ==='c' && code) { return compile(code, false, inner); }
+                    v.value = compile(v && v.value, false) || v.value;
+                    return (
+                        (k === 'v') ? valueStr(v) :
+                        (inner.length < 1) ? 'return O.tailcall(cb, env, [' + valueStr(v) + ']);' :
+                        (O.type(v) === 'number' ? '' : 'var r' + (calls.length) + ' = ' + valueStr(v) + ';')
+                    );
+                }) +
+                (rets ? '\n}(' + src.replace(/^return\b\s*|(\;|\s)*$/g, '') + '));' : '');
         }
         else if (O.type(c) === 'array') {
             var v = valueStr(c[0]);
