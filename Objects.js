@@ -6,10 +6,29 @@ O.root = O;
 
 // Functions that must be native-defined:
 
-O.has    = function (o, p   ) { return o ? (p in o) : false; };
-O.get    = function (o, p   ) { return O.has(o, p) ? o[p] : null; };
-O.set    = function (o, p, v) { var t = O.type(o); if (t === 'object' || t === 'array') { o[p] = v; } return v; };
-O.delete = function (o, p   ) { var v = (O.has(o, p) ? o[p] : null); delete o[p]; return v; };
+O.has = { parent: O, args:['o', 'p'], code: function(cb, env) {
+    var o = (env.o || env.caller);
+    var t = O.type(o);
+    return O.tailcall(cb, env, [(t === 'object' || t === 'array') && (env.p in o)]);
+}};
+O.get = { parent: O, args:['o', 'p'], code: function(cb, env) {
+    var o = (env.o || env.caller);
+    return O.tailcall(O.has, env, [o, env.p], function (h) {
+        return O.tailcall(cb, env, [h ? o[env.p] : null]);
+    });
+}};
+O.set = { parent: O, args:['o', 'p', 'v'], code: function(cb, env) {
+    (env.o || env.caller)[env.p] = env.v;
+    return O.tailcall(cb, env, [env.v]);
+}};
+O.delete = { parent: O, args:['o', 'p'], code: function(cb, env) {
+    var o = (env.o || env.caller);
+    return O.tailcall(O.has, env, [env.o, env.p], function (h) {
+        var v = h ? o[env.p] : null;
+        delete o[env.p];
+        return O.tailcall(cb, env, [v]);
+    });
+}};
 
 O.type = function (o) {
     var t = (typeof o);
@@ -115,11 +134,13 @@ O.exists = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
         });
     }
     var obj = env.obj || env.caller;
-    var h = env.parent.has(obj, env.prop);
-    if (h) { return env.parent.tailcall(cb, env, [true]); }
-    h = env.parent.has(obj, 'parent');
-    if (!h) { return env.parent.tailcall(cb, env, [false]); }
-    return env.parent.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
+    return O.tailcall(O.has, env, [obj, env.prop], function (h) {
+        if (h) { return env.parent.tailcall(cb, env, [true]); }
+        return O.tailcall(O.has, env, [obj, 'parent'], function (h) {
+            if (!h) { return env.parent.tailcall(cb, env, [false]); }
+            return env.parent.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
+        });
+    });
 }};
 O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     if (env.args.length > 2) {
@@ -129,32 +150,34 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
         });
     }
     var obj = env.obj || env.caller;
-    var h = env.parent.has(obj, env.prop);
-    if (h) { return env.parent.tailcall(cb, env, [obj[env.prop]]); }
-    h = env.parent.has(obj, 'parent');
-    if (!h) { return env.parent.tailcall(cb, env, [null]); }
-    return env.parent.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
+    return O.tailcall(O.has, env, [obj, env.prop], function (h) {
+        if (h) { return env.parent.tailcall(cb, env, [obj[env.prop]]); }
+        return O.tailcall(O.has, env, [obj, 'parent'], function (h) {
+            if (!h) { return env.parent.tailcall(cb, env, [null]); }
+            return env.parent.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
+        });
+    });
 }};
 /*
 O.lookup = ( parent: O, args: ['obj', 'prop'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'args']], 3],
+    O.if, [O['>'], [O.length, [O.get, null, 'args']], 3],
     {code: [ O.do,
-        [O.assign, null, 'last', [O.pop, [O.lookup, null, 'args']]],
+        [O.assign, null, 'last', [O.pop, [O.get, null, 'args']]],
         [O.lookup,
             [O.apply,
                 O.lookup,
-                [O.lookup, null, 'args'],
-                [O.lookup, null, 'scope']
+                [O.get, null, 'args'],
+                [O.get, null, 'scope']
             ],
-            [O.lookup, null, 'last']
+            [O.get, null, 'last']
         ]
     ]},
     {code: [O.do,
-        [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
-        [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-            {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
-            {code:[O.if, [O.has, [O.lookup, null, obj], 'parent']
-                {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+        [O.assign, null, 'obj', [O.or, [O.get, null, 'obj'], [O.get, null, 'caller']]],
+        [O.if, [O.has, [O.get, null, 'obj'], [O.get, null, 'prop']],
+            {code:[O.get, null, 'obj', [O.get, null, 'prop']]},
+            {code:[O.if, [O.has, [O.get, null, obj], 'parent']
+                {code:[O.get, [O.get, null, 'obj', 'parent'], [O.get, null, 'prop']]},
                 null
             ]}
         ]
@@ -171,7 +194,7 @@ O.assign = { parent: O, args: ['obj', 'prop', 'value'], code: function (cb, env)
     }
     var obj = env.obj || env.caller;
     var t = env.parent.type(obj);
-    if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
+    obj[env.prop] = env.value;
     return env.parent.tailcall(cb, env, [env.value]);
 }};
 O.remove = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
@@ -182,14 +205,12 @@ O.remove = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
         });
     }
     var obj = env.obj || env.caller;
-    var h = env.parent.has(obj, env.prop);
-    if (h) {
+    if (env.prop in obj) {
         var v = obj[env.prop];
         delete obj[env.prop];
         return env.parent.tailcall(cb, env, [v]);
     }
-    h = env.parent.has(obj, 'parent');
-    if (!h) { return env.parent.tailcall(cb, env, [null, false]); }
+    if (!('parent' in obj)) { return env.parent.tailcall(cb, env, [null, false]); }
     return env.parent.tailcall(env.parent.remove, env, [obj.parent, env.prop], cb);
 }};
 
@@ -204,10 +225,9 @@ O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
     }
     if (t === 'object') {
         var c = env.parent.newObj();
-        for(var p in env.obj) {
-            if (env.parent.has(env.obj, p)) {
-                c[p] = env.obj[p];
-            }
+        var keys = Object.keys(env.obj);
+        for(var i = 0; i < keys.length; i++) {
+            c[keys[i]] = env.obj[keys[i]];
         }
         return env.parent.tailcall(cb, env, [c]);
     }
@@ -428,9 +448,8 @@ O.compilers.js = {
             var s = 'return O.tailcall(' +
                 (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
                 ', env, [';
-            var args = call.slice(1);
-            for(var i = 0; i < args.length; i++) {
-                s += (i > 0 ? ', ' : '') + O.compilers.js.valueStr(args[i]);
+            for(var i = 1; i < call.length; i++) {
+                s += (i > 1 ? ', ' : '') + O.compilers.js.valueStr(call[i]);
             }
             src = s + '], ' +
                 (src.length < 1 ? 'cb);' : 'function(r' + idx + ') {\n' + src + '\n});') +
