@@ -117,11 +117,13 @@ O.exists = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
         });
     }
     var obj = env.obj || env.caller;
-    var h = env.parent.has(obj, env.prop);
-    if (h) { return env.parent.tailcall(cb, env, [true]); }
-    h = env.parent.has(obj, 'parent');
-    if (!h) { return env.parent.tailcall(cb, env, [false]); }
-    return env.parent.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
+    return O.tailcall(O.has, env, [obj, env.prop], function (h) {
+        if (h) { return env.parent.tailcall(cb, env, [true]); }
+        return O.tailcall(O.has, env, [obj, 'parent'], function (h) {
+            if (!h) { return env.parent.tailcall(cb, env, [false]); }
+            return env.parent.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
+        });
+    });
 }};
 O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     if (env.args.length > 2) {
@@ -131,11 +133,13 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
         });
     }
     var obj = env.obj || env.caller;
-    var h = env.parent.has(obj, env.prop);
-    if (h) { return env.parent.tailcall(cb, env, [obj[env.prop]]); }
-    h = env.parent.has(obj, 'parent');
-    if (!h) { return env.parent.tailcall(cb, env, [null]); }
-    return env.parent.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
+    return O.tailcall(O.has, env, [obj, env.prop], function (h) {
+        if (h) { return env.parent.tailcall(cb, env, [obj[env.prop]]); }
+        return O.tailcall(O.has, env, [obj, 'parent'], function (h) {
+            if (!h) { return env.parent.tailcall(cb, env, [null]); }
+            return env.parent.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
+        });
+    });
 }};
 /*
 O.lookup = ( parent: O, args: ['obj', 'prop'], code: [
@@ -155,7 +159,7 @@ O.lookup = ( parent: O, args: ['obj', 'prop'], code: [
         [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
         [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
             {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
-            {code:[O.if, [O.has, [O.lookup, null, obj], 'parent']
+            {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
                 {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
                 null
             ]}
@@ -206,10 +210,9 @@ O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
     }
     if (t === 'object') {
         var c = env.parent.newObj();
-        for(var p in env.obj) {
-            if (env.parent.has(env.obj, p)) {
-                c[p] = env.obj[p];
-            }
+        var keys = Object.keys(env.obj);
+        for(var i = 0; i < keys.length; i++) {
+            c[keys[i]] = env.obj[keys[i]];
         }
         return env.parent.tailcall(cb, env, [c]);
     }
@@ -362,10 +365,10 @@ O.compilers.js = {
     ],
     stringify: function stringify(v, alias) {
         var t = O.type(v);
-        var a = (t !== 'object');
-        if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
         var s = (alias !== false && O.compilers.js.globalStr(v)) || '';
         if (s.length > 0) { return s; }
+        var a = (t !== 'object');
+        if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
         for(var p in v) { s += ', ' + (a ? '' : stringify(p) + ':') + stringify(v[p], alias); }
         return a ?
             (s.length ? '[' + s.substring(1) + ']' : '[]'):
@@ -472,9 +475,8 @@ O.compilers.js = {
                 var s = 'return O.tailcall(' +
                     (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
                     ', env, [';
-                var args = call.slice(1);
-                for(var i = 0; i < args.length; i++) {
-                    s += (i > 0 ? ', ' : '') + O.compilers.js.valueStr(args[i]);
+                for(var i = 1; i < call.length; i++) {
+                    s += (i > 1 ? ', ' : '') + O.compilers.js.valueStr(call[i]);
                 }
                 src = s + '], ' +
                     (src.length < 1 ? 'cb);' : 'function(r' + idx + ') {\n' + src + '\n});') +
