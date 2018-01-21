@@ -176,7 +176,7 @@ O.lookup = ( parent: O, args: ['obj', 'prop'], code: [
         [O.assign, null, 'obj', [O.or, [O.get, null, 'obj'], [O.get, null, 'caller']]],
         [O.if, [O.has, [O.get, null, 'obj'], [O.get, null, 'prop']],
             {code:[O.get, null, 'obj', [O.get, null, 'prop']]},
-            {code:[O.if, [O.has, [O.get, null, obj], 'parent']
+            {code:[O.if, [O.has, [O.get, null, 'obj'], 'parent'],
                 {code:[O.get, [O.get, null, 'obj', 'parent'], [O.get, null, 'prop']]},
                 null
             ]}
@@ -372,10 +372,10 @@ O.compilers = {};
 O.compilers.js = {
     stringify: function stringify(v, alias) {
         var t = O.type(v);
-        var a = (t !== 'object');
-        if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
         var s = (alias !== false && O.compilers.js.globalStr(v)) || '';
         if (s.length > 0) { return s; }
+        var a = (t !== 'object');
+        if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
         for(var p in v) { s += ', ' + (a ? '' : stringify(p) + ':') + stringify(v[p], alias); }
         return a ?
             (s.length ? '[' + s.substring(1) + ']' : '[]'):
