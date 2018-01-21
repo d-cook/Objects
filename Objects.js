@@ -5,6 +5,8 @@ var O = window.Objects = Object.create(null);
 O.root = O;
 
 // Functions that must be native-defined:
+// TODO: Create a compile-pattern for each, and then recode them to just call themselves,
+//       and then compile them. This will generate each based purely on compile-patterns.
 
 O.has    = function (o, p   ) { return o ? (p in o) : false; };
 O.get    = function (o, p   ) { return O.has(o, p) ? o[p] : null; };
@@ -354,6 +356,7 @@ O.compilers.js = {
     // %r# (e.g. %r3) insert code to return the #th value to the outer expression
     // %r  (e.g. %r ) insert code to return (nothing, i.e. null) to outer expression
     // %c# (e.g. %c4) insert compiled result if like {code:[...]}. Else acts like %r#
+    // TODO: Create patterns for ALL native funcs, and then recode them to call themselves (and then compile them).
     patterns: [ // TODO: Use WeakMap (if IE9 and other major browsers supports it)
         { func: O.if, pattern: 'if (%v1) {\n%c2\n} \n%c3' }
     ],
