@@ -375,6 +375,8 @@ O.compilers.js = {
     valueStr: function (v, alias) {
         return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
     },
+    // TODO: replace calls to O.lookup with a direct reference to an argument
+    // (i.e. env[..]) when a match can be statically inferred.
     compile: function compile(code, saveSrc) {
         if (O.type(code) === 'object') {
             var src = O.type(code.code) === 'array' ? code.code :
