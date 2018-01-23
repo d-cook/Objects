@@ -139,6 +139,55 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
         });
     });
 }};
+O.lookup.code = (function (cb, env) {
+  var args = env;
+  var r0 = args.args;
+  return O.tailcall(O.length, env, [r0], function(r1) {
+    return O.tailcall(O[">"], env, [r1, 2], function(r2) {
+      return O.tailcall(O.if, env, [r2, {
+        "code":function (cb, env) {
+          var r3 = args.args;
+          return O.tailcall(O.pop, env, [r3], function(r4) { // last
+            var r5 = (args.last = r4);
+            var r6 = args.args;
+            var r7 = args.scope;
+            return O.tailcall(O.apply, env, [O.lookup, r6, r7], function(r8) {
+              var r9 = args.last;// <-- BROKEN. DEBUG THIS.
+              return O.tailcall(O.lookup, env, [r8, r4], cb);
+            });
+          });
+        }
+      }, {
+        "code":function (cb, env) {
+          var r3 = args.obj;
+          var r4 = args.caller;
+          return O.tailcall(O.or, env, [r3, r4], function(r5) { // obj
+            var r6 = (args.prop);
+            return O.tailcall(O.has, env, [r5, r6], function (r7) {
+              return O.tailcall(O.if, env, [r7, {
+                "code":function (cb, env) {
+                  return O.tailcall(O.get, env, [r5, r6], cb);
+                }
+              }, {
+                "code":function (cb, env) {
+                  return O.tailcall(O.has, env, [r5, 'parent'], function (r8) {
+                    return O.tailcall(O.if, env, [r8, {
+                      "code":function(cb, env) {
+                        var r9 = r5 && r5.parent;
+                        var r10 = args.prop;
+                        return O.tailcall(O.lookup, env, [r9, r10], cb);
+                      }
+                    }, null], cb);
+                  });
+                }
+              }], cb);
+            });
+          });
+        }
+      }], cb);
+    });
+  });
+});
 /*
 ----RECODED----
 O.lookup = { parent: O, args: ['obj', 'prop'], code: [
@@ -414,28 +463,6 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 //      2. Re-write the above functions as objects, and run this to generate the native code.
 O.compilers = {};
 O.compilers.js = {
-    stringify: function stringify(v, alias) {
-        var t = O.type(v);
-        var s = (alias !== false && O.compilers.js.globalStr(v)) || '';
-        if (s.length > 0) { return s; }
-        var a = (t !== 'object');
-        if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
-        for(var p in v) { s += ', ' + (a ? '' : stringify(p) + ':') + stringify(v[p], alias); }
-        return a ?
-            (s.length ? '[' + s.substring(1) + ']' : '[]'):
-            (s.length ? '{ '+ s.substring(1) +' }' : '{}');
-    },
-    globalStr: function (v) {
-        for(var p in O) {
-            if (v === O[p]) {
-                return 'O' + (/^([A-Za-z]|_)\w*$/g.test(p) ? '.' + p : '["' + p + '"]');
-            }
-        }
-        return null;
-    },
-    valueStr: function (v, alias) {
-        return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
-    },
     compile: function compile(code, innerOffset) {
         if (O.type(code) === 'object') {
             var src = O.type(code.code) === 'array' ? code.code :
@@ -487,14 +514,28 @@ O.compilers.js = {
                     c[i].value = O.compilers.js.compile(v, calls.length - 1 + innerOffset);
                 }
             }
-            if (c.length > 2 && (c[0] && c[0].value) === O.lookup && c[1] && c[1].value === null) {
+            var f = (c.length > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
+            if (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove)) {
+                var vals = [];
+                for(var i = 2; i < c.length; i++) { vals.push(O.compilers.js.valueStr(c[i])); }
                 var s = 'args';
-                for(var i = 2; i < c.length; i++) {
-                    var v = O.compilers.js.valueStr(c[i]);
-                    s += (i > 2 ? ' && ' + s : '') +
-                        (/^"[a-z_]\w*"$/i.test(v) ? '.' + v.substring(1, v.length-1) : '[' + v + ']'); 
+                var max = vals.length - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
+                for(var i = 0; i < max; i++) {
+                    var v = vals[i];
+                    s += (i > 0 ? ' && ' + s : '') + O.compilers.js.indexStr(v);
                 }
-                src = (src.length > 0
+                var len = (src.length);
+                if (f === O.assign) {
+                    s = '(' + (max < 1 ? s : '((' + s + ')||{})') +
+                        O.compilers.js.indexStr(vals[max]) + ' = ' + vals[max + 1] + ')';
+                } else if (f === O.exists) {
+                    s = vals[max] + ' in ' + (max < 1 ? s : '((' + s + ')||{})');
+                } else if (f === O.remove) {
+                    src = 'var v = ' + s + ';\n' +
+                        'delete v' + O.compilers.js.indexStr(vals[max]) + ';\n' + src;
+                    s = 'v' + O.compilers.js.indexStr(vals[max]);
+                }
+                src = (len > 0
                     ? 'var r' + (idx + innerOffset) + ' = ' + s + ';\n' + src
                     : 'return O.tailcall(cb, env, [' + s + ']);'
                 );
@@ -513,6 +554,31 @@ O.compilers.js = {
             }
         }
         return src;
+    },
+    indexStr: function(v) {
+        return /^"[a-z_]\w*"$/i.test(v) ? '.' + v.substring(1, v.length-1) : '[' + v + ']';
+    },
+    valueStr: function (v, alias) {
+        return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
+    },
+    stringify: function stringify(v, alias) {
+        var t = O.type(v);
+        var s = (alias !== false && O.compilers.js.globalStr(v)) || '';
+        if (s.length > 0) { return s; }
+        var a = (t !== 'object');
+        if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
+        for(var p in v) { s += ', ' + (a ? '' : stringify(p) + ':') + stringify(v[p], alias); }
+        return a ?
+            (s.length ? '[' + s.substring(1) + ']' : '[]'):
+            (s.length ? '{ '+ s.substring(1) +' }' : '{}');
+    },
+    globalStr: function (v) {
+        for(var p in O) {
+            if (v === O[p]) {
+                return 'O' + (/^([A-Za-z]|_)\w*$/g.test(p) ? '.' + p : '["' + p + '"]');
+            }
+        }
+        return null;
     }
 };
 O.language = 'js';
