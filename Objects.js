@@ -140,6 +140,7 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
     });
 }};
 /*
+----RECODED----
 O.lookup = { parent: O, args: ['obj', 'prop'], code: [
     O.if, [O['>'], [O.length, [O.lookup, null, 'args']], 2],
     {code: [ O.do,
@@ -166,20 +167,21 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: [
 ]};
 ----RESULT----
 (function(cb, env) {
-  var r0 = (env.args);
+  var args = env;
+  var r0 = args.args;
   return O.tailcall(O.length, env, [r0], function(r1) {
     return O.tailcall(O[">"], env, [r1, 2], function(r2) {
       return O.tailcall(O.if, env, [r2, {
         "code":function (cb, env) {
-          var r0 = (env.args);
-          return O.tailcall(O.pop, env, [r0], function(r1) {
-            return O.tailcall(O.assign, env, [null, "last", r1], function(r2) {
-              var r3 = (env.args);
-              var r4 = (env.scope);
-              return O.tailcall(O.apply, env, [O.lookup, r3, r4], function(r5) {
-                var r6 = (env.last);
-                  return O.tailcall(O.lookup, env, [r5, r6], function(r7) {
-                    return O.tailcall(O.do, env, [r2, r7], cb);
+          var r3 = args.args;
+          return O.tailcall(O.pop, env, [r3], function(r4) {
+            return O.tailcall(O.assign, env, [null, "last", r4], function(r5) {
+              var r6 = args.args;
+              var r7 = args.scope;
+              return O.tailcall(O.apply, env, [O.lookup, r6, r7], function(r8) {
+                var r9 = args.last;
+                  return O.tailcall(O.lookup, env, [r8, r9], function(r10) {
+                    return O.tailcall(O.do, env, [r5, r10], cb);
                   });
                 });
               });
@@ -187,33 +189,33 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: [
           }
         }, {
         "code":function (cb, env) {
-          var r0 = (env.obj);
-          var r1 = (env.caller);
-          return O.tailcall(O.or, env, [r0, r1], function(r2) {
-            return O.tailcall(O.assign, env, [null, "obj", r2], function(r3) {
-              var r4 = (env.obj);
-              var r5 = (env.prop);
-              return O.tailcall(O.has, env, [r4, r5], function(r6) {
-                return O.tailcall(O.if, env, [r6, {
+          var r3 = args.obj;
+          var r4 = args.caller;
+          return O.tailcall(O.or, env, [r3, r4], function(r5) {
+            return O.tailcall(O.assign, env, [null, "obj", r5], function(r6) {
+              var r7 = args.obj;
+              var r8 = args.prop;
+              return O.tailcall(O.has, env, [r7, r8], function(r9) {
+                return O.tailcall(O.if, env, [r9, {
                   "code":function (cb, env) {
-                    var r0 = (env.prop);
-                    return O.tailcall(cb, env, [env.obj && env.obj[r0]]);
+                    var r11 = args.prop;
+                    return O.tailcall(cb, env, [args.obj && args.obj[r11]]);
                   }
                 }, {
                   "code":function (cb, env) {
-                    var r0 = (env.obj);
-                    return O.tailcall(O.has, env, [r0, "parent"], function(r1) {
-                      return O.tailcall(O.if, env, [r1, {
+                    var r11 = args.obj;
+                    return O.tailcall(O.has, env, [r11, "parent"], function(r12) {
+                      return O.tailcall(O.if, env, [r12, {
                         "code":function (cb, env) {
-                          var r0 = (env.obj && env.obj.parent);
-                          var r1 = (env.prop);
-                          return O.tailcall(O.lookup, env, [r0, r1], cb);
+                          var r13 = args.obj && args.obj.parent;
+                          var r14 = args.prop;
+                          return O.tailcall(O.lookup, env, [r13, r14], cb);
                         }
                       }, null], cb);
                     });
                   }
-                }], function(r7) {
-                  return O.tailcall(O.do, env, [r3, r7], cb);
+                }], function(r10) {
+                  return O.tailcall(O.do, env, [r6, r10], cb);
                 });
               });
             });
@@ -434,56 +436,55 @@ O.compilers.js = {
     valueStr: function (v, alias) {
         return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
     },
-    // TODO: replace calls to O.lookup with a direct reference to an argument
-    // (i.e. env[..]) when a match can be statically inferred.
-    compile: function compile(code, saveSrc) {
+    compile: function compile(code, innerOffset) {
         if (O.type(code) === 'object') {
             var src = O.type(code.code) === 'array' ? code.code :
                       O.type(code.src ) === 'array' ? code.src  : null;
-            var cc = { code: (src && compile(src, saveSrc)) };
+            var cc = { code: (src && compile(src, innerOffset)) };
             if (!cc.code) { return null; }
             for(p in code) {
                 if (p !== 'src' && p !== 'code') {
                     cc[p] = code[p];
                 }
             }
-            if (saveSrc !== false) { cc.src = src; }
+            if (!innerOffset) { cc.src = src; }
             if (O.type(code.args) === 'array') {
                 cc.args = [];
                 cc.args.push.apply(cc.args, code.args);
             }
             return cc;
         }
-        var src = O.compilers.js.compileSrc(code);
-        return src && eval('(function(cb, env) {\n' + (saveSrc !== false ? 'var args = env;\n' : '') + src + '\n})');
+        var src = O.compilers.js.compileSrc(code, innerOffset || 0);
+        return src && eval('(function(cb, env) {\n' + (innerOffset ? '' : 'var args = env;\n') + src + '\n})');
     },
-    compileSrc: function(code, src) {
+    compileSrc: function(code, innerOffset) {
         if (O.type(code) !== 'array') { return null; }
-        var calls = O.compilers.js.getCalls(code);
-        return O.compilers.js.buildCalls(calls, src || '');
+        var calls = O.compilers.js.getCalls(code, [], innerOffset);
+        return O.compilers.js.buildCalls(calls, innerOffset);
     },
-    getCalls: function getCalls(code, calls) {
+    getCalls: function getCalls(code, calls, innerOffset) {
         calls = calls || [];
         if (O.type(code) !== 'array' || code.length < 1) { return calls; }
         var last = [];
         for(var i = 0; i < code.length; i++) {
             var c = code[i];
             last.push(O.type(c) === 'array'
-                ? getCalls(c, calls).length - 1
+                ? getCalls(c, calls, innerOffset).length - 1 + innerOffset
                 : { value: c }
             );
         }
         calls.push(last);
         return calls;
     },
-    buildCalls: function(calls, src) {
+    buildCalls: function(calls, innerOffset) {
+        var src = '';
         for(var idx = calls.length - 1; idx >= 0; idx--) {
             var c = calls[idx];
             if (O.type(c) !== 'array') { return src; }
             for(var i = 0; i < c.length; i++) {
                 var v = c[i] && c[i].value;
                 if (v && v.code && !O.compilers.js.globalStr(v)) {
-                    c[i].value = O.compilers.js.compile(v, false);
+                    c[i].value = O.compilers.js.compile(v, calls.length - 1 + innerOffset);
                 }
             }
             if (c.length > 2 && (c[0] && c[0].value) === O.lookup && c[1] && c[1].value === null) {
@@ -494,7 +495,7 @@ O.compilers.js = {
                         (/^"[a-z_]\w*"$/i.test(v) ? '.' + v.substring(1, v.length-1) : '[' + v + ']'); 
                 }
                 src = (src.length > 0
-                    ? 'var r' + idx + ' = ' + s + ';\n' + src
+                    ? 'var r' + (idx + innerOffset) + ' = ' + s + ';\n' + src
                     : 'return O.tailcall(cb, env, [' + s + ']);'
                 );
             } else {
@@ -507,7 +508,7 @@ O.compilers.js = {
                     s += (i > 1 ? ', ' : '') + O.compilers.js.valueStr(c[i]);
                 }
                 src = s + '], ' +
-                    (src.length < 1 ? 'cb);' : 'function(r' + idx + ') {\n' + src + '\n});') +
+                    (src.length < 1 ? 'cb);' : 'function(r' + (idx + innerOffset) + ') {\n' + src + '\n});') +
                     (str ? '\n});' : '');
             }
         }
