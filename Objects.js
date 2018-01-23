@@ -141,7 +141,7 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
 }};
 /*
 O.lookup = { parent: O, args: ['obj', 'prop'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'args']], 3],
+    O.if, [O['>'], [O.length, [O.lookup, null, 'args']], 2],
     {code: [ O.do,
         [O.assign, null, 'last', [O.pop, [O.lookup, null, 'args']]],
         [O.lookup,
@@ -168,7 +168,7 @@ O.lookup = { parent: O, args: ['obj', 'prop'], code: [
 (function(cb, env) {
   var r0 = (env.args);
   return O.tailcall(O.length, env, [r0], function(r1) {
-    return O.tailcall(O[">"], env, [r1, 3], function(r2) {
+    return O.tailcall(O[">"], env, [r1, 2], function(r2) {
       return O.tailcall(O.if, env, [r2, {
         "code":function (cb, env) {
           var r0 = (env.args);
