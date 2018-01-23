@@ -470,13 +470,7 @@ O.compilers.js = {
             var c = code[i];
             last.push(O.type(c) === 'array'
                 ? getCalls(c, calls).length - 1
-                : {
-                    value: (
-                        c && c.code &&
-                        !O.compilers.js.globalStr(c) &&
-                        O.compilers.js.compile(c, false)
-                    ) || c
-                }
+                : { value: c }
             );
         }
         calls.push(last);
@@ -486,6 +480,12 @@ O.compilers.js = {
         for(var idx = calls.length - 1; idx >= 0; idx--) {
             var c = calls[idx];
             if (O.type(c) !== 'array') { return src; }
+            for(var i = 0; i < c.length; i++) {
+                var v = c[i] && c[i].value;
+                if (v && v.code && !O.compilers.js.globalStr(v)) {
+                    c[i].value = O.compilers.js.compile(v, false);
+                }
+            }
             if (c.length > 2 && (c[0] && c[0].value) === O.lookup && c[1] && c[1].value === null) {
                 var s = 'args';
                 for(var i = 2; i < c.length; i++) {
