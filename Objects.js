@@ -103,160 +103,6 @@ O.invoke = function (tc) { // tailcall
     while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
 };
 
-// The exists, lookup, assign, and remove are just like has, get, set, and delete,
-//   except that property-search continues up the "parent" chain until it is found.
-//   They also allow a series of properties to be listed, for convenience.
-O.exists = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
-    if (env.arguments.length > 2) {
-        var last = env.arguments.pop();
-        return O.tailcall(O.lookup, env, env.arguments, function(obj) {
-            return O.tailcall(O.exists, env, [obj, last], cb);
-        });
-    }
-    var obj = env.obj || env.caller;
-    return O.tailcall(O.has, env, [obj, env.prop], function (h) {
-        if (h) { return O.tailcall(cb, env, [true]); }
-        return O.tailcall(O.has, env, [obj, 'parent'], function (h) {
-            if (!h) { return O.tailcall(cb, env, [false]); }
-            return O.tailcall(O.exists, env, [obj.parent, env.prop], cb);
-        });
-    });
-}};
-O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
-    if (env.arguments.length > 2) {
-        var last = env.arguments.pop();
-        return O.tailcall(O.lookup, env, env.arguments, function(obj) {
-            return O.tailcall(O.lookup, env, [obj, last], cb);
-        });
-    }
-    var obj = env.obj || env.caller;
-    return O.tailcall(O.has, env, [obj, env.prop], function (h) {
-        if (h) { return O.tailcall(cb, env, [obj[env.prop]]); }
-        return O.tailcall(O.has, env, [obj, 'parent'], function (h) {
-            if (!h) { return O.tailcall(cb, env, [null]); }
-            return O.tailcall(O.lookup, env, [obj.parent, env.prop], cb);
-        });
-    });
-}};
-/*
-----RECODED----
-O.lookup = { parent: O, args: ['obj', 'prop'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'args']], 2],
-    {code: [ O.do,
-        [O.assign, null, 'last', [O.pop, [O.lookup, null, 'args']]],
-        [O.lookup,
-            [O.apply,
-                O.lookup,
-                [O.lookup, null, 'args'],
-                [O.lookup, null, 'scope']
-            ],
-            [O.lookup, null, 'last']
-        ]
-    ]},
-    {code: [O.do,
-        [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
-        [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-            {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
-            {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                null
-            ]}
-        ]
-    ]}
-]};
-----RESULT----
-(function(cb, env) {
-  var args = env;
-  var r0 = args.args;
-  return O.tailcall(O.length, env, [r0], function(r1) {
-    return O.tailcall(O[">"], env, [r1, 2], function(r2) {
-      return O.tailcall(O.if, env, [r2, {
-        "code":function (cb, env) {
-          var r3 = args.args;
-          return O.tailcall(O.pop, env, [r3], function(r4) {
-            return O.tailcall(O.assign, env, [null, "last", r4], function(r5) {
-              var r6 = args.args;
-              var r7 = args.scope;
-              return O.tailcall(O.apply, env, [O.lookup, r6, r7], function(r8) {
-                var r9 = args.last;
-                  return O.tailcall(O.lookup, env, [r8, r9], function(r10) {
-                    return O.tailcall(O.do, env, [r5, r10], cb);
-                  });
-                });
-              });
-            });
-          }
-        }, {
-        "code":function (cb, env) {
-          var r3 = args.obj;
-          var r4 = args.caller;
-          return O.tailcall(O.or, env, [r3, r4], function(r5) {
-            return O.tailcall(O.assign, env, [null, "obj", r5], function(r6) {
-              var r7 = args.obj;
-              var r8 = args.prop;
-              return O.tailcall(O.has, env, [r7, r8], function(r9) {
-                return O.tailcall(O.if, env, [r9, {
-                  "code":function (cb, env) {
-                    var r11 = args.prop;
-                    return O.tailcall(cb, env, [args.obj && args.obj[r11]]);
-                  }
-                }, {
-                  "code":function (cb, env) {
-                    var r11 = args.obj;
-                    return O.tailcall(O.has, env, [r11, "parent"], function(r12) {
-                      return O.tailcall(O.if, env, [r12, {
-                        "code":function (cb, env) {
-                          var r13 = args.obj && args.obj.parent;
-                          var r14 = args.prop;
-                          return O.tailcall(O.lookup, env, [r13, r14], cb);
-                        }
-                      }, null], cb);
-                    });
-                  }
-                }], function(r10) {
-                  return O.tailcall(O.do, env, [r6, r10], cb);
-                });
-              });
-            });
-          });
-        }
-      }], cb);
-    });
-  });
-})
-*/
-O.assign = { parent: O, args: ['obj', 'prop', 'value'], code: function (cb, env) {
-    if (env.arguments.length > 3) {
-        var val = env.arguments.pop();
-        var last = env.arguments.pop();
-        return O.tailcall(O.lookup, env, env.arguments, function(obj) {
-            return O.tailcall(O.assign, env, [obj, last, val], cb);
-        });
-    }
-    var obj = env.obj || env.caller;
-    var t = O.type(obj);
-    if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
-    return O.tailcall(cb, env, [env.value]);
-}};
-O.remove = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
-    if (env.arguments.length > 2) {
-        var last = env.arguments.pop();
-        return O.tailcall(O.lookup, env, env.arguments, function(obj) {
-            return O.tailcall(O.remove, env, [obj, last], cb);
-        });
-    }
-    var obj = env.obj || env.caller;
-    var h = O.has(obj, env.prop);
-    if (h) {
-        var v = obj[env.prop];
-        delete obj[env.prop];
-        return O.tailcall(cb, env, [v]);
-    }
-    h = O.has(obj, 'parent');
-    if (!h) { return O.tailcall(cb, env, [null, false]); }
-    return O.tailcall(O.remove, env, [obj.parent, env.prop], cb);
-}};
-
 O.list = { parent: O, code: ['lookup', null, 'arguments'] };
 
 O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
@@ -541,6 +387,120 @@ O.language = 'js';
 O.compiler = O.compilers[O.language];
 O.compile = O.compiler.compile;
 
+// These must "exist" before being compiled, so they can reference "themselves" in their pre-compile code.
+O.exists = {};
+O.lookup = {};
+O.assign = {};
+O.remove = {};
+
+// The exists, lookup, assign, and remove are just like has, get, set, and delete,
+//   except that property-search continues up the "parent" chain until it is found.
+//   They also allow a series of properties to be listed, for convenience.
+O.exists = O.compile({ parent: O, args: ['obj', 'prop'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+        {code: [ O.do,
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.exists,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                true,
+                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                    {code:[O.exists, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                    null
+                ]}
+            ]
+        ]}
+    ]
+});
+O.lookup = O.compile({ parent: O, args: ['obj', 'prop'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+        {code: [ O.do,
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.lookup,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
+                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                    {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                    null
+                ]}
+            ]
+        ]}
+    ]
+});
+O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+        {code: [ O.do,
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.remove,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                {code:[O.do,
+                    [O.assign, null, 'v', [O.lookup, null, 'obj', [O.lookup, null, 'prop']]],
+                    [O.delete, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                    [O.lookup, null, 'v']
+                ]},
+                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                    {code:[O.remove, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                    null
+                ]}
+            ]
+        ]}
+    ]
+});
+O.assign = O.compile({ parent: O, args: ['obj', 'prop', 'value'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 3],
+        {code: [ O.do,
+            [O.assign, null, 'val', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.assign,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last'],
+                [O.lookup, null, 'val']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
+            [O.if, [O.or, ['=', [O.lookup, null, 't'], 'object'], ['=', [O.lookup, null, 't'], 'array']],
+                {code:[O.set, [O.lookup, null, 'obj'], [O.lookup, null, 'prop'], [O.lookup, null, 'value']]}
+            ],
+            [O.lookup, null, 'value']
+        ]}
+    ]
+});
+
 // External interface for running code
 O.run = function (expr, env, cb) {
     console.log('run:', expr);
@@ -561,6 +521,36 @@ O.run = function (expr, env, cb) {
 //   The original plan was to do this with ALL funcs, and then "compile" a base-set of them.
 //   However, now I may just let the "native-provided" ones sit as is, and the rest may not
 //   NEED to be compiled at all. Either way, many funcs above need to be rewritten in this form:
+
+O.run(['set', O.lookup, 'code',
+    ['get',
+        ['compile', { code: [
+            O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+            {code: [ O.do,
+                [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+                [O.lookup,
+                    [O.apply,
+                        O.lookup,
+                        [O.lookup, null, 'arguments'],
+                        [O.lookup, null, 'scope']
+                    ],
+                    [O.lookup, null, 'last']
+                ]
+            ]},
+            {code: [O.do,
+                [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+                [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                    {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
+                    {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                        {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                        null
+                    ]}
+                ]
+            ]}
+        ]}],
+        'code'
+    ]
+]);
 
 O.run(['set', ['lookup', null, 'root'], 'def', {
     args:['k', 'v'],
