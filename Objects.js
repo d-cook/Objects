@@ -489,6 +489,12 @@ O.compilers.js = {
                     ? 'var r' + (idx + innerOffset) + ' = ' + s + ';\n' + src
                     : 'return O.tailcall(cb, env, [' + s + ']);'
                 );
+            } else if(c[0] && c[0].value === O.do) {
+                var v = O.compilers.js.valueStr(c.length > 1 ? c.pop() : null);
+                src = (src.length > 0
+                    ? 'var r' + (idx + innerOffset) + ' = ' + v + ';\n' + src
+                    : 'return O.tailcall(cb, env, [' + v + ']);'
+                );
             } else {
                 var v = O.compilers.js.valueStr(c[0]);
                 var str = (v.charAt(0) === '"');
