@@ -86,19 +86,18 @@ O.tailcall = function tailcall(func, env, args, cb) {
         }
         return { func: func.code, args: [cb, env2] };
     }
-    // Otherwise call eval on the func object:
-    var expr = [func];
-    expr.push.apply(expr, args);
+    // Otherwise call apply on the func object:
     var env2 = {
-        thisFunc: O.eval,
-        parent: O.eval.parent,
+        thisFunc: O.apply,
+        parent: O.apply.parent,
         caller: env || null,
-        arguments: [env, expr],
-        expr: expr,
+        arguments: [func, args, env],
+        func: func,
+        args: args,
         env: env
     };
     env2.scope = env2;
-    return { func: O.eval.code, args: [cb, env2] };
+    return { func: O.apply.code, args: [cb, env2] };
 };
 O.invoke = function (tc) { // tailcall
     while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
