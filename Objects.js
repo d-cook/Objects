@@ -70,7 +70,7 @@ O.tailcall = function tailcall(func, env, args, cb) {
         // If func has no parent, then assume it is a nested code-block and inherit from current execution scope:
         var env2 = {
             parent: func.parent || env || null,
-            args: args
+            arguments: args
         };
         env2.scope = env2;
         if (func.parent) {
@@ -86,232 +86,138 @@ O.tailcall = function tailcall(func, env, args, cb) {
         }
         return { func: func.code, args: [cb, env2] };
     }
-    // Otherwise call eval on the func object:
-    var expr = [func];
-    expr.push.apply(expr, args);
+    // Otherwise call apply on the func object:
     var env2 = {
-        thisFunc: O.eval,
-        parent: O.eval.parent,
+        thisFunc: O.apply,
+        parent: O.apply.parent,
         caller: env || null,
-        args: [env, expr],
-        expr: expr,
+        arguments: [func, args, env],
+        func: func,
+        args: args,
         env: env
     };
     env2.scope = env2;
-    return { func: O.eval.code, args: [cb, env2] };
+    return { func: O.apply.code, args: [cb, env2] };
 };
 O.invoke = function (tc) { // tailcall
     while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
 };
 
-// The exists, lookup, assign, and remove are just like has, get, set, and delete,
-//   except that property-search continues up the "parent" chain until it is found.
-//   They also allow a series of properties to be listed, for convenience.
-O.exists = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
-    if (env.args.length > 2) {
-        var last = env.args.pop();
-        return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
-            return env.parent.tailcall(env.parent.exists, env, [obj, last], cb);
-        });
-    }
-    var obj = env.obj || env.caller;
-    return O.tailcall(O.has, env, [obj, env.prop], function (h) {
-        if (h) { return env.parent.tailcall(cb, env, [true]); }
-        return O.tailcall(O.has, env, [obj, 'parent'], function (h) {
-            if (!h) { return env.parent.tailcall(cb, env, [false]); }
-            return env.parent.tailcall(env.parent.exists, env, [obj.parent, env.prop], cb);
-        });
-    });
-}};
-O.lookup = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
-    if (env.args.length > 2) {
-        var last = env.args.pop();
-        return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
-            return env.parent.tailcall(env.parent.lookup, env, [obj, last], cb);
-        });
-    }
-    var obj = env.obj || env.caller;
-    return O.tailcall(O.has, env, [obj, env.prop], function (h) {
-        if (h) { return env.parent.tailcall(cb, env, [obj[env.prop]]); }
-        return O.tailcall(O.has, env, [obj, 'parent'], function (h) {
-            if (!h) { return env.parent.tailcall(cb, env, [null]); }
-            return env.parent.tailcall(env.parent.lookup, env, [obj.parent, env.prop], cb);
-        });
-    });
-}};
-/*
-O.lookup = ( parent: O, args: ['obj', 'prop'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'args']], 3],
-    {code: [ O.do,
-        [O.assign, null, 'last', [O.pop, [O.lookup, null, 'args']]],
-        [O.lookup,
-            [O.apply,
-                O.lookup,
-                [O.lookup, null, 'args'],
-                [O.lookup, null, 'scope']
-            ],
-            [O.lookup, null, 'last']
-        ]
-    ]},
-    {code: [O.do,
-        [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
-        [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-            {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
-            {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                null
-            ]}
-        ]
-    ]}
-]};
-*/
-O.assign = { parent: O, args: ['obj', 'prop', 'value'], code: function (cb, env) {
-    if (env.args.length > 3) {
-        var val = env.args.pop();
-        var last = env.args.pop();
-        return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
-            return env.parent.tailcall(env.parent.assign, env, [obj, last, val], cb);
-        });
-    }
-    var obj = env.obj || env.caller;
-    var t = env.parent.type(obj);
-    if (t === 'object' || t === 'array') { obj[env.prop] = env.value; }
-    return env.parent.tailcall(cb, env, [env.value]);
-}};
-O.remove = { parent: O, args: ['obj', 'prop'], code: function (cb, env) {
-    if (env.args.length > 2) {
-        var last = env.args.pop();
-        return env.parent.tailcall(env.parent.lookup, env, env.args, function(obj) {
-            return env.parent.tailcall(env.parent.remove, env, [obj, last], cb);
-        });
-    }
-    var obj = env.obj || env.caller;
-    var h = env.parent.has(obj, env.prop);
-    if (h) {
-        var v = obj[env.prop];
-        delete obj[env.prop];
-        return env.parent.tailcall(cb, env, [v]);
-    }
-    h = env.parent.has(obj, 'parent');
-    if (!h) { return env.parent.tailcall(cb, env, [null, false]); }
-    return env.parent.tailcall(env.parent.remove, env, [obj.parent, env.prop], cb);
-}};
-
-O.list = { parent: O, code: ['lookup', null, 'args'] };
+O.list = { parent: O, code: ['lookup', null, 'arguments'] };
 
 O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
-    var t = env.parent.type(env.obj);
+    var t = O.type(env.obj);
     if (t === 'array') {
         var c = [];
         c.push.apply(c, env.obj);
-        return env.parent.tailcall(cb, env, [c]);
+        return O.tailcall(cb, env, [c]);
     }
     if (t === 'object') {
-        var c = env.parent.newObj();
+        var c = O.newObj();
         var keys = Object.keys(env.obj);
         for(var i = 0; i < keys.length; i++) {
             c[keys[i]] = env.obj[keys[i]];
         }
-        return env.parent.tailcall(cb, env, [c]);
+        return O.tailcall(cb, env, [c]);
     }
-    return env.parent.tailcall(cb, env, [env.obj]);
+    return O.tailcall(cb, env, [env.obj]);
 }};
 O.do = { parent: O, code: function (cb, env) {
-    var len = env.args.length;
-    return env.parent.tailcall(cb, env, [len > 0 ? env.args[len-1] : null]);
+    var len = env.arguments.length;
+    return O.tailcall(cb, env, [len > 0 ? env.arguments[len-1] : null]);
 }};
 O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
     // code | end, code | start, end, code | start, end, inc, code
-    var a = env.args;
+    var a = env.arguments;
     var start = (a.length > 2) ? a[0] : 0;
     var end = (a.length === 2) ? a[0] : (a.length > 2) ? a[1] : 0;
     var inc = (a.length > 3) ? a[2] : (a.length <= 3 && start > end) ? -1 : (a.length < 2) ? 0 : 1;
     var code = (a.length > 3) ? a[3] : (a.length > 0) ? a[a.length - 1] : null;
     if ((inc > 0 && start < end) || (inc < 0 && start > end) || inc === 0) {
-        return env.parent.tailcall(code, env.caller, [start], function(v) {
-            return env.parent.tailcall(env.parent.loop, env, [start+inc, end, inc, code, v], cb);
+        return O.tailcall(code, env.caller, [start], function(v) {
+            return O.tailcall(O.loop, env, [start+inc, end, inc, code, v], cb);
         });
     }
-    return env.parent.tailcall(cb, env, [env.value]);
+    return O.tailcall(cb, env, [env.value]);
 }};
 O.each = { parent: O, args: ['container', 'code'], code: function(cb, env) {
     var c = env.container;
-    var t = env.parent.type(c);
+    var t = O.type(c);
     if (t === 'array') {
-        return env.parent.tailcall(env.parent.loop, env, [0, c.length, function(cb, k) {
-            return env.parent.tailcall(env.code, env.caller, [k, c[k]], cb);
+        return O.tailcall(O.loop, env, [0, c.length, function(cb, k) {
+            return O.tailcall(env.code, env.caller, [k, c[k]], cb);
         }], cb);
     }
-    if (t !== 'object') { return env.parent.tailcall(cb, env, [null]); }
-    return env.parent.tailcall(env.parent.keys, env, [c], function(keys) {
-        return env.parent.tailcall(env.parent.loop, env, [0, keys.length, function(cb, k) {
+    if (t !== 'object') { return O.tailcall(cb, env, [null]); }
+    return O.tailcall(O.keys, env, [c], function(keys) {
+        return O.tailcall(O.loop, env, [0, keys.length, function(cb, k) {
             k = keys[k];
-            return env.parent.tailcall(env.code, env.caller, [k, c[k]], cb);
+            return O.tailcall(env.code, env.caller, [k, c[k]], cb);
         }], cb);
     });
 }};
 O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
-    var f, t = env.parent.type(env.code);
+    var f, t = O.type(env.code);
     if (t === 'object') { f = env.code; }
     else {
-        f = env.parent.newObj();
+        f = O.newObj();
         f.code = env.code;
-        if (t !== 'array') { return env.parent.tailcall(cb, env, [f]); }
+        if (t !== 'array') { return O.tailcall(cb, env, [f]); }
     }
-    return env.parent.tailcall(env.parent.has, env, [f, 'parent'], function (h) {
+    return O.tailcall(O.has, env, [f, 'parent'], function (h) {
         if (!h) { f.parent = env.caller; }
-        return env.parent.tailcall(env.parent.has, env, [f, 'args'], function (h) {
+        return O.tailcall(O.has, env, [f, 'args'], function (h) {
             if (!h) { f.args = env.argList || []; }
-            return env.parent.tailcall(cb, env, [f]);
+            return O.tailcall(cb, env, [f]);
         });
     });
 }};
 O.with = { parent: O, args: ['obj', 'code'], code: function(cb, env) {
     // obj, code | obj, prop..., value
-    var result = env.parent.tailcall(cb, env, [env.obj]);
-    if (env.args.length < 2) { return result; }
-    if (env.args.length < 3) { return env.parent.tailcall(env.code, env.caller, [env.obj], function() { return result; }); }
-    return env.parent.tailcall(env.parent.assign, env, env.args, function() { return result; });
+    var result = O.tailcall(cb, env, [env.obj]);
+    if (env.arguments.length < 2) { return result; }
+    if (env.arguments.length < 3) { return O.tailcall(env.code, env.caller, [env.obj], function() { return result; }); }
+    return O.tailcall(O.assign, env, env.arguments, function() { return result; });
 }};
 
 // Eval functions:
 
 O.eval = { parent: O, args: ['env', 'expr'], code: function (cb, env) {
-    var type = env.parent.type(env.expr);
+    var type = O.type(env.expr);
     if (type !== 'array' || env.expr.length < 1) {
-        return env.parent.tailcall(cb, env, [env.expr]);
+        return O.tailcall(cb, env, [env.expr]);
     }
     var funcExpr = env.expr[0];
-    var funcType = env.parent.type(funcExpr);
-    var getter = (funcType === 'string' || funcType === 'number') ? env.parent.lookup : env.parent.eval;
-    return env.parent.tailcall(getter, env, [env.env, funcExpr], function(func) {
-        return env.parent.tailcall(env.parent.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
-            return env.parent.tailcall(env.parent.apply, env, [func, args, env.env], cb);
+    var funcType = O.type(funcExpr);
+    var getter = (funcType === 'string' || funcType === 'number') ? O.lookup : O.eval;
+    return O.tailcall(getter, env, [env.env, funcExpr], function(func) {
+        return O.tailcall(O.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
+            return O.tailcall(O.apply, env, [func, args, env.env], cb);
         });
     });
 }};
 O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
-    var funcType = env.parent.type(env.func);
+    var funcType = O.type(env.func);
     if (funcType === 'native') {
         var result = null;
         try { result = env.func.apply(null, env.args); }
         catch(ex) { result = ex; }
-        return env.parent.tailcall(cb, env, [result]);
+        return O.tailcall(cb, env, [result]);
     }
     if (funcType !== 'object') {
-        return env.parent.tailcall(cb, env, [null]);
+        return O.tailcall(cb, env, [null]);
     }
-    return env.parent.tailcall(env.parent.newEnv, env, [env.func, env.args, env.env, cb], function(env2) {
+    return O.tailcall(O.newEnv, env, [env.func, env.args, env.env, cb], function(env2) {
         var code = env.func.code;
-        var type = env.parent.type(code);
+        var type = O.type(code);
         if (type === 'native') {
-            return env.parent.tailcall(code, env, [env2], cb);
+            return O.tailcall(code, env, [env2], cb);
         }
-        return env.parent.tailcall(env.parent.eval, env, [env2, code], cb);
+        return O.tailcall(O.eval, env, [env2, code], cb);
     });
 }};
 O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb, env) {
-    var env2 = env.parent.newObj();
+    var env2 = O.newObj();
     env2.scope = env2;
     // If func has no parent, then assume it is a nested code-block and inherit from the current execution scope:
     env2.parent = env.func.parent || env.env;
@@ -321,31 +227,31 @@ O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb,
         env2.thisFunc = env.func;
         env2.return = {
             parent: { parent: env.parent, cc: env.cc, env: env.env },
-            code: function (cb, env) { return env.parent.parent.tailcall(env.parent.cc, env.parent.env, env.args); }
+            code: function (cb, env) { return O.tailcall(env.parent.cc, env.parent.env, env.arguments); }
         };
     }
     var argNames = env.func.args;
-    return env.parent.tailcall(env.parent.each, env, [argNames, function(cb, i, aName) {
-        var nType = env.parent.type(aName);
+    return O.tailcall(O.each, env, [argNames, function(cb, i, aName) {
+        var nType = O.type(aName);
         if (nType !== 'string') {
-            return env.parent.tailcall(cb, env, []);
+            return O.tailcall(cb, env, []);
         }
         var aValue = env.args[i];
         env2[aName] = aValue;
-        return env.parent.tailcall(cb, env, [aValue]);
+        return O.tailcall(cb, env, [aValue]);
     }], function() {
-        env2.args = env.args;
-        return env.parent.tailcall(cb, env, [env2]);
+        env2.arguments = env.args;
+        return O.tailcall(cb, env, [env2]);
     });
 }};
 O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) {
-    return env.parent.tailcall(env.parent.each, env, [env.args, function(cb, i, argExpr) {
-        return env.parent.tailcall(env.parent.eval, env, [env.env, argExpr], function(argVal) {
+    return O.tailcall(O.each, env, [env.args, function(cb, i, argExpr) {
+        return O.tailcall(O.eval, env, [env.env, argExpr], function(argVal) {
             env.args[i] = argVal;
-            return env.parent.tailcall(cb, env, []);
+            return O.tailcall(cb, env, []);
         });
     }], function() {
-        return env.parent.tailcall(cb, env, [env.args]);
+        return O.tailcall(cb, env, [env.args]);
     });
 }};
 
@@ -353,6 +259,110 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
 //      2. Re-write the above functions as objects, and run this to generate the native code.
 O.compilers = {};
 O.compilers.js = {
+    compile: function compile(code, innerOffset) {
+        if (O.type(code) === 'object') {
+            var src = O.type(code.code) === 'array' ? code.code :
+                      O.type(code.src ) === 'array' ? code.src  : null;
+            var cc = { code: (src && compile(src, innerOffset)) };
+            if (!cc.code) { return null; }
+            for(p in code) {
+                if (p !== 'src' && p !== 'code') {
+                    cc[p] = code[p];
+                }
+            }
+            if (!innerOffset) { cc.src = src; }
+            if (O.type(code.args) === 'array') {
+                cc.args = [];
+                cc.args.push.apply(cc.args, code.args);
+            }
+            return cc;
+        }
+        var src = O.compilers.js.compileSrc(code, innerOffset || 0);
+        return src && eval('(function(cb, env) {\n' + (innerOffset ? '' : 'var args = env;\n') + src + '\n})');
+    },
+    compileSrc: function(code, innerOffset) {
+        if (O.type(code) !== 'array') { return null; }
+        var calls = O.compilers.js.getCalls(code, [], innerOffset);
+        return O.compilers.js.buildCalls(calls, innerOffset);
+    },
+    getCalls: function getCalls(code, calls, innerOffset) {
+        calls = calls || [];
+        if (O.type(code) !== 'array' || code.length < 1) { return calls; }
+        var last = [];
+        for(var i = 0; i < code.length; i++) {
+            var c = code[i];
+            last.push(O.type(c) === 'array'
+                ? getCalls(c, calls, innerOffset).length - 1 + innerOffset
+                : { value: c }
+            );
+        }
+        calls.push(last);
+        return calls;
+    },
+    buildCalls: function(calls, innerOffset) {
+        var src = '';
+        for(var idx = calls.length - 1; idx >= 0; idx--) {
+            var c = calls[idx];
+            if (O.type(c) !== 'array') { return src; }
+            for(var i = 0; i < c.length; i++) {
+                var v = c[i] && c[i].value;
+                if (v && v.code && !O.compilers.js.globalStr(v)) {
+                    c[i].value = O.compilers.js.compile(v, calls.length - 1 + innerOffset);
+                }
+            }
+            var f = (c.length > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
+            if (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove)) {
+                var vals = [];
+                for(var i = 2; i < c.length; i++) { vals.push(O.compilers.js.valueStr(c[i])); }
+                var s = 'args';
+                var max = vals.length - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
+                for(var i = 0; i < max; i++) {
+                    var v = vals[i];
+                    s += (i > 0 ? ' && ' + s : '') + O.compilers.js.indexStr(v);
+                }
+                var len = (src.length);
+                if (f === O.assign) {
+                    s = '(' + (max < 1 ? s : '((' + s + ')||{})') +
+                        O.compilers.js.indexStr(vals[max]) + ' = ' + vals[max + 1] + ')';
+                } else if (f === O.exists) {
+                    s = vals[max] + ' in ' + (max < 1 ? s : '((' + s + ')||{})');
+                } else if (f === O.remove) {
+                    src = 'var v = ' + s + ';\n' +
+                        'delete v' + O.compilers.js.indexStr(vals[max]) + ';\n' + src;
+                    s = 'v' + O.compilers.js.indexStr(vals[max]);
+                }
+                src = (len > 0
+                    ? 'var r' + (idx + innerOffset) + ' = ' + s + ';\n' + src
+                    : 'return O.tailcall(cb, env, [' + s + ']);'
+                );
+            } else if(c[0] && c[0].value === O.do) {
+                var v = O.compilers.js.valueStr(c.length > 1 ? c.pop() : null);
+                src = (src.length > 0
+                    ? 'var r' + (idx + innerOffset) + ' = ' + v + ';\n' + src
+                    : 'return O.tailcall(cb, env, [' + v + ']);'
+                );
+            } else {
+                var v = O.compilers.js.valueStr(c[0]);
+                var str = (v.charAt(0) === '"');
+                var s = 'return O.tailcall(' +
+                    (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
+                    ', env, [';
+                for(var i = 1; i < c.length; i++) {
+                    s += (i > 1 ? ', ' : '') + O.compilers.js.valueStr(c[i]);
+                }
+                src = s + '], ' +
+                    (src.length < 1 ? 'cb);' : 'function(r' + (idx + innerOffset) + ') {\n' + src + '\n});') +
+                    (str ? '\n});' : '');
+            }
+        }
+        return src;
+    },
+    indexStr: function(v) {
+        return /^"[a-z_]\w*"$/i.test(v) ? '.' + v.substring(1, v.length-1) : '[' + v + ']';
+    },
+    valueStr: function (v, alias) {
+        return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
+    },
     stringify: function stringify(v, alias) {
         var t = O.type(v);
         var s = (alias !== false && O.compilers.js.globalStr(v)) || '';
@@ -371,79 +381,125 @@ O.compilers.js = {
             }
         }
         return null;
-    },
-    valueStr: function (v, alias) {
-        return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
-    },
-    compile: function compile(code, saveSrc) {
-        if (O.type(code) === 'object') {
-            var src = O.type(code.code) === 'array' ? code.code :
-                      O.type(code.src ) === 'array' ? code.src  : null;
-            var cc = { code: (src && compile(src)) };
-            if (!cc.code) { return null; }
-            for(p in code) {
-                if (p !== 'src' && p !== 'code') {
-                    cc[p] = code[p];
-                }
-            }
-            if (saveSrc !== false) { cc.src = src; }
-            if (O.type(code.args) === 'array') {
-                cc.args = [];
-                cc.args.push.apply(cc.args, code.args);
-            }
-            return cc;
-        }
-        var src = O.compilers.js.compileSrc(code);
-        return src && eval('(function(cb, env) {\n' + src + '\n})');
-    },
-    compileSrc: function(code, innerSrc) {
-        if (O.type(code) !== 'array') { return null; }
-        var calls = O.compilers.js.getCalls(code);
-        var src = O.compilers.js.buildCalls(calls, innerSrc || '');
-        return src;
-    },
-    getCalls: function getCalls(code, calls) {
-        calls = calls || [];
-        if (O.type(code) !== 'array' || code.length < 1) { return calls; }
-        var last = [];
-        for(var i = 0; i < code.length; i++) {
-            var c = code[i];
-            last.push(O.type(c) === 'array'
-                ? getCalls(c, calls).length - 1
-                : {
-                    value: (
-                        c && c.code &&
-                        !O.compilers.js.globalStr(c) &&
-                        O.compilers.js.compile(c, false)
-                    ) || c
-                }
-            );
-        }
-        calls.push(last);
-        return calls;
-    },
-    buildCalls: function(calls, src) {
-        for(var idx = calls.length - 1; idx >= 0; idx--) {
-            var call = calls[idx];
-            if (O.type(call) !== 'array') { return src; }
-            var v = O.compilers.js.valueStr(call[0]);
-            var str = (v.charAt(0) === '"');
-            var s = 'return O.tailcall(' +
-                (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
-                ', env, [';
-            for(var i = 1; i < call.length; i++) {
-                s += (i > 1 ? ', ' : '') + O.compilers.js.valueStr(call[i]);
-            }
-            src = s + '], ' +
-                (src.length < 1 ? 'cb);' : 'function(r' + idx + ') {\n' + src + '\n});') +
-                (str ? '\n});' : '');
-        }
-        return src;
     }
 };
 O.language = 'js';
 O.compiler = O.compilers[O.language];
 O.compile = O.compiler.compile;
+
+// These must "exist" before being compiled, so they can reference "themselves" in their pre-compile code.
+O.exists = {};
+O.lookup = {};
+O.assign = {};
+O.remove = {};
+
+// The exists, lookup, assign, and remove are just like has, get, set, and delete,
+//   except that property-search continues up the "parent" chain until it is found.
+//   They also allow a series of properties to be listed, for convenience.
+O.exists = O.compile({ parent: O, args: ['obj', 'prop'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+        {code: [ O.do,
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.exists,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                true,
+                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                    {code:[O.exists, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                    null
+                ]}
+            ]
+        ]}
+    ]
+});
+O.lookup = O.compile({ parent: O, args: ['obj', 'prop'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+        {code: [ O.do,
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.lookup,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
+                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                    {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                    null
+                ]}
+            ]
+        ]}
+    ]
+});
+O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+        {code: [ O.do,
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.remove,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                {code:[O.do,
+                    [O.assign, null, 'v', [O.lookup, null, 'obj', [O.lookup, null, 'prop']]],
+                    [O.delete, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                    [O.lookup, null, 'v']
+                ]},
+                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                    {code:[O.remove, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                    null
+                ]}
+            ]
+        ]}
+    ]
+});
+O.assign = O.compile({ parent: O, args: ['obj', 'prop', 'value'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 3],
+        {code: [ O.do,
+            [O.assign, null, 'val', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.assign,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last'],
+                [O.lookup, null, 'val']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
+            [O.if, [O.or, ['=', [O.lookup, null, 't'], 'object'], ['=', [O.lookup, null, 't'], 'array']],
+                {code:[O.set, [O.lookup, null, 'obj'], [O.lookup, null, 'prop'], [O.lookup, null, 'value']]}
+            ],
+            [O.lookup, null, 'value']
+        ]}
+    ]
+});
 
 // External interface for running code
 O.run = function (expr, env, cb) {
@@ -458,13 +514,43 @@ O.run = function (expr, env, cb) {
             if (typeof cb === 'function') { try { cb(v); } catch(e) { } };
             return v;
         }));
-    } catch(e) { (console.warn||console.log)(' !!!' + e); }
+    } catch(e) { (console.warn||console.log)(' !!!' + (e.stack || e.message || e)); }
 };
 
 // TODO: Convert the above funcs (not including the must-be-native ones) to the following format:
 //   The original plan was to do this with ALL funcs, and then "compile" a base-set of them.
 //   However, now I may just let the "native-provided" ones sit as is, and the rest may not
-//   NEED to be compiled at all. Either way, many funcs above need to be rewritten in this form: 
+//   NEED to be compiled at all. Either way, many funcs above need to be rewritten in this form:
+
+O.run(['set', O.lookup, 'code',
+    ['get',
+        ['compile', { code: [
+            O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+            {code: [ O.do,
+                [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+                [O.lookup,
+                    [O.apply,
+                        O.lookup,
+                        [O.lookup, null, 'arguments'],
+                        [O.lookup, null, 'scope']
+                    ],
+                    [O.lookup, null, 'last']
+                ]
+            ]},
+            {code: [O.do,
+                [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+                [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                    {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
+                    {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                        {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                        null
+                    ]}
+                ]
+            ]}
+        ]}],
+        'code'
+    ]
+]);
 
 O.run(['set', ['lookup', null, 'root'], 'def', {
     args:['k', 'v'],
@@ -480,7 +566,7 @@ O.run(['set', ['lookup', null, 'root'], 'def', {
     ]
 }]);
 
-O.run(['def', 'do', {code:['get', ['lookup', null, 'args'], ['-', ['length', ['lookup', null, 'args']], 1]]}]);
+O.run(['def', 'do', {code:['get', ['lookup', null, 'arguments'], ['-', ['length', ['lookup', null, 'arguments']], 1]]}]);
 
 // ------------------------------------------ //
 // TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
@@ -520,7 +606,7 @@ window.Tests = [
     "['tryThis', \"['debug', 123]\"]",
     "['tryThis', \"['debug', ['+', 1, 2]]\"]",
     "['tryThis', \"['+', ['debug', 1], ['debug', 2]]\"]",
-    "['def', 'again', {code:function(cb, env){var r = env.parent.tailcall(cb, env, env.args); env.parent.invoke(r); return r;}}]",
+    "['def', 'again', {code:function(cb, env){var r = O.tailcall(cb, env, env.arguments); O.invoke(r); return r;}}]",
     "['again', 'again']",
     "['say', ['again', 'Testing \"say again\"']]",
     "['again', ['say', 'Testing \"again say\"']]",
@@ -535,7 +621,7 @@ window.Tests = [
     "['tryThis', \"['browse', 'https://github.com/d-cook/Objects', 1000, 750]\"]",
     "['tryThis', \"['refresh']\"]",
     "['tryThis', \"['clear']\"]",
-    "['def', 'list', {code:['lookup', null, 'args']}]",
+    "['def', 'list', {code:['lookup', null, 'arguments']}]",
     "['list', 1, [2, 3], 'four', {five:6}]",
     "['+', 1, 2, 3, ['return', 4], 5]",
     "['def', 'ret5', {args:['a','b'], code:['+', ['lookup', null, 'a'], ['lookup', null, 'b'], ['return', 5]]}]",
@@ -558,7 +644,7 @@ window.Tests = [
     "['recur', 3]",
     "['recur', 4]",
     "['recur', 5]",
-    "['def', 'object', {args:['keys','values'],code:function(cb, env){var o = env.parent.newObj();for(var i=0; i < env.keys.length; i++){o[env.keys[i]] = (env.values&&env.values[i]);}return env.parent.tailcall(cb,env,[o]);}}]",
+    "['def', 'object', {args:['keys','values'],code:function(cb, env){var o = O.newObj();for(var i=0; i < env.keys.length; i++){o[env.keys[i]] = (env.values&&env.values[i]);}return O.tailcall(cb,env,[o]);}}]",
     "['object', ['list', 'a', 'b', 'c'], []]",
     "['object', ['list', 'a', 'b', 'c'], ['list', 1, 2]]",
     "['object', ['list', 'a', 'b', 'c'], ['list', 1, 2, 3, 4]]",
