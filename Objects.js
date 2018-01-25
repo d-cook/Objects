@@ -103,158 +103,6 @@ O.invoke = function (tc) { // tailcall
     while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
 };
 
-O.list = { parent: O, code: ['lookup', null, 'arguments'] };
-
-O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
-    var t = O.type(env.obj);
-    if (t === 'array') {
-        var c = [];
-        c.push.apply(c, env.obj);
-        return O.tailcall(cb, env, [c]);
-    }
-    if (t === 'object') {
-        var c = O.newObj();
-        var keys = Object.keys(env.obj);
-        for(var i = 0; i < keys.length; i++) {
-            c[keys[i]] = env.obj[keys[i]];
-        }
-        return O.tailcall(cb, env, [c]);
-    }
-    return O.tailcall(cb, env, [env.obj]);
-}};
-O.do = { parent: O, code: function (cb, env) {
-    var len = env.arguments.length;
-    return O.tailcall(cb, env, [len > 0 ? env.arguments[len-1] : null]);
-}};
-O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
-    // code | end, code | start, end, code | start, end, inc, code
-    var a = env.arguments;
-    var start = (a.length > 2) ? a[0] : 0;
-    var end = (a.length === 2) ? a[0] : (a.length > 2) ? a[1] : 0;
-    var inc = (a.length > 3) ? a[2] : (a.length <= 3 && start > end) ? -1 : (a.length < 2) ? 0 : 1;
-    var code = (a.length > 3) ? a[3] : (a.length > 0) ? a[a.length - 1] : null;
-    if ((inc > 0 && start < end) || (inc < 0 && start > end) || inc === 0) {
-        return O.tailcall(code, env.caller, [start], function(v) {
-            return O.tailcall(O.loop, env, [start+inc, end, inc, code, v], cb);
-        });
-    }
-    return O.tailcall(cb, env, [env.value]);
-}};
-O.each = { parent: O, args: ['container', 'code'], code: function(cb, env) {
-    var c = env.container;
-    var t = O.type(c);
-    if (t === 'array') {
-        return O.tailcall(O.loop, env, [0, c.length, function(cb, k) {
-            return O.tailcall(env.code, env.caller, [k, c[k]], cb);
-        }], cb);
-    }
-    if (t !== 'object') { return O.tailcall(cb, env, [null]); }
-    return O.tailcall(O.keys, env, [c], function(keys) {
-        return O.tailcall(O.loop, env, [0, keys.length, function(cb, k) {
-            k = keys[k];
-            return O.tailcall(env.code, env.caller, [k, c[k]], cb);
-        }], cb);
-    });
-}};
-O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
-    var f, t = O.type(env.code);
-    if (t === 'object') { f = env.code; }
-    else {
-        f = O.newObj();
-        f.code = env.code;
-        if (t !== 'array') { return O.tailcall(cb, env, [f]); }
-    }
-    return O.tailcall(O.has, env, [f, 'parent'], function (h) {
-        if (!h) { f.parent = env.caller; }
-        return O.tailcall(O.has, env, [f, 'args'], function (h) {
-            if (!h) { f.args = env.argList || []; }
-            return O.tailcall(cb, env, [f]);
-        });
-    });
-}};
-O.with = { parent: O, args: ['obj', 'code'], code: function(cb, env) {
-    // obj, code | obj, prop..., value
-    var result = O.tailcall(cb, env, [env.obj]);
-    if (env.arguments.length < 2) { return result; }
-    if (env.arguments.length < 3) { return O.tailcall(env.code, env.caller, [env.obj], function() { return result; }); }
-    return O.tailcall(O.assign, env, env.arguments, function() { return result; });
-}};
-
-// Eval functions:
-
-O.eval = { parent: O, args: ['env', 'expr'], code: function (cb, env) {
-    var type = O.type(env.expr);
-    if (type !== 'array' || env.expr.length < 1) {
-        return O.tailcall(cb, env, [env.expr]);
-    }
-    var funcExpr = env.expr[0];
-    var funcType = O.type(funcExpr);
-    var getter = (funcType === 'string' || funcType === 'number') ? O.lookup : O.eval;
-    return O.tailcall(getter, env, [env.env, funcExpr], function(func) {
-        return O.tailcall(O.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
-            return O.tailcall(O.apply, env, [func, args, env.env], cb);
-        });
-    });
-}};
-O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
-    var funcType = O.type(env.func);
-    if (funcType === 'native') {
-        var result = null;
-        try { result = env.func.apply(null, env.args); }
-        catch(ex) { result = ex; }
-        return O.tailcall(cb, env, [result]);
-    }
-    if (funcType !== 'object') {
-        return O.tailcall(cb, env, [null]);
-    }
-    return O.tailcall(O.newEnv, env, [env.func, env.args, env.env, cb], function(env2) {
-        var code = env.func.code;
-        var type = O.type(code);
-        if (type === 'native') {
-            return O.tailcall(code, env, [env2], cb);
-        }
-        return O.tailcall(O.eval, env, [env2, code], cb);
-    });
-}};
-O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb, env) {
-    var env2 = O.newObj();
-    env2.scope = env2;
-    // If func has no parent, then assume it is a nested code-block and inherit from the current execution scope:
-    env2.parent = env.func.parent || env.env;
-    if (env.func.parent) {
-        // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
-        env2.caller = env.env;
-        env2.thisFunc = env.func;
-        env2.return = {
-            parent: { parent: env.parent, cc: env.cc, env: env.env },
-            code: function (cb, env) { return O.tailcall(env.parent.cc, env.parent.env, env.arguments); }
-        };
-    }
-    var argNames = env.func.args;
-    return O.tailcall(O.each, env, [argNames, function(cb, i, aName) {
-        var nType = O.type(aName);
-        if (nType !== 'string') {
-            return O.tailcall(cb, env, []);
-        }
-        var aValue = env.args[i];
-        env2[aName] = aValue;
-        return O.tailcall(cb, env, [aValue]);
-    }], function() {
-        env2.arguments = env.args;
-        return O.tailcall(cb, env, [env2]);
-    });
-}};
-O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) {
-    return O.tailcall(O.each, env, [env.args, function(cb, i, argExpr) {
-        return O.tailcall(O.eval, env, [env.env, argExpr], function(argVal) {
-            env.args[i] = argVal;
-            return O.tailcall(cb, env, []);
-        });
-    }], function() {
-        return O.tailcall(cb, env, [env.args]);
-    });
-}};
-
 //TODO: 1. Compile the compile function (by running it on itself) to generate a CPS-version of it.
 //      2. Re-write the above functions as objects, and run this to generate the native code.
 O.compilers = {};
@@ -387,11 +235,8 @@ O.language = 'js';
 O.compiler = O.compilers[O.language];
 O.compile = O.compiler.compile;
 
-// These must "exist" before being compiled, so they can reference "themselves" in their pre-compile code.
-O.exists = {};
-O.lookup = {};
-O.assign = {};
-O.remove = {};
+// These must "exist" before the below "compile" runs, because it looks for them.
+O.exists = {}; O.lookup = {}; O.assign = {}; O.remove = {}; O.apply = {}; O.do = {};
 
 // The exists, lookup, assign, and remove are just like has, get, set, and delete,
 //   except that property-search continues up the "parent" chain until it is found.
@@ -446,6 +291,31 @@ O.lookup = O.compile({ parent: O, args: ['obj', 'prop'], code: [
         ]}
     ]
 });
+O.assign = O.compile({ parent: O, args: ['obj', 'prop', 'value'], code: [
+    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 3],
+        {code: [ O.do,
+            [O.assign, null, 'val', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+            [O.assign,
+                [O.apply,
+                    O.lookup,
+                    [O.lookup, null, 'arguments'],
+                    [O.lookup, null, 'scope']
+                ],
+                [O.lookup, null, 'last'],
+                [O.lookup, null, 'val']
+            ]
+        ]},
+        {code: [O.do,
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
+            [O.if, [O.or, ['=', [O.lookup, null, 't'], 'object'], ['=', [O.lookup, null, 't'], 'array']],
+                {code:[O.set, [O.lookup, null, 'obj'], [O.lookup, null, 'prop'], [O.lookup, null, 'value']]}
+            ],
+            [O.lookup, null, 'value']
+        ]}
+    ]
+});
 O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
     O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
         {code: [ O.do,
@@ -475,31 +345,168 @@ O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
         ]}
     ]
 });
-O.assign = O.compile({ parent: O, args: ['obj', 'prop', 'value'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 3],
-        {code: [ O.do,
-            [O.assign, null, 'val', [O.pop, [O.lookup, null, 'arguments']]],
-            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
-            [O.assign,
-                [O.apply,
-                    O.lookup,
-                    [O.lookup, null, 'arguments'],
-                    [O.lookup, null, 'scope']
-                ],
-                [O.lookup, null, 'last'],
-                [O.lookup, null, 'val']
-            ]
-        ]},
-        {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
-            [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
-            [O.if, [O.or, ['=', [O.lookup, null, 't'], 'object'], ['=', [O.lookup, null, 't'], 'array']],
-                {code:[O.set, [O.lookup, null, 'obj'], [O.lookup, null, 'prop'], [O.lookup, null, 'value']]}
+
+O.list = { parent: O, code: ['lookup', null, 'arguments'] };
+
+O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
+    var t = O.type(env.obj);
+    if (t === 'array') {
+        var c = [];
+        c.push.apply(c, env.obj);
+        return O.tailcall(cb, env, [c]);
+    }
+    if (t === 'object') {
+        var c = O.newObj();
+        var keys = Object.keys(env.obj);
+        for(var i = 0; i < keys.length; i++) {
+            c[keys[i]] = env.obj[keys[i]];
+        }
+        return O.tailcall(cb, env, [c]);
+    }
+    return O.tailcall(cb, env, [env.obj]);
+}};
+O.do = { parent: O, code: ['get', ['lookup', null, 'arguments'], ['-', ['length', ['lookup', null, 'arguments']], 1]]};
+O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
+    // code | end, code | start, end, code | start, end, inc, code
+    var a = env.arguments;
+    var start = (a.length > 2) ? a[0] : 0;
+    var end = (a.length === 2) ? a[0] : (a.length > 2) ? a[1] : 0;
+    var inc = (a.length > 3) ? a[2] : (a.length <= 3 && start > end) ? -1 : (a.length < 2) ? 0 : 1;
+    var code = (a.length > 3) ? a[3] : (a.length > 0) ? a[a.length - 1] : null;
+    if ((inc > 0 && start < end) || (inc < 0 && start > end) || inc === 0) {
+        return O.tailcall(code, env.caller, [start], function(v) {
+            return O.tailcall(O.loop, env, [start+inc, end, inc, code, v], cb);
+        });
+    }
+    return O.tailcall(cb, env, [env.value]);
+}};
+O.each = { parent: O, args: ['container', 'code'], code: function(cb, env) {
+    var c = env.container;
+    var t = O.type(c);
+    if (t === 'array') {
+        return O.tailcall(O.loop, env, [0, c.length, function(cb, k) {
+            return O.tailcall(env.code, env.caller, [k, c[k]], cb);
+        }], cb);
+    }
+    if (t !== 'object') { return O.tailcall(cb, env, [null]); }
+    return O.tailcall(O.keys, env, [c], function(keys) {
+        return O.tailcall(O.loop, env, [0, keys.length, function(cb, k) {
+            k = keys[k];
+            return O.tailcall(env.code, env.caller, [k, c[k]], cb);
+        }], cb);
+    });
+}};
+O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
+    var f, t = O.type(env.code);
+    if (t === 'object') { f = env.code; }
+    else {
+        f = O.newObj();
+        f.code = env.code;
+        if (t !== 'array') { return O.tailcall(cb, env, [f]); }
+    }
+    return O.tailcall(O.has, env, [f, 'parent'], function (h) {
+        if (!h) { f.parent = env.caller; }
+        return O.tailcall(O.has, env, [f, 'args'], function (h) {
+            if (!h) { f.args = env.argList || []; }
+            return O.tailcall(cb, env, [f]);
+        });
+    });
+}};
+O.with = { parent: O, args: ['obj', 'code'], code: function(cb, env) {
+    // obj, code | obj, prop..., value
+    var result = O.tailcall(cb, env, [env.obj]);
+    if (env.arguments.length < 2) { return result; }
+    if (env.arguments.length < 3) { return O.tailcall(env.code, env.caller, [env.obj], function() { return result; }); }
+    return O.tailcall(O.assign, env, env.arguments, function() { return result; });
+}};
+
+// Eval functions:
+
+O.eval = { parent: O, args: ['env', 'expr'], code: function (cb, env) {
+    var type = O.type(env.expr);
+    if (type !== 'array' || env.expr.length < 1) {
+        return O.tailcall(cb, env, [env.expr]);
+    }
+    var funcExpr = env.expr[0];
+    var funcType = O.type(funcExpr);
+    var getter = (funcType === 'string' || funcType === 'number') ? O.lookup : O.eval;
+    return O.tailcall(getter, env, [env.env, funcExpr], function(func) {
+        return O.tailcall(O.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
+            return O.tailcall(O.apply, env, [func, args, env.env], cb);
+        });
+    });
+}};
+O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
+    var funcType = O.type(env.func);
+    if (funcType === 'native') {
+        var result = null;
+        try { result = env.func.apply(null, env.args); }
+        catch(ex) { result = ex; }
+        return O.tailcall(cb, env, [result]);
+    }
+    if (funcType !== 'object') {
+        return O.tailcall(cb, env, [null]);
+    }
+    return O.tailcall(O.newEnv, env, [env.func, env.args, env.env, cb], function(env2) {
+        var code = env.func.code;
+        var type = O.type(code);
+        if (type === 'native') {
+            return O.tailcall(code, env, [env2], cb);
+        }
+        return O.tailcall(O.eval, env, [env2, code], cb);
+    });
+}};
+O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb, env) {
+    var env2 = O.newObj();
+    env2.scope = env2;
+    // If func has no parent, then assume it is a nested code-block and inherit from the current execution scope:
+    env2.parent = env.func.parent || env.env;
+    if (env.func.parent) {
+        // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
+        env2.caller = env.env;
+        env2.thisFunc = env.func;
+        env2.return = {
+            parent: { parent: env.parent, cc: env.cc, env: env.env },
+            code: function (cb, env) { return O.tailcall(env.parent.cc, env.parent.env, env.arguments); }
+        };
+    }
+    var argNames = env.func.args;
+    return O.tailcall(O.each, env, [argNames, function(cb, i, aName) {
+        var nType = O.type(aName);
+        if (nType !== 'string') {
+            return O.tailcall(cb, env, []);
+        }
+        var aValue = env.args[i];
+        env2[aName] = aValue;
+        return O.tailcall(cb, env, [aValue]);
+    }], function() {
+        env2.arguments = env.args;
+        return O.tailcall(cb, env, [env2]);
+    });
+}};
+O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) {
+    return O.tailcall(O.each, env, [env.args, function(cb, i, argExpr) {
+        return O.tailcall(O.eval, env, [env.env, argExpr], function(argVal) {
+            env.args[i] = argVal;
+            return O.tailcall(cb, env, []);
+        });
+    }], function() {
+        return O.tailcall(cb, env, [env.args]);
+    });
+}};
+
+O.def = { parent: O, args: ['k', 'v'], code: [
+    'do',
+        [O.if,
+            ['and',
+                ['has', ['lookup', null, 'v'], 'code'],
+                ['not', ['has', ['lookup', null, 'v'], 'parent']]
             ],
-            [O.lookup, null, 'value']
-        ]}
+            { code: ['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root'] ] }
+        ],
+        ['set', ['lookup', null, 'root'], ['lookup', null, 'k'], ['lookup', null, 'v']]
     ]
-});
+};
 
 // External interface for running code
 O.run = function (expr, env, cb) {
@@ -516,57 +523,6 @@ O.run = function (expr, env, cb) {
         }));
     } catch(e) { (console.warn||console.log)(' !!!' + (e.stack || e.message || e)); }
 };
-
-// TODO: Convert the above funcs (not including the must-be-native ones) to the following format:
-//   The original plan was to do this with ALL funcs, and then "compile" a base-set of them.
-//   However, now I may just let the "native-provided" ones sit as is, and the rest may not
-//   NEED to be compiled at all. Either way, many funcs above need to be rewritten in this form:
-
-O.run(['set', O.lookup, 'code',
-    ['get',
-        ['compile', { code: [
-            O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
-            {code: [ O.do,
-                [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
-                [O.lookup,
-                    [O.apply,
-                        O.lookup,
-                        [O.lookup, null, 'arguments'],
-                        [O.lookup, null, 'scope']
-                    ],
-                    [O.lookup, null, 'last']
-                ]
-            ]},
-            {code: [O.do,
-                [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
-                [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-                    {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
-                    {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                        {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                        null
-                    ]}
-                ]
-            ]}
-        ]}],
-        'code'
-    ]
-]);
-
-O.run(['set', ['lookup', null, 'root'], 'def', {
-    args:['k', 'v'],
-    code:['do',
-        [O.if,
-            ['and',
-                ['has', ['lookup', null, 'v'], 'code'],
-                ['not', ['has', ['lookup', null, 'v'], 'parent']]
-            ],
-            { code: ['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root'] ] }
-        ],
-        ['set', ['lookup', null, 'root'], ['lookup', null, 'k'], ['lookup', null, 'v']]
-    ]
-}]);
-
-O.run(['def', 'do', {code:['get', ['lookup', null, 'arguments'], ['-', ['length', ['lookup', null, 'arguments']], 1]]}]);
 
 // ------------------------------------------ //
 // TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
