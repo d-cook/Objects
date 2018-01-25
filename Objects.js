@@ -346,26 +346,31 @@ O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
     ]
 });
 
-O.list = { parent: O, code: ['lookup', null, 'arguments'] };
+O.list = O.compile({ parent: O, code: [O.lookup, null, 'arguments'] });
 
-O.copy = { parent: O, args: ['obj'], code: function (cb, env) {
-    var t = O.type(env.obj);
-    if (t === 'array') {
-        var c = [];
-        c.push.apply(c, env.obj);
-        return O.tailcall(cb, env, [c]);
-    }
-    if (t === 'object') {
-        var c = O.newObj();
-        var keys = Object.keys(env.obj);
-        for(var i = 0; i < keys.length; i++) {
-            c[keys[i]] = env.obj[keys[i]];
-        }
-        return O.tailcall(cb, env, [c]);
-    }
-    return O.tailcall(cb, env, [env.obj]);
-}};
-O.do = { parent: O, code: ['get', ['lookup', null, 'arguments'], ['-', ['length', ['lookup', null, 'arguments']], 1]]};
+//TODO: This is working for arrays, but not for objects:
+O.copy = O.compile({ parent: O, args: ['obj'], code: ['do',
+    [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
+    [O.if, [O['='], [O.lookup, null, 't'], 'array'],
+        {code:[O.slice, [O.lookup, null, 'obj']]},
+        {code:[O.if, [O['='], [O.lookup, null, 't'], 'object'],
+            {code:[O.do
+                [O.assign, null, 'obj2', [O.newObj]],
+                [O.each, [O.lookup, null, 'obj'], {
+                    args:['k', 'v'],
+                    code:[O.assign, null, 'obj2', [O.lookup, null, 'k'], [O.lookup, null, 'v']]
+                }],
+                [O.lookup, null, 'obj2']
+            ]},
+            // TODO: this does not copy native functions, it just returns them:
+            {code:[O.lookup, null, 'obj']}
+        ]}
+    ]
+]});
+O.do = O.compile({ parent: O, code: [O.get,
+    [O.lookup, null, 'arguments'],
+    [O['-'], [O.length, [O.lookup, null, 'arguments']], 1]
+]});
 O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
     // code | end, code | start, end, code | start, end, inc, code
     var a = env.arguments;
