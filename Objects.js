@@ -505,19 +505,6 @@ O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) 
     });
 }};
 
-O.def = { parent: O, args: ['k', 'v'], code: [
-    'do',
-        [O.if,
-            ['and',
-                ['has', ['lookup', null, 'v'], 'code'],
-                ['not', ['has', ['lookup', null, 'v'], 'parent']]
-            ],
-            { code: ['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root'] ] }
-        ],
-        ['set', ['lookup', null, 'root'], ['lookup', null, 'k'], ['lookup', null, 'v']]
-    ]
-};
-
 // External interface for running code
 O.run = function (expr, env, cb) {
     console.log('run:', expr);
@@ -558,6 +545,8 @@ window.Tests = [
     "['lookup', {w:1,parent:{parent:{x:'IAmParentParentX'}}}, 'x']",
     "['lookup', {x:{parent:{y:{z:'xyz'}}}}, 'x', 'y', 'z']",
     "['lookup', null, 'foo']",
+    "['set', ['lookup', null, 'root'], 'def', { args:['k', 'v'], code:[ 'do', ['if', ['and', ['has', ['lookup', null, 'v'], 'code'], ['not', ['has', ['lookup', null, 'v'], 'parent']]], {code:['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root']]}], ['set', ['lookup', null, 'root'], ['lookup', null, 'k'], ['lookup', null, 'v']]]}]",
+    "['set', ['lookup', null, 'root', 'def'], 'parent', ['lookup', null, 'root']]",
     "['def', 'foo', 'IAmFoo']",
     "['lookup', null, 'foo']",
     "['+', 1, 2, 3, 4]",
