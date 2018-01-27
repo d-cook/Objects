@@ -387,6 +387,110 @@ O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: func
     }
     return O.tailcall(cb, env, [env.value]);
 }};
+O.loop2 = {};
+O.loop2 = O.compile({ parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: [O.do,
+    // code | end, code | start, end, code | start, end, inc, code
+    [O.assign, null, 'len', [O.length, [O.lookup, null, 'arguments']]],
+    [O.assign, null, 'inc',
+        [O.if, [O['>'], [O.lookup, null, 'len'], 3],
+            {code:[O.lookup, null, 'arguments', 2]},
+            {code:[O.if, [O['>'], [O.lookup, null, 'start'], [O.lookup, null, 'end']], -1, 1]}
+        ]
+    ],
+    [O.assign, null, 'code',
+        [O.if, [O['>'], [O.lookup, null, 'len'], 3],
+            {code:[O.lookup, null, 'arguments', 3]},
+            {code:[O.lookup, null, 'arguments', [O['-'], [O.lookup, null, 'len'], 1]]}
+        ]
+    ],
+    [O.if, [
+            [O.if, [O['<'], [O.lookup, null, 'inc'], 0], O['>'], O['<']],
+            [O.lookup, null, 'start'],
+            [O.lookup, null, 'end']
+        ],
+        {code:[O.loop2,
+            [O['+'], [O.lookup, null, 'start'], [O.lookup, null, 'inc']],
+            [O.lookup, null, 'end'],
+            [O.lookup, null, 'inc'],
+            [O.lookup, null, 'code'],
+            [O.apply,
+                [O.lookup, null, 'code'],
+                [O.list, [O.lookup, null, 'start']],
+                [O.lookup, null, 'caller']
+            ]
+        ]},
+        {code:[O.lookup, null, 'value']}
+    ]
+]});
+/*
+----MANUALLY-COMPILED----
+//TODO: This part; and then compare it to "COMPILED RESULT" below to see why it is broken
+----COMPILED-RESULT----
+(function(cb, env) {
+var args = env;
+var r0 = args.arguments;
+return O.tailcall(O.length, env, [r0], function(r1) {
+var r2 = (args.len = r1);
+var r3 = args.len;
+return O.tailcall(O[">"], env, [r3, 3], function(r4) {
+return O.tailcall(O.if, env, [r4, {  "code":function (cb, env) {
+return O.tailcall(cb, env, [args.arguments && args.arguments[2]]);
+} }, {  "code":function (cb, env) {
+var r18 = args.start;
+var r19 = args.end;
+return O.tailcall(O[">"], env, [r18, r19], function(r20) {
+return O.tailcall(O.if, env, [r20, -1, 1], cb);
+});
+} }], function(r5) {
+var r6 = (args.inc = r5);
+var r7 = args.len;
+return O.tailcall(O[">"], env, [r7, 3], function(r8) {
+return O.tailcall(O.if, env, [r8, {  "code":function (cb, env) {
+return O.tailcall(cb, env, [args.arguments && args.arguments[3]]);
+} }, {  "code":function (cb, env) {
+var r18 = args.len;
+return O.tailcall(O["-"], env, [r18, 1], function(r19) {
+return O.tailcall(cb, env, [args.arguments && args.arguments[r19]]);
+});
+} }], function(r9) {
+var r10 = (args.code = r9);
+var r11 = args.inc;
+return O.tailcall(O["<"], env, [r11, 0], function(r12) {
+return O.tailcall(O.if, env, [r12, O[">"], O["<"]], function(r13) {
+var r14 = args.start;
+var r15 = args.end;
+return O.tailcall(r13, env, [r14, r15], function(r16) {
+return O.tailcall(O.if, env, [r16, {  "code":function (cb, env) {
+var r18 = args.start;
+var r19 = args.inc;
+return O.tailcall(O["+"], env, [r18, r19], function(r20) {
+var r21 = args.end;
+var r22 = args.inc;
+var r23 = args.code;
+var r24 = args.code;
+var r25 = args.start;
+return O.tailcall(O.list, env, [r25], function(r26) {
+var r27 = args.caller;
+return O.tailcall(O.apply, env, [r24, r26, r27], function(r28) {
+return O.tailcall(O.loop2, env, [r20, r21, r22, r23, r28], cb);
+});
+});
+});
+} }, {  "code":function (cb, env) {
+return O.tailcall(cb, env, [args.value]);
+} }], function(r17) {
+return O.tailcall(cb, env, [r17]);
+});
+});
+});
+});
+});
+});
+});
+});
+});
+})
+*/
 O.each = { parent: O, args: ['container', 'code'], code: function(cb, env) {
     var c = env.container;
     var t = O.type(c);
