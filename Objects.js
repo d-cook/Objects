@@ -236,7 +236,14 @@ O.compiler = O.compilers[O.language];
 O.compile = O.compiler.compile;
 
 // These must "exist" before the below "compile" runs, because it looks for them.
-O.exists = {}; O.lookup = {}; O.assign = {}; O.remove = {}; O.apply = {}; O.do = {};
+(function() {
+    var f = [
+        'exists', 'lookup', 'assign', 'remove',
+        'list', 'copy', 'do', 'loop', 'each', 'lambda', 'with',
+        'eval', 'apply', 'newEnv', 'getArgs'
+    ];
+    for(var i = 0; i < f.length; i++) { O[f[i]] = {}; }
+})();
 
 // The exists, lookup, assign, and remove are just like has, get, set, and delete,
 //   except that property-search continues up the "parent" chain until it is found.
@@ -347,18 +354,16 @@ O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
 });
 
 O.list = O.compile({ parent: O, code: [O.lookup, null, 'arguments'] });
-
-//TODO: This is working for arrays, but not for objects:
-O.copy = O.compile({ parent: O, args: ['obj'], code: ['do',
+O.copy = O.compile({ name: 'copy', parent: O, args: ['obj'], code: [O.do,
     [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
     [O.if, [O['='], [O.lookup, null, 't'], 'array'],
         {code:[O.slice, [O.lookup, null, 'obj']]},
         {code:[O.if, [O['='], [O.lookup, null, 't'], 'object'],
-            {code:[O.do
+            {code:[O.do,
                 [O.assign, null, 'obj2', [O.newObj]],
                 [O.each, [O.lookup, null, 'obj'], {
                     args:['k', 'v'],
-                    code:[O.assign, null, 'obj2', [O.lookup, null, 'k'], [O.lookup, null, 'v']]
+                    code:[O.assign, null, 'obj2', ['lookup', null, 'k'], ['lookup', null, 'v']]
                 }],
                 [O.lookup, null, 'obj2']
             ]},
