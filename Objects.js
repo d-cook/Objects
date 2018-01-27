@@ -268,11 +268,7 @@ O.exists = O.compile({ parent: O, args: ['obj', 'prop'], code: [
         {code: [ O.do,
             [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
             [O.exists,
-                [O.apply,
-                    O.lookup,
-                    [O.lookup, null, 'arguments'],
-                    [O.lookup, null, 'scope']
-                ],
+                [O.apply, O.lookup, [O.lookup, null, 'arguments']],
                 [O.lookup, null, 'last']
             ]
         ]},
@@ -293,11 +289,7 @@ O.lookup = O.compile({ parent: O, args: ['obj', 'prop'], code: [
         {code: [ O.do,
             [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
             [O.lookup,
-                [O.apply,
-                    O.lookup,
-                    [O.lookup, null, 'arguments'],
-                    [O.lookup, null, 'scope']
-                ],
+                [O.apply, O.lookup, [O.lookup, null, 'arguments']],
                 [O.lookup, null, 'last']
             ]
         ]},
@@ -319,11 +311,7 @@ O.assign = O.compile({ parent: O, args: ['obj', 'prop', 'value'], code: [
             [O.assign, null, 'val', [O.pop, [O.lookup, null, 'arguments']]],
             [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
             [O.assign,
-                [O.apply,
-                    O.lookup,
-                    [O.lookup, null, 'arguments'],
-                    [O.lookup, null, 'scope']
-                ],
+                [O.apply, O.lookup, [O.lookup, null, 'arguments']],
                 [O.lookup, null, 'last'],
                 [O.lookup, null, 'val']
             ]
@@ -343,11 +331,7 @@ O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
         {code: [ O.do,
             [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
             [O.remove,
-                [O.apply,
-                    O.lookup,
-                    [O.lookup, null, 'arguments'],
-                    [O.lookup, null, 'scope']
-                ],
+                [O.apply, O.lookup, [O.lookup, null, 'arguments']],
                 [O.lookup, null, 'last']
             ]
         ]},
@@ -472,7 +456,7 @@ O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
     if (funcType !== 'object') {
         return O.tailcall(cb, env, [null]);
     }
-    return O.tailcall(O.newEnv, env, [env.func, env.args, env.env, cb], function(env2) {
+    return O.tailcall(O.newEnv, env, [env.func, env.args, (env.env || env.caller), cb], function(env2) {
         var code = env.func.code;
         var type = O.type(code);
         if (type === 'native') {
