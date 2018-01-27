@@ -70,12 +70,10 @@ O.shift   = function (a    ) { return (O.type(a) !== 'array') ? null : [].shift 
 // These tailcall and invoke functions drive execution of all wrapped functions, which
 // run in CPS (Continuation Passing Style) (i.e. return execution/values via callbacks)
 O.tailcall = function tailcall(func, env, args, cb) {
-    // NOTE: this function references external entities: type, eval
-    // TODO: Optimize the case for evaling a call to eval.
     if (O.type(env) === 'array') { cb = args; args = env; env = null; }
     var ft = O.type(func);
     if (ft !== 'object') {
-        if (ft !== 'native') { func = (function(value){return function(){return value;}})(func); }
+        if (ft !== 'native') { return { func: cb, args: [func] }; }
         // Detect if func takes a cb. TODO: this better (it's a hack with potential false-positives)
         var hasCb = (''+func).replace(/^[^(]+\(/, '').replace(/\).*$/, '').substring(0,3) === 'cb,';
         var allArgs = (cb && hasCb) ? [cb] : [];
@@ -83,7 +81,6 @@ O.tailcall = function tailcall(func, env, args, cb) {
         if (cb && !hasCb) { return tailcall(cb, env, [func.apply(null, allArgs)]); }
         return { func: func, args: allArgs };
     }
-    if (ft !== 'object') { return null; }
     if (O.type(func.code) === 'native') {
         // If func has no parent, then assume it is a nested code-block and inherit from current execution scope:
         var env2 = {
