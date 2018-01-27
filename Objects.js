@@ -376,15 +376,13 @@ O.do = O.compile({ parent: O, code: [O.get,
     [O['-'], [O.length, [O.lookup, null, 'arguments']], 1]
 ]});
 O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
-    // code | end, code | start, end, code | start, end, inc, code
+    // start, end, code | start, end, inc, code
     var a = env.arguments;
-    var start = (a.length > 2) ? a[0] : 0;
-    var end = (a.length === 2) ? a[0] : (a.length > 2) ? a[1] : 0;
-    var inc = (a.length > 3) ? a[2] : (a.length <= 3 && start > end) ? -1 : (a.length < 2) ? 0 : 1;
-    var code = (a.length > 3) ? a[3] : (a.length > 0) ? a[a.length - 1] : null;
-    if ((inc > 0 && start < end) || (inc < 0 && start > end) || inc === 0) {
-        return O.tailcall(code, env.caller, [start], function(v) {
-            return O.tailcall(O.loop, env, [start+inc, end, inc, code, v], cb);
+    env.inc = (a.length > 3) ? a[2] : (env.start > env.end) ? -1 : 1;
+    env.code = (a.length > 3) ? a[3] : a[a.length - 1];
+    if (env.inc > 0 ? env.start < env.end : env.start > env.end) {
+        return O.tailcall(env.code, env.caller, [env.start], function(v) {
+            return O.tailcall(O.loop, env, [env.start + env.inc, env.end, env.inc, env.code, v], cb);
         });
     }
     return O.tailcall(cb, env, [env.value]);
@@ -618,10 +616,8 @@ window.Tests = [
     "[{parent:{parent:Objects,x:7}, code:['lookup', null, 'x']}]",
     "[{parent:{parent:Objects,x:7}, code:['if', true, {code:['say', ['+', 'True! X is: ', ['lookup', null, 'x']]]}, {code:['say', 'Uhoh! This code should NOT have been evaled!']}]}]",
     "[{parent:{parent:Objects,x:7}, code:['if', false, {code:['say', 'Uhoh! This code should NOT have been evaled!']}, {code:['say', ['+', 'False! X is: ', ['lookup', null, 'x']]]}]}]",
-    "['loop', 4, {args:['i'],code:['say', ['+', 'loop 4: ', ['lookup', null, 'i']]]}]",
     "['loop', 1, 4, {args:['i'],code:['say', ['+', 'loop 1,4: ', ['lookup', null, 'i']]]}]",
     "['loop', 1, 4, 2, {args:['i'],code:['say', ['+', 'loop 1,4,2: ', ['lookup', null, 'i']]]}]",
-    "['loop', -3, {args:['i'],code:['say', ['+', 'loop -3: ', ['lookup', null, 'i']]]}]",
     "['loop', 1, -3, {args:['i'],code:['say', ['+', 'loop 1,-3: ', ['lookup', null, 'i']]]}]",
     "['loop', 1, -3, -2, {args:['i'],code:['say', ['+', 'loop 1,-3,-2: ', ['lookup', null, 'i']]]}]",
     "['each', ['list', 11, 22, 33, 44], {args:['k', 'v'],code:['say', ['+', '(11, 22, 33, 44)[', ['lookup', null, 'k'], '] is ', ['lookup', null, 'v']]]}]",
