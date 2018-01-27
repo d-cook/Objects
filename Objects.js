@@ -22,6 +22,26 @@ O.type = function (o) {
 O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     return O.tailcall((env.cond ? env.T : env.F), env.caller, [env.cond], cb);
 }};
+O.and = { parent: O, args: ['L', 'R'], code: function (cb, env) {
+    if (O.falsey(env.L) || env.arguments.length < 2) {
+        return O.tailcall(cb, env, [env.L]); 
+    }
+    return O.tailcall(env.R, env.caller, [], function(r) {
+        var args = [r];
+        args.push.apply(args, O.slice(arguments, 1));
+        return O.tailcall(O.and, env.caller, args, cb);
+    });
+}};
+O.or = { parent: O, args: ['L', 'R'], code: function (cb, env) {
+    if (O.truthy(env.L) || env.arguments.length < 2) {
+        return O.tailcall(cb, env, [env.L]); 
+    }
+    return O.tailcall(env.R, env.caller, [], function(r) {
+        var args = [r];
+        args.push.apply(args, O.slice(arguments, 1));
+        return O.tailcall(O.or, env.caller, args, cb);
+    });
+}};
 
 O.newObj = function ( ) { return Object.create(null); };
 O.keys   = function (o) { return Object.keys(o||{}) || []; };
@@ -40,8 +60,6 @@ O['<']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i
 O['>']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >  (r = arguments[i]))) return false; } return true; };
 O['<='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r <= (r = arguments[i]))) return false; } return true; };
 O['>='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >= (r = arguments[i]))) return false; } return true; };
-O.and   = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if (O.falsey(r = arguments[i])) return r;     } return r;    };
-O.or    = function () { var r = arguments[0]; for(var i=0; i<arguments.length; i++) { if (O.truthy(r = arguments[i])) return r;     } return r;    };
 
 O.slice   = function (a,s,e) { return (O.type(a) !== 'array') ? null : [].slice  .apply(a, [].slice.call(arguments, 1)); };
 O.push    = function (a    ) { return (O.type(a) !== 'array') ? null : [].push   .apply(a, [].slice.call(arguments, 1)); };
@@ -262,7 +280,7 @@ O.exists = O.compile({ parent: O, args: ['obj', 'prop'], code: [
             ]
         ]},
         {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
             [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
                 true,
                 {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
@@ -287,7 +305,7 @@ O.lookup = O.compile({ parent: O, args: ['obj', 'prop'], code: [
             ]
         ]},
         {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
             [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
                 {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
                 {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
@@ -314,9 +332,9 @@ O.assign = O.compile({ parent: O, args: ['obj', 'prop', 'value'], code: [
             ]
         ]},
         {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
             [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
-            [O.if, [O.or, ['=', [O.lookup, null, 't'], 'object'], ['=', [O.lookup, null, 't'], 'array']],
+            [O.if, [O.or, ['=', [O.lookup, null, 't'], 'object'], {code:['=', [O.lookup, null, 't'], 'array']}],
                 {code:[O.set, [O.lookup, null, 'obj'], [O.lookup, null, 'prop'], [O.lookup, null, 'value']]}
             ],
             [O.lookup, null, 'value']
@@ -337,7 +355,7 @@ O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
             ]
         ]},
         {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], [O.lookup, null, 'caller']]],
+            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
             [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
                 {code:[O.do,
                     [O.assign, null, 'v', [O.lookup, null, 'obj', [O.lookup, null, 'prop']]],
@@ -545,7 +563,7 @@ window.Tests = [
     "['lookup', {w:1,parent:{parent:{x:'IAmParentParentX'}}}, 'x']",
     "['lookup', {x:{parent:{y:{z:'xyz'}}}}, 'x', 'y', 'z']",
     "['lookup', null, 'foo']",
-    "['set', ['lookup', null, 'root'], 'def', { args:['k', 'v'], code:[ 'do', ['if', ['and', ['has', ['lookup', null, 'v'], 'code'], ['not', ['has', ['lookup', null, 'v'], 'parent']]], {code:['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root']]}], ['set', ['lookup', null, 'root'], ['lookup', null, 'k'], ['lookup', null, 'v']]]}]",
+    "['set', ['lookup', null, 'root'], 'def', { args:['k', 'v'], code:[ 'do', ['if', ['and', ['has', ['lookup', null, 'v'], 'code'], {code:['not', ['has', ['lookup', null, 'v'], 'parent']]}], {code:['set', ['lookup', null, 'v'], 'parent', ['lookup', null, 'root']]}], ['set', ['lookup', null, 'root'], ['lookup', null, 'k'], ['lookup', null, 'v']]]}]",
     "['set', ['lookup', null, 'root', 'def'], 'parent', ['lookup', null, 'root']]",
     "['def', 'foo', 'IAmFoo']",
     "['lookup', null, 'foo']",
