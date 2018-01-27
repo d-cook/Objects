@@ -122,47 +122,54 @@ O.invoke = function (tc) { // tailcall
 //      2. Re-write the above functions as objects, and run this to generate the native code.
 O.compilers = {};
 O.compilers.js = {
-    compile: function compile(code, innerOffset) {
+    compile: function compile(code, ctx, offset) {
+        offset = offset || (ctx && ctx.offset) || 0;
         if (O.type(code) === 'object') {
             var src = O.type(code.code) === 'array' ? code.code :
                       O.type(code.src ) === 'array' ? code.src  : null;
-            var cc = { code: (src && compile(src, innerOffset)) };
-            if (!cc.code) { return null; }
+            var c = src && compile(src, {
+                outer: ctx || null,
+                offset: offset,
+                vars: code.args || []
+            });
+            if (!c) { return null; }
+            var cc = { code: c };
             for(p in code) {
                 if (p !== 'src' && p !== 'code') {
                     cc[p] = code[p];
                 }
             }
-            if (!innerOffset) { cc.src = src; }
+            if (!ctx) { cc.src = src; }
             if (O.type(code.args) === 'array') {
                 cc.args = [];
                 cc.args.push.apply(cc.args, code.args);
             }
             return cc;
         }
-        var src = O.compilers.js.compileSrc(code, innerOffset || 0);
-        return src && eval('(function(cb, env) {\n' + (innerOffset ? '' : 'var args = env;\n') + src + '\n})');
+        var src = O.compilers.js.compileSrc(code, ctx);
+        return src && eval('(function(cb, env) {\nvar _env_' + offset + ' = env;\n' + src + '\n})');
     },
-    compileSrc: function(code, innerOffset) {
+    compileSrc: function(code, ctx) {
+        ctx = ctx || { outer: null, offset: 0, vars: [] };
         if (O.type(code) !== 'array') { return null; }
-        var calls = O.compilers.js.getCalls(code, [], innerOffset);
-        return O.compilers.js.buildCalls(calls, innerOffset);
+        var calls = O.compilers.js.getCalls(code, [], ctx);
+        return O.compilers.js.buildCalls(calls, ctx);
     },
-    getCalls: function getCalls(code, calls, innerOffset) {
+    getCalls: function getCalls(code, calls, ctx) {
         calls = calls || [];
         if (O.type(code) !== 'array' || code.length < 1) { return calls; }
         var last = [];
         for(var i = 0; i < code.length; i++) {
             var c = code[i];
             last.push(O.type(c) === 'array'
-                ? getCalls(c, calls, innerOffset).length - 1 + innerOffset
+                ? getCalls(c, calls, ctx).length - 1 + ctx.offset
                 : { value: c }
             );
         }
         calls.push(last);
         return calls;
     },
-    buildCalls: function(calls, innerOffset) {
+    buildCalls: function(calls, ctx) {
         var src = '';
         for(var idx = calls.length - 1; idx >= 0; idx--) {
             var c = calls[idx];
@@ -170,14 +177,26 @@ O.compilers.js = {
             for(var i = 0; i < c.length; i++) {
                 var v = c[i] && c[i].value;
                 if (v && v.code && !O.compilers.js.globalStr(v)) {
-                    c[i].value = O.compilers.js.compile(v, calls.length - 1 + innerOffset);
+                    c[i].value = O.compilers.js.compile(v, ctx, calls.length - 1 + ctx.offset);
                 }
             }
             var f = (c.length > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
             if (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove)) {
                 var vals = [];
                 for(var i = 2; i < c.length; i++) { vals.push(O.compilers.js.valueStr(c[i])); }
-                var s = 'args';
+                var s = '_env_' + ctx.offset;
+                if (vals[0].charAt(0) === '"') {
+                    var v = c[2].value;
+                    for(var ctx2 = ctx; ctx2; ctx2 = ctx2 && ctx2.outer) {
+                        for(var i = 0; i < ctx.vars.length; i++) {
+                            if (v === ctx2.vars[i]) {
+                                s = '_env_' + ctx2.offset;
+                                ctx2 = null;
+                                break;
+                            }
+                        }
+                    }
+                }
                 var max = vals.length - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
                 for(var i = 0; i < max; i++) {
                     var v = vals[i];
@@ -195,13 +214,13 @@ O.compilers.js = {
                     s = 'v' + O.compilers.js.indexStr(vals[max]);
                 }
                 src = (len > 0
-                    ? 'var r' + (idx + innerOffset) + ' = ' + s + ';\n' + src
+                    ? 'var r' + (idx + ctx.offset) + ' = ' + s + ';\n' + src
                     : 'return O.tailcall(cb, env, [' + s + ']);'
                 );
             } else if(c[0] && c[0].value === O.do) {
                 var v = O.compilers.js.valueStr(c.length > 1 ? c.pop() : null);
                 src = (src.length > 0
-                    ? 'var r' + (idx + innerOffset) + ' = ' + v + ';\n' + src
+                    ? 'var r' + (idx + ctx.offset) + ' = ' + v + ';\n' + src
                     : 'return O.tailcall(cb, env, [' + v + ']);'
                 );
             } else {
@@ -214,7 +233,7 @@ O.compilers.js = {
                     s += (i > 1 ? ', ' : '') + O.compilers.js.valueStr(c[i]);
                 }
                 src = s + '], ' +
-                    (src.length < 1 ? 'cb);' : 'function(r' + (idx + innerOffset) + ') {\n' + src + '\n});') +
+                    (src.length < 1 ? 'cb);' : 'function(r' + (idx + ctx.offset) + ') {\n' + src + '\n});') +
                     (str ? '\n});' : '');
             }
         }
