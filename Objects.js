@@ -525,14 +525,12 @@ O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb,
         return O.tailcall(cb, env, [env2]);
     });
 }};
-O.getArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) {
-    return O.tailcall(O.each, env, [env.args, function(cb, i, argExpr) {
-        return O.tailcall(O.eval, env, [env.env, argExpr], function(argVal) {
-            env.args[i] = argVal;
-            return O.tailcall(cb, env, []);
-        });
-    }], function() {
-        return O.tailcall(cb, env, [env.args]);
+O.getArgs = { parent: O, args: ['func', 'args', 'env', 'i'], code: function(cb, env) {
+    env.i = env.i || 0;
+    if (env.i >= env.args.length) { return O.tailcall(cb, env, [env.args]); }
+    return O.tailcall(O.eval, env, [env.env, env.args[env.i]], function(argVal) {
+        env.args[env.i] = argVal;
+        return O.tailcall(O.getArgs, env.caller, [env.func, env.args, env.env, env.i + 1], cb);
     });
 }};
 
