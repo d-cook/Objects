@@ -253,7 +253,7 @@ O.compile = O.compiler.compile;
 (function() {
     var f = [
         'exists', 'lookup', 'assign', 'remove',
-        'list', 'copy', 'do', 'loop', 'each', 'lambda', 'with',
+        'list', 'copy', 'do', 'lambda', 'with',
         'eval', 'apply', 'newEnv', 'evalArgs'
     ];
     for(var i = 0; i < f.length; i++) { O[f[i]] = {}; }
@@ -382,68 +382,6 @@ O.do = O.compile({ parent: O, code: [O.get,
     [O.lookup, null, 'arguments'],
     [O['-'], [O.length, [O.lookup, null, 'arguments']], 1]
 ]});
-O.loop = { parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: function(cb, env) {
-    // start, end, code | start, end, inc, code
-    var a = env.arguments;
-    env.inc = (a.length > 3) ? a[2] : (env.start > env.end) ? -1 : 1;
-    env.code = (a.length > 3) ? a[3] : a[a.length - 1];
-    if (env.inc > 0 ? env.start < env.end : env.start > env.end) {
-        return O.tailcall(env.code, env.caller, [env.start], function(v) {
-            return O.tailcall(O.loop, env, [env.start + env.inc, env.end, env.inc, env.code, v], cb);
-        });
-    }
-    return O.tailcall(cb, env, [env.value]);
-}};
-O.loop2 = {};
-O.loop2 = O.compile({ parent: O, args: ['start', 'end', 'inc', 'code', 'value'], code: [O.do,
-    // code | end, code | start, end, code | start, end, inc, code
-    [O.assign, null, 'len', [O.length, [O.lookup, null, 'arguments']]],
-    [O.assign, null, 'inc',
-        [O.if, [O['>'], [O.lookup, null, 'len'], 3],
-            {code:[O.lookup, null, 'arguments', 2]},
-            {code:[O.if, [O['>'], [O.lookup, null, 'start'], [O.lookup, null, 'end']], -1, 1]}
-        ]
-    ],
-    [O.assign, null, 'code',
-        [O.if, [O['>'], [O.lookup, null, 'len'], 3],
-            {code:[O.lookup, null, 'arguments', 3]},
-            {code:[O.lookup, null, 'arguments', [O['-'], [O.lookup, null, 'len'], 1]]}
-        ]
-    ],
-    [O.if, [O.if, [O['<'], [O.lookup, null, 'inc'], 0],
-            {code:[O['>'], [O.lookup, null, 'start'], [O.lookup, null, 'end']]},
-            {code:[O['<'], [O.lookup, null, 'start'], [O.lookup, null, 'end']]}
-        ],
-        {code:[O.loop2,
-            [O['+'], [O.lookup, null, 'start'], [O.lookup, null, 'inc']],
-            [O.lookup, null, 'end'],
-            [O.lookup, null, 'inc'],
-            [O.lookup, null, 'code'],
-            [O.apply,
-                [O.lookup, null, 'code'],
-                [O.list, [O.lookup, null, 'start']],
-                [O.lookup, null, 'caller']
-            ]
-        ]},
-        {code:[O.lookup, null, 'value']}
-    ]
-]});
-O.each = { parent: O, args: ['container', 'code'], code: function(cb, env) {
-    var c = env.container;
-    var t = O.type(c);
-    if (t === 'array') {
-        return O.tailcall(O.loop, env, [0, c.length, function(cb, k) {
-            return O.tailcall(env.code, env.caller, [k, c[k]], cb);
-        }], cb);
-    }
-    if (t !== 'object') { return O.tailcall(cb, env, [null]); }
-    return O.tailcall(O.keys, env, [c], function(keys) {
-        return O.tailcall(O.loop, env, [0, keys.length, function(cb, k) {
-            k = keys[k];
-            return O.tailcall(env.code, env.caller, [k, c[k]], cb);
-        }], cb);
-    });
-}};
 O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
     var f, t = O.type(env.code);
     if (t === 'object') { f = env.code; }
@@ -657,12 +595,6 @@ window.Tests = [
     "[{parent:{parent:Objects,x:7}, code:['if', false, {code:['say', 'Uhoh! This code should NOT have been evaled!']}, {code:['say', ['+', 'False! X is: ', ['lookup', null, 'x']]]}]}]",
     "['copy', ['list', 1, 2, 3]]",
     "['copy', {x:1, y:2, z:3}]",
-    "['loop', 1, 4, {args:['i'],code:['say', ['+', 'loop 1,4: ', ['lookup', null, 'i']]]}]",
-    "['loop', 1, 4, 2, {args:['i'],code:['say', ['+', 'loop 1,4,2: ', ['lookup', null, 'i']]]}]",
-    "['loop', 1, -3, {args:['i'],code:['say', ['+', 'loop 1,-3: ', ['lookup', null, 'i']]]}]",
-    "['loop', 1, -3, -2, {args:['i'],code:['say', ['+', 'loop 1,-3,-2: ', ['lookup', null, 'i']]]}]",
-    "['each', ['list', 11, 22, 33, 44], {args:['k', 'v'],code:['say', ['+', '(11, 22, 33, 44)[', ['lookup', null, 'k'], '] is ', ['lookup', null, 'v']]]}]",
-    "['each', ['lookup', null, 'root'], {args:['k', 'v'],code:['say', ['+', ['type', ['lookup', null, 'v']], ': ', ['lookup', null, 'k']]]}]",
     "['say', ['+', '+_4 is: ', ['type', ['lookup', null, '+_4']]]]",
     "['remove', null, '+_4']",
     "['say', ['+', '+_4 has been removed, and now is: ', ['type', ['lookup', null, '+_4']]]]",
