@@ -352,7 +352,7 @@ O.remove = O.compile({ parent: O, args: ['obj', 'prop'], code: [
 });
 
 O.list = O.compile({ parent: O, code: [O.lookup, null, 'arguments'] });
-O.copy = O.compile({ name: 'copy', parent: O, args: ['obj'], code: [O.do,
+O.copy = O.compile({ parent: O, args: ['obj'], code: [O.do,
     [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
     [O.if, [O['='], [O.lookup, null, 't'], 'array'],
         {code:[O.slice, [O.lookup, null, 'obj']]},
@@ -398,13 +398,19 @@ O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
         });
     });
 }};
-O.with = { parent: O, args: ['obj', 'code'], code: function(cb, env) {
-    // obj, code | obj, prop..., value
-    var result = O.tailcall(cb, env, [env.obj]);
-    if (env.arguments.length < 2) { return result; }
-    if (env.arguments.length < 3) { return O.tailcall(env.code, env.caller, [env.obj], function() { return result; }); }
-    return O.tailcall(O.assign, env, env.arguments, function() { return result; });
-}};
+O.with = O.compile({ parent: O, args: ['obj', 'code'], code: [O.do,
+    [O.assign, null, 'len', [O.length, [O.lookup, null, 'arguments']]],
+    [O.do,
+        [O.if, [O['<'], [O.lookup, null, 'len'], 2],
+            null,
+            {code:[O.if, [O['<'], [O.lookup, null, 'len'], 3],
+                {code:[[O.lookup, null, 'code'], [O.lookup, null, 'obj']]},
+                {code:[O.apply, O.assign, [O.lookup, null, 'arguments']]}
+            ]}
+        ],
+        [O.lookup, null, 'obj']
+    ]
+]});
 
 // Eval functions:
 
