@@ -254,7 +254,7 @@ O.compile = O.compiler.compile;
     var f = [
         'exists', 'lookup', 'assign', 'remove',
         'list', 'copy', 'do', 'loop', 'each', 'lambda', 'with',
-        'eval', 'apply', 'newEnv', 'getArgs'
+        'eval', 'apply', 'newEnv', 'evalArgs'
     ];
     for(var i = 0; i < f.length; i++) { O[f[i]] = {}; }
 })();
@@ -359,11 +359,19 @@ O.copy = O.compile({ name: 'copy', parent: O, args: ['obj'], code: [O.do,
         {code:[O.if, [O['='], [O.lookup, null, 't'], 'object'],
             {code:[O.do,
                 [O.assign, null, 'obj2', [O.newObj]],
-                [O.each, [O.lookup, null, 'obj'], {
-                    args:['k', 'v'],
-                    code:[O.assign, null, 'obj2', ['lookup', null, 'k'], ['lookup', null, 'v']]
-                }],
-                [O.lookup, null, 'obj2']
+                [O.assign, null, 'keys', [O.keys, [O.lookup, null, 'obj']]],
+                [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
+                [O.assign, null, 'i', 0],
+                [O.assign, null, 'nextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                    {code:[O.lookup, null, 'obj2']},
+                    {code:[O.do,
+                        [O.assign, null, 'k', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
+                        [O.assign, null, 'obj2', [O.lookup, null, 'k'], [O.lookup, null, 'obj', [O.lookup, null, 'k']]],
+                        [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                        [[O.lookup, null, 'nextArg']]
+                    ]}
+                ]}],
+                ['nextArg']
             ]},
             // TODO: this does not copy native functions, it just returns them:
             {code:[O.lookup, null, 'obj']}
@@ -471,7 +479,7 @@ O.eval = { parent: O, args: ['env', 'expr'], code: function (cb, env) {
     var funcType = O.type(funcExpr);
     var getter = (funcType === 'string' || funcType === 'number') ? O.lookup : O.eval;
     return O.tailcall(getter, env, [env.env, funcExpr], function(func) {
-        return O.tailcall(O.getArgs, env, [func, env.expr.slice(1), env.env], function(args) {
+        return O.tailcall(O.evalArgs, env, [func, env.expr.slice(1), env.env], function(args) {
             return O.tailcall(O.apply, env, [func, args, env.env], cb);
         });
     });
@@ -510,27 +518,27 @@ O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb,
             code: function (cb, env) { return O.tailcall(env.parent.cc, env.parent.env, env.arguments); }
         };
     }
-    var argNames = env.func.args;
-    return O.tailcall(O.each, env, [argNames, function(cb, i, aName) {
-        var nType = O.type(aName);
-        if (nType !== 'string') {
-            return O.tailcall(cb, env, []);
+    var argNames = env.func.args || [];
+    return (function setNextArg(i) {
+        if (i >= argNames.length) {
+            env2.arguments = env.args;
+            return O.tailcall(cb, env, [env2]);
         }
-        var aValue = env.args[i];
-        env2[aName] = aValue;
-        return O.tailcall(cb, env, [aValue]);
-    }], function() {
-        env2.arguments = env.args;
-        return O.tailcall(cb, env, [env2]);
-    });
+        var name = argNames[i];
+        if (O.type(name) === 'string') {
+            env2[name] = env.args[i];
+        }
+        return O.tailcall(setNextArg, env.caller, [i+1]);
+    }(0));
 }};
-O.getArgs = { parent: O, args: ['func', 'args', 'env', 'i'], code: function(cb, env) {
-    env.i = env.i || 0;
-    if (env.i >= env.args.length) { return O.tailcall(cb, env, [env.args]); }
-    return O.tailcall(O.eval, env, [env.env, env.args[env.i]], function(argVal) {
-        env.args[env.i] = argVal;
-        return O.tailcall(O.getArgs, env.caller, [env.func, env.args, env.env, env.i + 1], cb);
-    });
+O.evalArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) {
+    return (function evalNextArg(i) {
+        if (i >= env.args.length) { return O.tailcall(cb, env, [env.args]); }
+        return O.tailcall(O.eval, env, [env.env, env.args[i]], function(val) {
+            env.args[i] = val;
+            return O.tailcall(evalNextArg, env.caller, [i+1]);
+        });
+    }(0));
 }};
 
 // External interface for running code
@@ -647,6 +655,8 @@ window.Tests = [
     "[{parent:{parent:Objects,x:7}, code:['lookup', null, 'x']}]",
     "[{parent:{parent:Objects,x:7}, code:['if', true, {code:['say', ['+', 'True! X is: ', ['lookup', null, 'x']]]}, {code:['say', 'Uhoh! This code should NOT have been evaled!']}]}]",
     "[{parent:{parent:Objects,x:7}, code:['if', false, {code:['say', 'Uhoh! This code should NOT have been evaled!']}, {code:['say', ['+', 'False! X is: ', ['lookup', null, 'x']]]}]}]",
+    "['copy', ['list', 1, 2, 3]]",
+    "['copy', {x:1, y:2, z:3}]",
     "['loop', 1, 4, {args:['i'],code:['say', ['+', 'loop 1,4: ', ['lookup', null, 'i']]]}]",
     "['loop', 1, 4, 2, {args:['i'],code:['say', ['+', 'loop 1,4,2: ', ['lookup', null, 'i']]]}]",
     "['loop', 1, -3, {args:['i'],code:['say', ['+', 'loop 1,-3: ', ['lookup', null, 'i']]]}]",
