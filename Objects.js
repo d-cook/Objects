@@ -382,22 +382,22 @@ O.do = O.compile({ parent: O, code: [O.get,
     [O.lookup, null, 'arguments'],
     [O['-'], [O.length, [O.lookup, null, 'arguments']], 1]
 ]});
-O.lambda = { parent: O, args: ['argList', 'code'], code: function (cb, env) {
-    var f, t = O.type(env.code);
-    if (t === 'object') { f = env.code; }
-    else {
-        f = O.newObj();
-        f.code = env.code;
-        if (t !== 'array') { return O.tailcall(cb, env, [f]); }
-    }
-    return O.tailcall(O.has, env, [f, 'parent'], function (h) {
-        if (!h) { f.parent = env.caller; }
-        return O.tailcall(O.has, env, [f, 'args'], function (h) {
-            if (!h) { f.args = env.argList || []; }
-            return O.tailcall(cb, env, [f]);
-        });
-    });
-}};
+O.lambda = O.compile({ parent: O, args: ['argList', 'code'], code: [O.do,
+    [O.assign, null, 't', [O.type, [O.lookup, null, 'code']]],
+    [O.assign, null, 'f',
+        [O.if, [O['='], [O.lookup, null, 't'], 'object'],
+            {code:[O.lookup, null, 'code']},
+            {code:[O.with, [O.newObj], 'code', [O.lookup, null, 'code']]}
+        ]
+    ],
+    [O.if, [O.not, [O.has, [O.lookup, null, 'f'], 'parent']],
+        {code:[O.assign, null, 'f', 'parent', [O.lookup, null, 'caller']]}
+    ],
+    [O.if, [O.not, [O.has, [O.lookup, null, 'f'], 'args']],
+        {code:[O.assign, null, 'f', 'args', [O.or, [O.lookup, null, 'argList'], [O.list]]]}
+    ],
+    [O.lookup, null, 'f']
+]});
 O.with = O.compile({ parent: O, args: ['obj', 'code'], code: [O.do,
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'arguments']]],
     [O.do,
