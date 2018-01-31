@@ -362,7 +362,7 @@ O.copy = O.compile({ parent: O, args: ['obj'], code: [O.do,
                 [O.assign, null, 'keys', [O.keys, [O.lookup, null, 'obj']]],
                 [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
                 [O.assign, null, 'i', 0],
-                [O.assign, null, 'nextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                [[O.assign, null, 'nextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
                     {code:[O.lookup, null, 'obj2']},
                     {code:[O.do,
                         [O.assign, null, 'k', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
@@ -370,8 +370,7 @@ O.copy = O.compile({ parent: O, args: ['obj'], code: [O.do,
                         [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                         [[O.lookup, null, 'nextArg']]
                     ]}
-                ]}],
-                ['nextArg']
+                ]}]]
             ]},
             // TODO: this does not copy native functions, it just returns them:
             {code:[O.lookup, null, 'obj']}
@@ -484,6 +483,24 @@ O.evalArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env)
         });
     }(0));
 }};
+/*
+O.evalArgs = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
+    [O.assign, null, 'i', 0],
+    [O.assign, null, 'len', [O.lookup, null, 'args']],
+    [[O.assign, null, 'evalNextArg', {code:[
+        [O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+            {code:[O.lookup, null, 'args']},
+            {code:[O.do,
+                [O.assign, null, 'args', [O.lookup, null, 'i'],
+                    [O.eval, [O.lookup, null, 'env'], [O.lookup, null, 'args', [O.lookup, null, 'i']]]
+                ],
+                [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                [[O.lookup, null, 'evalNextArg']]
+            ]}
+        ]
+    ]}]]
+]});
+*/
 
 // External interface for running code
 O.run = function (expr, env, cb) {
