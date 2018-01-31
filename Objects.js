@@ -474,19 +474,9 @@ O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb,
         return O.tailcall(setNextArg, env.caller, [i+1]);
     }(0));
 }};
-O.evalArgs = { parent: O, args: ['func', 'args', 'env'], code: function(cb, env) {
-    return (function evalNextArg(i) {
-        if (i >= env.args.length) { return O.tailcall(cb, env, [env.args]); }
-        return O.tailcall(O.eval, env, [env.env, env.args[i]], function(val) {
-            env.args[i] = val;
-            return O.tailcall(evalNextArg, env.caller, [i+1]);
-        });
-    }(0));
-}};
-/*
 O.evalArgs = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
     [O.assign, null, 'i', 0],
-    [O.assign, null, 'len', [O.lookup, null, 'args']],
+    [O.assign, null, 'len', [O.length, [O.lookup, null, 'args']]],
     [[O.assign, null, 'evalNextArg', {code:[
         [O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
             {code:[O.lookup, null, 'args']},
@@ -500,7 +490,6 @@ O.evalArgs = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
         ]
     ]}]]
 ]});
-*/
 
 // External interface for running code
 O.run = function (expr, env, cb) {
