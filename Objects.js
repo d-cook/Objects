@@ -393,7 +393,7 @@ O.lambda = O.compile({ parent: O, args: ['argList', 'code'], code: [O.do,
         {code:[O.assign, null, 'f', 'parent', [O.lookup, null, 'caller']]}
     ],
     [O.if, [O.not, [O.has, [O.lookup, null, 'f'], 'args']],
-        {code:[O.assign, null, 'f', 'args', [O.or, [O.lookup, null, 'argList'], [O.list]]]}
+        {code:[O.assign, null, 'f', 'args', [O.or, [O.lookup, null, 'argList'], {code:[O.list]}]]}
     ],
     [O.lookup, null, 'f']
 ]});
@@ -413,20 +413,35 @@ O.with = O.compile({ parent: O, args: ['obj', 'code'], code: [O.do,
 
 // Eval functions:
 
-O.eval = { parent: O, args: ['env', 'expr'], code: function (cb, env) {
-    var type = O.type(env.expr);
-    if (type !== 'array' || env.expr.length < 1) {
-        return O.tailcall(cb, env, [env.expr]);
-    }
-    var funcExpr = env.expr[0];
-    var funcType = O.type(funcExpr);
-    var getter = (funcType === 'string' || funcType === 'number') ? O.lookup : O.eval;
-    return O.tailcall(getter, env, [env.env, funcExpr], function(func) {
-        return O.tailcall(O.evalArgs, env, [func, env.expr.slice(1), env.env], function(args) {
-            return O.tailcall(O.apply, env, [func, args, env.env], cb);
-        });
-    });
-}};
+O.eval = O.compile({ parent: O, args: ['env', 'expr'], code: [O.if,
+    [O.or,
+        [O.not, [O['='], [O.type, [O.lookup, null, 'expr']], 'array']],
+        {code:[O['<'], [O.length, [O.lookup, null, 'expr']], 1]}
+    ],
+    {code:[O.lookup, null, 'expr']},
+    {code:[O.do,
+        [O.assign, null, 'funcExpr', [O.lookup, null, 'expr', 0]],
+        [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'funcExpr']]],
+        [O.assign, null, 'func',
+            [O.if, [O.or,
+                    [O['='], [O.lookup, null, 'funcType'], 'string'],
+                    {code:[O['='], [O.lookup, null, 'funcType'], 'number']}
+                ],
+                {code:[O.lookup, [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]},
+                {code:[O.eval,   [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]}
+            ]
+        ],
+        [O.apply,
+            [O.lookup, null, 'func'],
+            [O.evalArgs,
+                [O.lookup, null, 'func'],
+                [O.slice, [O.lookup, null, 'expr'], 1],
+                [O.lookup, null, 'env']
+            ],
+            [O.lookup, null, 'env']
+        ]
+    ]}
+]});
 O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
     var funcType = O.type(env.func);
     if (funcType === 'native') {
