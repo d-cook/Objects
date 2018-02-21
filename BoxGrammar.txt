@@ -4,8 +4,8 @@
     (eval)┤code║ ║args├(evalArgs)          (apply)┤args ─╫─˃ [...] ˂─────╫args├(newEnv)       
      ¯¯¯¯ │env ║ ║env │    ˄                ¯¯¯¯¯ │env  ─╫─˃ □ ˂─┬(or) ˂─╫env │  ˄            
           ╘╪═══╝ ╚╪═══╛   ╔╪═════╕                │caller╫─˃ □ ˂─┘    ┌──╫func│ ╔╪═══╕        
-           ˅      ˅       ║args  ├(apply)         │func ─╫─˃ ╔════╗ ˂─┘  ╚════╛ ║code├(eval)  
-           ╔══════╗ ˂─────╫env   │                ╘══════╝   ║code╫─˃ □ ˂───────╫env │        
+           ˅      ˅       ║args  ├(apply)         │func ─╫─˃ ╔════╗ ˂─┘  ╚════╛ ║env ├(eval)  
+           ╔══════╗ ˂─────╫env   │                ╘══════╝   ║code╫─˃ □ ˂───────╫code│        
            ║foo* ─╫─˃ □ ˂─╫func  │                           ╚════╝             ╚════╛        
            ║caller╫─˃ □ ˂─╫caller│                                                            
            ╚══════╝       ╚══════╛                                                            
