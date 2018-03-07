@@ -97,7 +97,6 @@ O.tailcall = function tailcall(func, env, args, cb) {
             // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
             env2.caller = env;
             env2.thisFunc = func;
-            // TODO: Should a "return" property be getting set here?
         }
         if (func.args) {
             for (var i = 0; i < func.args.length; i++) {
@@ -459,8 +458,7 @@ O.apply = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
                     [O.newEnv,
                         [O.lookup, null, 'func'],
                         [O.lookup, null, 'args'],
-                        [O.or, [O.lookup, null, 'env'], [O.lookup, null, 'caller']],
-                        [O.lookup, null, 'cc'] // TODO: get the "cb" callback in here somehow
+                        [O.or, [O.lookup, null, 'env'], [O.lookup, null, 'caller']]
                     ]
                 ],
                 [O.assign, null, 'code', [O.lookup, null, 'func', 'code']],
@@ -474,7 +472,7 @@ O.apply = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
         ]}
     ]
 ]});
-O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb, env) {
+O.newEnv = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
     var env2 = O.newObj();
     env2.scope = env2;
     // If func has no parent, then assume it is a nested code-block and inherit from the current execution scope:
@@ -483,10 +481,6 @@ O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb,
         // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
         env2.caller = env.env;
         env2.thisFunc = env.func;
-        env2.return = {
-            parent: { parent: env.parent, cc: env.cc, env: env.env },
-            code: function (cb, env) { return O.tailcall(env.parent.cc, env.parent.env, env.arguments); }
-        };
     }
     var argNames = env.func.args || [];
     return (function setNextArg(i) {
@@ -591,12 +585,6 @@ window.Tests = [
     "['tryThis', \"['clear']\"]",
     "['def', 'list', {code:['lookup', null, 'arguments']}]",
     "['list', 1, [2, 3], 'four', {five:6}]",
-    "['+', 1, 2, 3, ['return', 4], 5]",
-    "['def', 'ret5', {args:['a','b'], code:['+', ['lookup', null, 'a'], ['lookup', null, 'b'], ['return', 5]]}]",
-    "['ret5', 1, 2]",
-    "['+', 3, 4, ['ret5', 1, 2], 5]",
-    "['+', 3, ['return', 4], ['ret5', 1, 2], 5]",
-    "['+', 3, 4, ['rets5', 1, 2], ['return', 6]]",
     "['def', 'id', {args:['x'],code:['lookup', null, 'x']}]",
     "['if', ['<', 5, 7], {code:['id', 'T']}, {code:['id', 'F']}]",
     "['if', ['<', 7, 5], {code:['id', 'T']}, {code:['id', 'F']}]",
