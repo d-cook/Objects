@@ -126,8 +126,16 @@ O.invoke = function (tc) { // tailcall
     while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
 };
 
-//TODO: 1. Compile the compile function (by running it on itself) to generate a CPS-version of it.
-//      2. Re-write the above functions as objects, and run this to generate the native code.
+//TODO: 1. Rewrite this native compiler ("nc") in non-native code ("nnc").
+//      2. Feed nnc into nc to create a generated-native compiler ("gnc").
+//      3. Manually replace nc with gnc, and verify that it works the same.
+//      4. Add code that deletes the (g)nc as the final step of bootstrapping.
+//      5. Create a non-native func that re-creates this entire source-code by:
+//         - echo native code directly
+//         - recreate gnc by running nnc on itself, and echoing the result
+//         - echoing all non-native code wrapped in calls to the compiler
+//      5b. ALTERNATELY, echo the compiled version of non-natives instead of
+//          generating and using the gnc as part of the bootstrapping process.
 O.compilers = {};
 O.compilers.js = {
     compile: function compile(code, innerOffset) {
