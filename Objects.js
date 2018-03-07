@@ -583,7 +583,6 @@ window.Tests = [
     "['tryThis', \"['browse', 'https://github.com/d-cook/Objects', 1000, 750]\"]",
     "['tryThis', \"['refresh']\"]",
     "['tryThis', \"['clear']\"]",
-    "['def', 'list', {code:['lookup', null, 'arguments']}]",
     "['list', 1, [2, 3], 'four', {five:6}]",
     "['def', 'id', {args:['x'],code:['lookup', null, 'x']}]",
     "['if', ['<', 5, 7], {code:['id', 'T']}, {code:['id', 'F']}]",
@@ -635,9 +634,8 @@ window.Tests = [
     // TESTING COMPILATION (by re-coding "do", and recompiling it back):
 
     "['def', 'test-compile', {args:['code'],code:['get', ['assign', null, ['lookup', null, 'code'], ['compile', ['lookup', null, ['lookup', null, 'code']]]], 'code']}]",
-    "['test-compile', 'do']",
-    "['do', ['assign', null, 'x', 5], ['assign', null, 'y', 10], ['+', ['lookup', null, 'x'], ['lookup', null, 'y']]]",
-    "['do']", // Simulating an empty block of code
+    "['test-compile', '+4']",
+    "['+4', 4]",
     "['test-compile', 'recur']",
     "['test-compile', 'recur']", // Compile twice to verify that src gets set properly so that re-compile works properly
     "['recur', 1]",
@@ -645,8 +643,9 @@ window.Tests = [
     "['recur', 3]",
     "['recur', 4]",
     "['recur', 5]",
-    "['test-compile', 'list']",
-    "['list', 'a', 'b', 'c', 1, 2, 3]",
+    "['test-compile', 'test-compile']",
+    "['test-compile', '+n']",
+    "[['+n', 3], 7]",
     "['get', ['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'src']",
     "['get', ['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 'code']",
     "[['compile', {args:['x','y'],code:['+', ['lookup', null, 'x'], ['lookup', null, 'y']]}], 5, 7]",
