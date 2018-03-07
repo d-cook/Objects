@@ -472,29 +472,34 @@ O.apply = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
         ]}
     ]
 ]});
-O.newEnv = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
-    var env2 = O.newObj();
-    env2.scope = env2;
-    // If func has no parent, then assume it is a nested code-block and inherit from the current execution scope:
-    env2.parent = env.func.parent || env.env;
-    if (env.func.parent) {
-        // Nested blocks inherit (i.e. do not override) these properties of their parent scope:
-        env2.caller = env.env;
-        env2.thisFunc = env.func;
-    }
-    var argNames = env.func.args || [];
-    return (function setNextArg(i) {
-        if (i >= argNames.length) {
-            env2.arguments = env.args;
-            return O.tailcall(cb, env, [env2]);
-        }
-        var name = argNames[i];
-        if (O.type(name) === 'string') {
-            env2[name] = env.args[i];
-        }
-        return O.tailcall(setNextArg, env.caller, [i+1]);
-    }(0));
-}};
+O.newEnv = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
+    [O.assign, null, 'env2', [O.newObj]],
+    [O.assign, null, 'env2', 'scope', [O.lookup, null, 'env2']],
+    [O.assign, null, 'env2', 'parent', [O.or, [O.lookup, null, 'func', 'parent'], [O.lookup, null, 'env']]],
+    [O.if, [O.lookup, null, 'func', 'parent'],
+        {code:[O.do,
+            [O.assign, null, 'env2', 'caller', [O.lookup, null, 'env']],
+            [O.assign, null, 'env2', 'thisFunc', [O.lookup, null, 'func']]
+        ]}
+    ],
+    [O.assign, null, 'argNames', [O.or, [O.lookup, null, 'func', 'args'], [O.list]]],
+    [O.assign, null, 'i', 0],
+    [O.assign, null, 'len', [O.length, [O.lookup, null, 'argNames']]],
+    [[O.assign, null, 'setNextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+        {code:[O.do,
+            [O.assign, null, 'env2', 'arguments', [O.lookup, null, 'args']],
+            [O.lookup, null, 'env2']
+        ]},
+        {code:[O.do,
+            [O.assign, null, 'name', [O.lookup, null, 'argNames', [O.lookup, null, 'i']]],
+            [O.if, [O['='], [O.type, [O.lookup, null, 'name']], 'string'],
+                {code:[O.assign, null, 'env2', [O.lookup, null, 'name'], [O.lookup, null, 'args', [O.lookup, null, 'i']]]}
+            ],
+            [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+            [[O.lookup, null, 'setNextArg']]
+        ]}
+    ]}]]
+]});
 O.evalArgs = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
     [O.assign, null, 'i', 0],
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'args']]],
