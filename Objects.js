@@ -449,54 +449,25 @@ O.eval = O.compile({ parent: O, args: ['env', 'expr'], code: [O.if,
         ]
     ]}
 ]});
-O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
-    var funcType = O.type(env.func);
-    if (funcType === 'native') {
-        return O.tailcall(cb, env, [O.applyNative(env.func, env.args)]);
-    }
-    if (funcType !== 'object') {
-        return O.tailcall(cb, env, [null]);
-    }
-    return O.tailcall(O.newEnv, env, [env.func, env.args, (env.env || env.caller), cb], function(env2) {
-        var code = env.func.code;
-        var type = O.type(code);
-        if (type === 'native') {
-            return O.tailcall(code, env, [env2], cb);
-        }
-        return O.tailcall(O.eval, env, [env2, code], cb);
-    });
-}};
-O.applyInner = { parent: O, args: ['code', 'env2'], code: function (cb, env) {
-    var type = O.type(env.code);
-    if (type === 'native') {
-        return O.tailcall(env.code, env, [env.env2], cb);
-    }
-    return O.tailcall(O.eval, env, [env.env2, env.code], cb);
-}};
-O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
-    var funcType = O.type(env.func);
-    if (funcType === 'native') {
-        return O.tailcall(cb, env, [O.applyNative(env.func, env.args)]);
-    }
-    if (funcType !== 'object') {
-        return O.tailcall(cb, env, [null]);
-    }
-    return O.tailcall(O.newEnv, env, [env.func, env.args, (env.env || env.caller)], function(env2) {
-        return O.tailcall(O.applyInner, env, [env.func.code, env2], cb);
-    });
-}};
 O.apply = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
     [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'func']]],
     [O.if, [O['='], [O.lookup, null, 'funcType'], 'native'],
         {code:[O.applyNative, [O.lookup, null, 'func'], [O.lookup, null, 'args']]},
         {code:[O.if, [O['='], [O.lookup, null, 'funcType'], 'object'],
-            {code:[O.applyInner,
-                [O.lookup, null, 'func', 'code'],
-                [O.newEnv,
-                    [O.lookup, null, 'func'],
-                    [O.lookup, null, 'args'],
-                    [O.or, [O.lookup, null, 'env'], [O.lookup, null, 'caller']],
-                    [O.lookup, null, 'cc'] // TODO: get the "cb" callback in here somehow
+            {code:[O.do,
+                [O.assign, null, 'env2',
+                    [O.newEnv,
+                        [O.lookup, null, 'func'],
+                        [O.lookup, null, 'args'],
+                        [O.or, [O.lookup, null, 'env'], [O.lookup, null, 'caller']],
+                        [O.lookup, null, 'cc'] // TODO: get the "cb" callback in here somehow
+                    ]
+                ],
+                [O.assign, null, 'code', [O.lookup, null, 'func', 'code']],
+                [O.assign, null, 'type', [O.type, [O.lookup, null, 'code']]],
+                [O.if, [O['='], [O.lookup, null, 'type'], 'native'],
+                    {code:[[O.lookup, null, 'code'], [O.lookup, null, 'env2']]},
+                    {code:[O.eval, [O.lookup, null, 'env2'], [O.lookup, null, 'code']]}
                 ]
             ]},
             null,
