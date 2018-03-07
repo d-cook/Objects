@@ -6,7 +6,7 @@ O.root = O;
 
 // Functions that must be native-defined:
 
-O.has    = function (o, p   ) { return o ? (p in o) : false; };
+O.has    = function (o, p   ) { try { return o ? (p in o) : false; } catch(ex) { return false; } };
 O.get    = function (o, p   ) { return O.has(o, p) ? o[p] : null; };
 O.set    = function (o, p, v) { var t = O.type(o); if (t === 'object' || t === 'array') { o[p] = v; } return v; };
 O.delete = function (o, p   ) { var v = (O.has(o, p) ? o[p] : null); delete o[p]; return v; };
@@ -66,6 +66,12 @@ O.push    = function (a    ) { return (O.type(a) !== 'array') ? null : [].push  
 O.unshift = function (a    ) { return (O.type(a) !== 'array') ? null : [].unshift.apply(a, [].slice.call(arguments, 1)); };
 O.pop     = function (a    ) { return (O.type(a) !== 'array') ? null : [].pop    .apply(a); };
 O.shift   = function (a    ) { return (O.type(a) !== 'array') ? null : [].shift  .apply(a); };
+
+O.applyNative = function (f, args) {
+    if (typeof f !== 'function') { return null; }
+    try { return f.apply(null, args); }
+    catch(ex) { return ex; } // TODO: return null instead?
+};
 
 // These tailcall and invoke functions drive execution of all wrapped functions, which
 // run in CPS (Continuation Passing Style) (i.e. return execution/values via callbacks)
@@ -445,10 +451,7 @@ O.eval = O.compile({ parent: O, args: ['env', 'expr'], code: [O.if,
 O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
     var funcType = O.type(env.func);
     if (funcType === 'native') {
-        var result = null;
-        try { result = env.func.apply(null, env.args); }
-        catch(ex) { result = ex; }
-        return O.tailcall(cb, env, [result]);
+        return O.tailcall(cb, env, [O.applyNative(env.func, env.args)]);
     }
     if (funcType !== 'object') {
         return O.tailcall(cb, env, [null]);
