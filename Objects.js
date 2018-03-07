@@ -120,6 +120,7 @@ O.tailcall = function tailcall(func, env, args, cb) {
     return { func: O.apply.code, args: [cb, env2] };
 };
 O.invoke = function (tc) { // tailcall
+    // (window.bpc > 100) || ((window.bpc = 1 + (window.bpc || 0)) && false)
     while(tc && tc.func) { tc = tc.func.apply(null, tc.args || []); }
 };
 
@@ -465,6 +466,26 @@ O.apply = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
         return O.tailcall(O.eval, env, [env2, code], cb);
     });
 }};
+O.applyInner = { parent: O, args: ['func', 'args', 'env'], code: function (cb, env) {
+    return O.tailcall(O.newEnv, env, [env.func, env.args, (env.env || env.caller), cb], function(env2) {
+        var code = env.func.code;
+        var type = O.type(code);
+        if (type === 'native') {
+            return O.tailcall(code, env, [env2], cb);
+        }
+        return O.tailcall(O.eval, env, [env2, code], cb);
+    });
+}};
+O.apply = O.compile({ parent: O, args: ['func', 'args', 'env'], code: [O.do,
+    [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'func']]],
+    [O.if, [O['='], [O.lookup, null, 'funcType'], 'native'],
+        {code:[O.applyNative, [O.lookup, null, 'func'], [O.lookup, null, 'args']]},
+        {code:[O.if, [O['='], [O.lookup, null, 'funcType'], 'object'],
+            {code:[O.applyInner, [O.lookup, null, 'func'], [O.lookup, null, 'args'], [O.lookup, null, 'env']]},
+            null,
+        ]}
+    ]
+]});
 O.newEnv = { parent: O, args: ['func', 'args', 'env', 'cc'], code: function (cb, env) {
     var env2 = O.newObj();
     env2.scope = env2;
