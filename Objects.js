@@ -61,11 +61,14 @@ O['>']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i
 O['<='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r <= (r = arguments[i]))) return false; } return true; };
 O['>='] = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) { if (!(r >= (r = arguments[i]))) return false; } return true; };
 
-O.slice   = function (a,s,e) { return (O.type(a) !== 'array') ? null : [].slice  .apply(a, [].slice.call(arguments, 1)); };
+O.slice   = function (a,b,e) { return (O.type(a) !== 'array') ? null : [].slice  .apply(a, [].slice.call(arguments, 1)); };
 O.push    = function (a    ) { return (O.type(a) !== 'array') ? null : [].push   .apply(a, [].slice.call(arguments, 1)); };
 O.unshift = function (a    ) { return (O.type(a) !== 'array') ? null : [].unshift.apply(a, [].slice.call(arguments, 1)); };
 O.pop     = function (a    ) { return (O.type(a) !== 'array') ? null : [].pop    .apply(a); };
 O.shift   = function (a    ) { return (O.type(a) !== 'array') ? null : [].shift  .apply(a); };
+
+O.charAt    = function (s,i  ) { return s.charAt(i); };
+O.substring = function (s,b,e) { return (O.type(s) !== 'string') ? null : s.substring(b, e); };
 
 O.applyNative = function (f, args) {
     if (typeof f !== 'function') { return null; }
@@ -155,9 +158,9 @@ O.compilers.js = {
     },
     getCalls: function getCalls(code, calls, innerOffset) {
         calls = calls || [];
-        if (O.type(code) !== 'array' || code.length < 1) { return calls; }
+        if (O.type(code) !== 'array' || O.length(code) < 1) { return calls; }
         var last = [];
-        for(var i = 0; i < code.length; i++) {
+        for(var i = 0; i < O.length(code); i++) {
             var c = code[i];
             last.push(O.type(c) === 'array'
                 ? getCalls(c, calls, innerOffset).length - 1 + innerOffset
@@ -169,26 +172,26 @@ O.compilers.js = {
     },
     buildCalls: function(calls, innerOffset) {
         var src = '';
-        for(var idx = calls.length - 1; idx >= 0; idx--) {
+        for(var idx = O.length(calls) - 1; idx >= 0; idx--) {
             var c = calls[idx];
             if (O.type(c) !== 'array') { return src; }
-            for(var i = 0; i < c.length; i++) {
+            for(var i = 0; i < O.length(c); i++) {
                 var v = c[i] && c[i].value;
                 if (v && v.code && !O.compilers.js.globalStr(v)) {
-                    c[i].value = O.compilers.js.compile(v, calls.length - 1 + innerOffset);
+                    c[i].value = O.compilers.js.compile(v, O.length(calls) - 1 + innerOffset);
                 }
             }
-            var f = (c.length > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
+            var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
             if (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove)) {
                 var vals = [];
-                for(var i = 2; i < c.length; i++) { vals.push(O.compilers.js.valueStr(c[i])); }
+                for(var i = 2; i < O.length(c); i++) { vals.push(O.compilers.js.valueStr(c[i])); }
                 var s = 'args';
-                var max = vals.length - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
+                var max = O.length(vals) - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
                 for(var i = 0; i < max; i++) {
                     var v = vals[i];
                     s += (i > 0 ? ' && ' + s : '') + O.compilers.js.indexStr(v);
                 }
-                var len = (src.length);
+                var len = O.length(src);
                 if (f === O.assign) {
                     s = '(' + (max < 1 ? s : '((' + s + ')||{})') +
                         O.compilers.js.indexStr(vals[max]) + ' = ' + vals[max + 1] + ')';
@@ -204,29 +207,33 @@ O.compilers.js = {
                     : 'return O.tailcall(cb, env, [' + s + ']);'
                 );
             } else if(c[0] && c[0].value === O.do) {
-                var v = O.compilers.js.valueStr(c.length > 1 ? c.pop() : null);
-                src = (src.length > 0
+                var v = O.compilers.js.valueStr(O.length(c) > 1 ? c.pop() : null);
+                src = (O.length(src) > 0
                     ? 'var r' + (idx + innerOffset) + ' = ' + v + ';\n' + src
                     : 'return O.tailcall(cb, env, [' + v + ']);'
                 );
             } else {
                 var v = O.compilers.js.valueStr(c[0]);
-                var str = (v.charAt(0) === '"');
+                var str = (O.charAt(v, 0) === '"');
                 var s = 'return O.tailcall(' +
                     (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
                     ', env, [';
-                for(var i = 1; i < c.length; i++) {
+                for(var i = 1; i < O.length(c); i++) {
                     s += (i > 1 ? ', ' : '') + O.compilers.js.valueStr(c[i]);
                 }
                 src = s + '], ' +
-                    (src.length < 1 ? 'cb);' : 'function(r' + (idx + innerOffset) + ') {\n' + src + '\n});') +
+                    (O.length(src) < 1 ? 'cb);' : 'function(r' + (idx + innerOffset) + ') {\n' + src + '\n});') +
                     (str ? '\n});' : '');
             }
         }
         return src;
     },
     indexStr: function(v) {
-        return /^"[a-z_]\w*"$/i.test(v) ? '.' + v.substring(1, v.length-1) : '[' + v + ']';
+        return (
+            O.length(v) > 1 &&
+            O.charAt(v, 0) === '"' &&
+            O.charAt(v, O.length(v)-1) === '"'
+        ) ? '.' + O.substring(v, 1, O.length(v)-1) : '[' + v + ']';
     },
     valueStr: function (v, alias) {
         return O.type(v) === 'number' ? 'r' + v : O.compilers.js.stringify(v && v.value, alias);
@@ -234,20 +241,16 @@ O.compilers.js = {
     stringify: function stringify(v, alias) {
         var t = O.type(v);
         var s = (alias !== false && O.compilers.js.globalStr(v)) || '';
-        if (s.length > 0) { return s; }
+        if (O.length(s) > 0) { return s; }
         var a = (t !== 'object');
         if (a && t !== 'array') { return JSON.stringify(v) || '' + v; }
         for(var p in v) { s += ', ' + (a ? '' : stringify(p) + ':') + stringify(v[p], alias); }
         return a ?
-            (s.length ? '[' + s.substring(1) + ']' : '[]'):
-            (s.length ? '{ '+ s.substring(1) +' }' : '{}');
+            (O.length(s) ? '[' + O.substring(s, 1) + ']' : '[]'):
+            (O.length(s) ? '{ '+ O.substring(s, 1) +' }' : '{}');
     },
     globalStr: function (v) {
-        for(var p in O) {
-            if (v === O[p]) {
-                return 'O' + (/^([A-Za-z]|_)\w*$/g.test(p) ? '.' + p : '["' + p + '"]');
-            }
-        }
+        for(var p in O) { if (v === O[p]) { return 'O["' + p + '"]'; } }
         return null;
     }
 };
