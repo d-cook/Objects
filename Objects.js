@@ -366,6 +366,27 @@ function compileAssign(parent, funcName, code) {
     O.invoke(O.tailcall(js.compile, O, [code], function (cc) { parent[funcName] = cc; }));
 }
 
+compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
+    [O.assign, null, 'keys', [O.keys, O]],
+    [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
+    [O.assign, null, 'i', 0],
+    [[O.assign, null, 'nextProp',
+        {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+            null,
+            {code:[O.do,
+                [O.assign, null, 'prop', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
+                [O.if, [O['='], [O.lookup, null, 'v'], [O.get, O, [O.lookup, null, 'prop']]],
+                    {code:[O['+'], 'O["', [O.lookup, null, 'prop'], '"]']},
+                    {code:[O.do,
+                        [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                        [[O.lookup, null, 'nextProp']]
+                    ]}
+                ]
+            ]}
+        ]}
+    ]]
+]});
+
 O.language = 'js';
 O.compiler = O.compilers[O.language];
 O.compile = O.compiler.compile;
