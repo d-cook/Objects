@@ -366,6 +366,8 @@ function compileAssign(parent, funcName, code) {
     O.invoke(O.tailcall(js.compile, O, [code], function (cc) { parent[funcName] = cc; }));
 }
 
+// Re-create all compiler functions from non-native code:
+
 compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'keys', [O.keys, O]],
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
@@ -544,34 +546,34 @@ compileAssign(O, 'with', { parent: O, args: ['obj', 'code'], code: [O.do,
 
 // Eval functions:
 
-compileAssign(O, 'eval', { parent: O, args: ['env', 'expr'], code: [O.if,
-    [O.or,
-        [O.not, [O['='], [O.type, [O.lookup, null, 'expr']], 'array']],
-        {code:[O['<'], [O.length, [O.lookup, null, 'expr']], 1]}
-    ],
-    {code:[O.lookup, null, 'expr']},
-    {code:[O.do,
-        [O.assign, null, 'funcExpr', [O.lookup, null, 'expr', 0]],
-        [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'funcExpr']]],
-        [O.assign, null, 'func',
-            [O.if, [O.or,
-                    [O['='], [O.lookup, null, 'funcType'], 'string'],
-                    {code:[O['='], [O.lookup, null, 'funcType'], 'number']}
-                ],
-                {code:[O.lookup, [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]},
-                {code:[O.eval,   [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]}
-            ]
+compileAssign(O, 'eval', { parent: O, args: ['env', 'expr'], code: [
+    O.if, [O.or,
+            [O.not, [O['='], [O.type, [O.lookup, null, 'expr']], 'array']],
+            {code:[O['<'], [O.length, [O.lookup, null, 'expr']], 1]}
         ],
-        [O.apply,
-            [O.lookup, null, 'func'],
-            [O.evalArgs,
-                [O.lookup, null, 'func'],
-                [O.slice, [O.lookup, null, 'expr'], 1],
-                [O.lookup, null, 'env']
+        {code:[O.lookup, null, 'expr']},
+        {code:[O.do,
+            [O.assign, null, 'funcExpr', [O.lookup, null, 'expr', 0]],
+            [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'funcExpr']]],
+            [O.assign, null, 'func',
+                [O.if, [O.or,
+                        [O['='], [O.lookup, null, 'funcType'], 'string'],
+                        {code:[O['='], [O.lookup, null, 'funcType'], 'number']}
+                    ],
+                    {code:[O.lookup, [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]},
+                    {code:[O.eval,   [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]}
+                ]
             ],
-            [O.lookup, null, 'env']
-        ]
-    ]}
+            [O.apply,
+                [O.lookup, null, 'func'],
+                [O.evalArgs,
+                    [O.lookup, null, 'func'],
+                    [O.slice, [O.lookup, null, 'expr'], 1],
+                    [O.lookup, null, 'env']
+                ],
+                [O.lookup, null, 'env']
+            ]
+        ]}
 ]});
 compileAssign(O, 'apply', { parent: O, args: ['func', 'args', 'env'], code: [O.do,
     [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'func']]],
