@@ -618,7 +618,109 @@ compileNonNatives();
 
 // Re-create all compiler functions from non-native code:
 
-// TODO: 'undefined' (instead of always null) values came back after compiling this:
+/*
+js.compile = { parent: js, args: ['code', 'innerOffset'], code: function (cb, env) {
+    var code = env.code, innerOffset = env.innerOffset;
+    if (O.type(code) === 'object') {
+        var src = O.type(code.code) === 'array' ? code.code :
+                  O.type(code.src ) === 'array' ? code.src  : null;
+        return (function(cb) {
+            return src ? O.tailcall(js.compile, env, [src, innerOffset], cb) : cb(null);
+        }(function(cc) {
+            if (!cc) { return O.tailcall(cb, env, [null]); }
+            cc = { code: cc };
+            for(p in code) {
+                if (p !== 'src' && p !== 'code') {
+                    cc[p] = code[p];
+                }
+            }
+            if (!innerOffset) { cc.src = src; }
+            if (O.type(code.args) === 'array') {
+                cc.args = [];
+                cc.args.push.apply(cc.args, code.args);
+            }
+            return O.tailcall(cb, env, [cc]);
+        }));
+    }
+    return O.tailcall(js.compileSrc, env, [code, innerOffset || 0], function (src) {
+        return O.tailcall(cb, env, [
+            src && eval('(function(cb, env) {\n' + (innerOffset ? '' : 'var args = env;\n') + src + '\n})')
+        ]);
+    });
+}};
+*/
+compileAssign(js, 'compile', { parent: js, args: ['code', 'innerOffset'], code: [
+    O.if, [O['='], [O.type, [O.lookup, null, 'code']], 'object'],
+        {code:[O.do,
+            [O.assign, null, 'src',
+                [O.if, [O['='], [O.type, [O.lookup, null, 'code', 'code']], 'array'],
+                    {code:[O.lookup, null, 'code', 'code']},
+                    {code:[
+                        O.if, [O['='], [O.type, [O.lookup, null, 'code', 'src']], 'array'],
+                            {code:[O.lookup, null, 'code', 'src']}
+                    ]}
+                ]
+            ],
+            [O.assign, null, 'cc_code',
+                [O.if, [O.lookup, null, 'src'],
+                    //TODO: fix compiler to a direct-reference below (i.e 'compile'):
+                    {code:['compile', [O.lookup, null, 'src'], [O.lookup, null, 'innerOffset']]},
+                ]
+            ],
+            [O.if, [O.lookup, null, 'cc_code'],
+                {code:[O.do,
+                    [O.assign, null, 'cc', [O.newObj]],
+                    [O.assign, null, 'cc', 'code', [O.lookup, null, 'cc_code']],
+                    [O.assign, null, 'keys', [O.keys, [O.lookup, null, 'code']]],
+                    [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
+                    [O.assign, null, 'i', 0],
+                    [[O.assign, null, 'nextCodeProp', {code:[
+                        O.if, [O['<'], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                            {code:[O.do,
+                                [O.assign, null, 'p', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
+                                [O.if, [O.not, [O.or,
+                                        [O['='], [O.lookup, null, 'p'], 'src'],
+                                        {code:[O['='], [O.lookup, null, 'p'], 'code']}
+                                    ]],
+                                    {code:[O.assign, null, 'cc', [O.lookup, null, 'p'], [O.lookup, null, 'code', [O.lookup, null, 'p']]]}
+                                ],
+                                [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                                [[O.lookup, null, 'nextCodeProp']]
+                            ]}
+                    ]}]],
+                    [O.if, [O.not, [O['>'], [O.lookup, null, 'innerOffset'], 0]],
+                        {code:[O.assign, null, 'cc', 'src', [O.lookup, null, 'src']]}
+                    ],
+                    [O.if, [O['='], [O.type, [O.lookup, null, 'code', 'args']], 'array'],
+                        {code:[O.assign, null, 'cc', 'args', [O.copy, [O.lookup, null, 'code', 'args']]]}
+                    ],
+                    [O.lookup, null, 'cc']
+                ]}
+            ]
+        ]},
+        {code:[O.do,
+            [O.assign, null, 'src', ['compileSrc',
+                [O.lookup, null, 'code'],
+                [O.or, [O.lookup, null, 'innerOffset'], 0]
+            ]],
+            [O.and,
+                [O.lookup, null, 'src'],
+                // TODO: replace this inline native eval func with a not-inline one:
+                {code:[function(x){return eval(x);},
+                    [O['+'],
+                        '(function(cb, env) {\n',
+                        // TODO: check that this works the same as (innerOffset ?..:..):
+                        [O.if, [O['>'], [O.lookup, null, 'innerOffset'], 0],
+                            '',
+                            'var args = env;\n'
+                        ],
+                        [O.lookup, null, 'src'],
+                        '\n})'
+                    ]
+                ]}
+            ]
+        ]}
+]});
 compileAssign(js, 'compileSrc', { parent: js, args: ['code', 'innerOffset'], code: [
     O.if, [O['='], [O.type, [O.lookup, null, 'code']], 'array'],
         //TODO: fix compiler to a direct-reference below (i.e 'buildCalls' and 'getCalls'):
