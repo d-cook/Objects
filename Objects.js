@@ -623,6 +623,19 @@ compileNonNatives();
 
 // Re-create all compiler functions from non-native code:
 
+compileAssign(js, 'indexStr', { parent: js, args: ['v'], code: [O.do,
+    [O.assign, null, 'len', [O.length, [O.lookup, null, 'v']]],
+    [O.assign, null, 'end', [O['-'], [O.lookup, null, 'len'], 1]],
+    [O.if, [O.and,
+            [O['>'], [O.lookup, null, 'len'], 1],
+            {code:[O['='], [O.charAt, [O.lookup, null, 'v'], 0], '"']},
+            {code:[O['='], [O.charAt, [O.lookup, null, 'v'], [O.lookup, null, 'end'], '"']]}
+        ],
+        {code:[O['+'], '.', [O.substring, [O.lookup, null, 'v'], 1, [O.lookup, null, 'end']]]},
+        {code:[O['+'], '[', [O.lookup, null, 'v'], ']']}
+    ]
+]});
+
 compileAssign(js, 'valueStr', { parent: js, args: ['v', 'alias'], code: [
     O.if, [O['='], [O.type, [O.lookup, null, 'v']], 'number'],
         {code:[O['+'], 'r', [O.lookup, null, 'v']]},
