@@ -618,6 +618,16 @@ compileNonNatives();
 
 // Re-create all compiler functions from non-native code:
 
+// TODO: 'undefined' (instead of always null) values came back after compiling this:
+compileAssign(js, 'compileSrc', { parent: js, args: ['code', 'innerOffset'], code: [
+    O.if, [O['='], [O.type, [O.lookup, null, 'code']], 'array'],
+        //TODO: fix compiler to a direct-reference below (i.e 'buildCalls' and 'getCalls'):
+        {code:['buildCalls',
+            ['getCalls', [O.lookup, null, 'code'], [O.list], [O.lookup, null, 'innerOffset']],
+            [O.lookup, null, 'innerOffset']
+        ]}
+]});
+
 compileAssign(js, 'indexStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'v']]],
     [O.assign, null, 'end', [O['-'], [O.lookup, null, 'len'], 1]],
