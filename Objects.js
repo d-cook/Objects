@@ -618,37 +618,6 @@ compileNonNatives();
 
 // Re-create all compiler functions from non-native code:
 
-/*
-js.compile = { parent: js, args: ['code', 'innerOffset'], code: function (cb, env) {
-    var code = env.code, innerOffset = env.innerOffset;
-    if (O.type(code) === 'object') {
-        var src = O.type(code.code) === 'array' ? code.code :
-                  O.type(code.src ) === 'array' ? code.src  : null;
-        return (function(cb) {
-            return src ? O.tailcall(js.compile, env, [src, innerOffset], cb) : cb(null);
-        }(function(cc) {
-            if (!cc) { return O.tailcall(cb, env, [null]); }
-            cc = { code: cc };
-            for(p in code) {
-                if (p !== 'src' && p !== 'code') {
-                    cc[p] = code[p];
-                }
-            }
-            if (!innerOffset) { cc.src = src; }
-            if (O.type(code.args) === 'array') {
-                cc.args = [];
-                cc.args.push.apply(cc.args, code.args);
-            }
-            return O.tailcall(cb, env, [cc]);
-        }));
-    }
-    return O.tailcall(js.compileSrc, env, [code, innerOffset || 0], function (src) {
-        return O.tailcall(cb, env, [
-            src && eval('(function(cb, env) {\n' + (innerOffset ? '' : 'var args = env;\n') + src + '\n})')
-        ]);
-    });
-}};
-*/
 compileAssign(js, 'compile', { parent: js, args: ['code', 'innerOffset'], code: [
     O.if, [O['='], [O.type, [O.lookup, null, 'code']], 'object'],
         {code:[O.do,
