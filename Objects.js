@@ -277,7 +277,7 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
                     return O.tailcall(js.valueStr, env, [c[0]], function (v) {
                         var str = (O.charAt(v, 0) === '"');
                         var s = 'return O.tailcall(' +
-                            (!str ? v : 'O.lookup, env, [env.env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
+                            (!str ? v : 'O.lookup, env, [env, ' + v + '], function (f) {\nreturn O.tailcall(f') +
                             ', env, [';
                         return (function next(i) {
                             if (i >= O.length(c)) {
