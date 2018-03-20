@@ -88,7 +88,7 @@ O.tailcall = function tailcall(func, env, args, cb) {
         if (cb && !hasCb) { return tailcall(cb, env, [func.apply(null, allArgs)]); }
         return { func: func, args: allArgs };
     }
-    if (!O.has(func, 'code')) { return { func: cb, args: [func] }; }
+    if (!O.has(func, 'code')) { return { func: cb, args: [typeof(func) === 'undefined' ? null : func] }; }
     if (O.type(func.code) === 'native') {
         // If func has no parent, then assume it is a nested code-block and inherit from current execution scope:
         var env2 = {
@@ -627,7 +627,6 @@ compileAssign(js, 'compileSrc', { parent: js, args: ['code', 'innerOffset'], cod
             [O.lookup, null, 'innerOffset']
         ]}
 ]});
-
 compileAssign(js, 'indexStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'v']]],
     [O.assign, null, 'end', [O['-'], [O.lookup, null, 'len'], 1]],
@@ -640,14 +639,12 @@ compileAssign(js, 'indexStr', { parent: js, args: ['v'], code: [O.do,
         {code:[O['+'], '[', [O.lookup, null, 'v'], ']']}
     ]
 ]});
-
 compileAssign(js, 'valueStr', { parent: js, args: ['v', 'alias'], code: [
     O.if, [O['='], [O.type, [O.lookup, null, 'v']], 'number'],
         {code:[O['+'], 'r', [O.lookup, null, 'v']]},
         //TODO: fix compiler to a direct-reference below (i.e js.stringify instead of 'stringify'):
         {code:[O.do, ['stringify', [O.lookup, null, 'v', 'value'], [O.lookup, null, 'alias']] ]}
 ]});
-
 compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'keys', [O.keys, O]],
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
