@@ -559,7 +559,7 @@ function compileNonNatives() {
                         [O.newEnv,
                             [O.lookup, null, 'func'],
                             [O.lookup, null, 'args'],
-                            [O.or, [O.lookup, null, 'env'], [O.lookup, null, 'caller']]
+                            [O.or, [O.lookup, null, 'env'], {code:[O.lookup, null, 'caller']}]
                         ]
                     ],
                     [O.assign, null, 'code', [O.lookup, null, 'func', 'code']],
@@ -576,14 +576,14 @@ function compileNonNatives() {
     compileAssign(O, 'newEnv', { parent: O, args: ['func', 'args', 'env'], code: [O.do,
         [O.assign, null, 'env2', [O.newObj]],
         [O.assign, null, 'env2', 'scope', [O.lookup, null, 'env2']],
-        [O.assign, null, 'env2', 'parent', [O.or, [O.lookup, null, 'func', 'parent'], [O.lookup, null, 'env']]],
+        [O.assign, null, 'env2', 'parent', [O.or, [O.lookup, null, 'func', 'parent'], {code:[O.lookup, null, 'env']}]],
         [O.if, [O.lookup, null, 'func', 'parent'],
             {code:[O.do,
                 [O.assign, null, 'env2', 'caller', [O.lookup, null, 'env']],
                 [O.assign, null, 'env2', 'thisFunc', [O.lookup, null, 'func']]
             ]}
         ],
-        [O.assign, null, 'argNames', [O.or, [O.lookup, null, 'func', 'args'], [O.list]]],
+        [O.assign, null, 'argNames', [O.or, [O.lookup, null, 'func', 'args'], {code:[O.list]}]],
         [O.assign, null, 'i', 0],
         [O.assign, null, 'len', [O.length, [O.lookup, null, 'argNames']]],
         [[O.assign, null, 'setNextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
