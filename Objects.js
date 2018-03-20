@@ -366,256 +366,260 @@ function compileAssign(parent, funcName, code) {
     O.invoke(O.tailcall(js.compile, O, [code], function (cc) { parent[funcName] = cc; }));
 }
 
-// The exists, lookup, assign, and remove are just like has, get, set, and delete,
-//   except that property-search continues up the "parent" chain until it is found.
-//   They also allow a series of properties to be listed, for convenience.
-compileAssign(O, 'exists', { parent: O, args: ['obj', 'prop'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
-        {code: [ O.do,
-            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
-            [O.exists,
-                [O.apply, O.lookup, [O.lookup, null, 'arguments']],
-                [O.lookup, null, 'last']
-            ]
-        ]},
-        {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
-            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-                true,
-                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                    {code:[O.exists, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                    null
-                ]}
-            ]
-        ]}
-    ]
-});
-compileAssign(O, 'lookup', { parent: O, args: ['obj', 'prop'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
-        {code: [ O.do,
-            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
-            [O.lookup,
-                [O.apply, O.lookup, [O.lookup, null, 'arguments']],
-                [O.lookup, null, 'last']
-            ]
-        ]},
-        {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
-            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-                {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
-                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                    {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                    null
-                ]}
-            ]
-        ]}
-    ]
-});
-compileAssign(O, 'assign', { parent: O, args: ['obj', 'prop', 'value'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 3],
-        {code: [ O.do,
-            [O.assign, null, 'val', [O.pop, [O.lookup, null, 'arguments']]],
-            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
-            [O.assign,
-                [O.apply, O.lookup, [O.lookup, null, 'arguments']],
-                [O.lookup, null, 'last'],
-                [O.lookup, null, 'val']
-            ]
-        ]},
-        {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
-            [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
-            [O.if, [O.or, ['=', [O.lookup, null, 't'], 'object'], {code:['=', [O.lookup, null, 't'], 'array']}],
-                {code:[O.set, [O.lookup, null, 'obj'], [O.lookup, null, 'prop'], [O.lookup, null, 'value']]}
-            ],
-            [O.lookup, null, 'value']
-        ]}
-    ]
-});
-compileAssign(O, 'remove', { parent: O, args: ['obj', 'prop'], code: [
-    O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
-        {code: [ O.do,
-            [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
-            [O.remove,
-                [O.apply, O.lookup, [O.lookup, null, 'arguments']],
-                [O.lookup, null, 'last']
-            ]
-        ]},
-        {code: [O.do,
-            [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
-            [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-                {code:[O.do,
-                    [O.assign, null, 'v', [O.lookup, null, 'obj', [O.lookup, null, 'prop']]],
-                    [O.delete, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-                    [O.lookup, null, 'v']
-                ]},
-                {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                    {code:[O.remove, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                    null
-                ]}
-            ]
-        ]}
-    ]
-});
-compileAssign(O, 'list', { parent: O, code: [O.lookup, null, 'arguments'] });
-compileAssign(O, 'copy', { parent: O, args: ['obj'], code: [O.do,
-    [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
-    [O.if, [O['='], [O.lookup, null, 't'], 'array'],
-        {code:[O.slice, [O.lookup, null, 'obj']]},
-        {code:[O.if, [O['='], [O.lookup, null, 't'], 'object'],
-            {code:[O.do,
-                [O.assign, null, 'obj2', [O.newObj]],
-                [O.assign, null, 'keys', [O.keys, [O.lookup, null, 'obj']]],
-                [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
-                [O.assign, null, 'i', 0],
-                [[O.assign, null, 'nextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
-                    {code:[O.lookup, null, 'obj2']},
-                    {code:[O.do,
-                        [O.assign, null, 'k', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
-                        [O.assign, null, 'obj2', [O.lookup, null, 'k'], [O.lookup, null, 'obj', [O.lookup, null, 'k']]],
-                        [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
-                        [[O.lookup, null, 'nextArg']]
-                    ]}
-                ]}]]
-            ]},
-            // TODO: this does not copy native functions, it just returns them:
-            {code:[O.lookup, null, 'obj']}
-        ]}
-    ]
-]});
-compileAssign(O, 'do', { parent: O, code: [O.get,
-    [O.lookup, null, 'arguments'],
-    [O['-'], [O.length, [O.lookup, null, 'arguments']], 1]
-]});
-compileAssign(O, 'lambda', { parent: O, args: ['argList', 'code'], code: [O.do,
-    [O.assign, null, 't', [O.type, [O.lookup, null, 'code']]],
-    [O.assign, null, 'f',
-        [O.if, [O['='], [O.lookup, null, 't'], 'object'],
-            {code:[O.lookup, null, 'code']},
-            {code:[O.with, [O.newObj], 'code', [O.lookup, null, 'code']]}
-        ]
-    ],
-    [O.if, [O.not, [O.has, [O.lookup, null, 'f'], 'parent']],
-        {code:[O.assign, null, 'f', 'parent', [O.lookup, null, 'caller']]}
-    ],
-    [O.if, [O.not, [O.has, [O.lookup, null, 'f'], 'args']],
-        {code:[O.assign, null, 'f', 'args', [O.or, [O.lookup, null, 'argList'], {code:[O.list]}]]}
-    ],
-    [O.lookup, null, 'f']
-]});
-compileAssign(O, 'with', { parent: O, args: ['obj', 'code'], code: [O.do,
-    [O.assign, null, 'len', [O.length, [O.lookup, null, 'arguments']]],
-    [O.do,
-        [O.if, [O['<'], [O.lookup, null, 'len'], 2],
-            null,
-            {code:[O.if, [O['<'], [O.lookup, null, 'len'], 3],
-                {code:[[O.lookup, null, 'code'], [O.lookup, null, 'obj']]},
-                {code:[O.apply, O.assign, [O.lookup, null, 'arguments']]}
-            ]}
-        ],
-        [O.lookup, null, 'obj']
-    ]
-]});
-
-// Eval functions:
-
-compileAssign(O, 'eval', { parent: O, args: ['env', 'expr'], code: [
-    O.if, [O.or,
-            [O.not, [O['='], [O.type, [O.lookup, null, 'expr']], 'array']],
-            {code:[O['<'], [O.length, [O.lookup, null, 'expr']], 1]}
-        ],
-        {code:[O.lookup, null, 'expr']},
-        {code:[O.do,
-            [O.assign, null, 'funcExpr', [O.lookup, null, 'expr', 0]],
-            [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'funcExpr']]],
-            [O.assign, null, 'func',
-                [O.if, [O.or,
-                        [O['='], [O.lookup, null, 'funcType'], 'string'],
-                        {code:[O['='], [O.lookup, null, 'funcType'], 'number']}
-                    ],
-                    {code:[O.lookup, [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]},
-                    {code:[O.eval,   [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]}
+function compileNonNatives() {
+    // The exists, lookup, assign, and remove are just like has, get, set, and delete,
+    //   except that property-search continues up the "parent" chain until it is found.
+    //   They also allow a series of properties to be listed, for convenience.
+    compileAssign(O, 'exists', { parent: O, args: ['obj', 'prop'], code: [
+        O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+            {code: [ O.do,
+                [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+                [O.exists,
+                    [O.apply, O.lookup, [O.lookup, null, 'arguments']],
+                    [O.lookup, null, 'last']
                 ]
-            ],
-            [O.apply,
-                [O.lookup, null, 'func'],
-                [O.evalArgs,
-                    [O.lookup, null, 'func'],
-                    [O.slice, [O.lookup, null, 'expr'], 1],
-                    [O.lookup, null, 'env']
+            ]},
+            {code: [O.do,
+                [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
+                [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                    true,
+                    {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                        {code:[O.exists, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                        null
+                    ]}
+                ]
+            ]}
+        ]
+    });
+    compileAssign(O, 'lookup', { parent: O, args: ['obj', 'prop'], code: [
+        O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+            {code: [ O.do,
+                [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+                [O.lookup,
+                    [O.apply, O.lookup, [O.lookup, null, 'arguments']],
+                    [O.lookup, null, 'last']
+                ]
+            ]},
+            {code: [O.do,
+                [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
+                [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                    {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
+                    {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                        {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                        null
+                    ]}
+                ]
+            ]}
+        ]
+    });
+    compileAssign(O, 'assign', { parent: O, args: ['obj', 'prop', 'value'], code: [
+        O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 3],
+            {code: [ O.do,
+                [O.assign, null, 'val', [O.pop, [O.lookup, null, 'arguments']]],
+                [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+                [O.assign,
+                    [O.apply, O.lookup, [O.lookup, null, 'arguments']],
+                    [O.lookup, null, 'last'],
+                    [O.lookup, null, 'val']
+                ]
+            ]},
+            {code: [O.do,
+                [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
+                [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
+                [O.if, [O.or, ['=', [O.lookup, null, 't'], 'object'], {code:['=', [O.lookup, null, 't'], 'array']}],
+                    {code:[O.set, [O.lookup, null, 'obj'], [O.lookup, null, 'prop'], [O.lookup, null, 'value']]}
                 ],
-                [O.lookup, null, 'env']
+                [O.lookup, null, 'value']
+            ]}
+        ]
+    });
+    compileAssign(O, 'remove', { parent: O, args: ['obj', 'prop'], code: [
+        O.if, [O['>'], [O.length, [O.lookup, null, 'arguments']], 2],
+            {code: [ O.do,
+                [O.assign, null, 'last', [O.pop, [O.lookup, null, 'arguments']]],
+                [O.remove,
+                    [O.apply, O.lookup, [O.lookup, null, 'arguments']],
+                    [O.lookup, null, 'last']
+                ]
+            ]},
+            {code: [O.do,
+                [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
+                [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                    {code:[O.do,
+                        [O.assign, null, 'v', [O.lookup, null, 'obj', [O.lookup, null, 'prop']]],
+                        [O.delete, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
+                        [O.lookup, null, 'v']
+                    ]},
+                    {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
+                        {code:[O.remove, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
+                        null
+                    ]}
+                ]
+            ]}
+        ]
+    });
+    compileAssign(O, 'list', { parent: O, code: [O.lookup, null, 'arguments'] });
+    compileAssign(O, 'copy', { parent: O, args: ['obj'], code: [O.do,
+        [O.assign, null, 't', [O.type, [O.lookup, null, 'obj']]],
+        [O.if, [O['='], [O.lookup, null, 't'], 'array'],
+            {code:[O.slice, [O.lookup, null, 'obj']]},
+            {code:[O.if, [O['='], [O.lookup, null, 't'], 'object'],
+                {code:[O.do,
+                    [O.assign, null, 'obj2', [O.newObj]],
+                    [O.assign, null, 'keys', [O.keys, [O.lookup, null, 'obj']]],
+                    [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
+                    [O.assign, null, 'i', 0],
+                    [[O.assign, null, 'nextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                        {code:[O.lookup, null, 'obj2']},
+                        {code:[O.do,
+                            [O.assign, null, 'k', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
+                            [O.assign, null, 'obj2', [O.lookup, null, 'k'], [O.lookup, null, 'obj', [O.lookup, null, 'k']]],
+                            [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                            [[O.lookup, null, 'nextArg']]
+                        ]}
+                    ]}]]
+                ]},
+                // TODO: this does not copy native functions, it just returns them:
+                {code:[O.lookup, null, 'obj']}
+            ]}
+        ]
+    ]});
+    compileAssign(O, 'do', { parent: O, code: [O.get,
+        [O.lookup, null, 'arguments'],
+        [O['-'], [O.length, [O.lookup, null, 'arguments']], 1]
+    ]});
+    compileAssign(O, 'lambda', { parent: O, args: ['argList', 'code'], code: [O.do,
+        [O.assign, null, 't', [O.type, [O.lookup, null, 'code']]],
+        [O.assign, null, 'f',
+            [O.if, [O['='], [O.lookup, null, 't'], 'object'],
+                {code:[O.lookup, null, 'code']},
+                {code:[O.with, [O.newObj], 'code', [O.lookup, null, 'code']]}
             ]
-        ]}
-]});
-compileAssign(O, 'apply', { parent: O, args: ['func', 'args', 'env'], code: [O.do,
-    [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'func']]],
-    [O.if, [O['='], [O.lookup, null, 'funcType'], 'native'],
-        {code:[O.applyNative, [O.lookup, null, 'func'], [O.lookup, null, 'args']]},
-        {code:[O.if, [O['='], [O.lookup, null, 'funcType'], 'object'],
+        ],
+        [O.if, [O.not, [O.has, [O.lookup, null, 'f'], 'parent']],
+            {code:[O.assign, null, 'f', 'parent', [O.lookup, null, 'caller']]}
+        ],
+        [O.if, [O.not, [O.has, [O.lookup, null, 'f'], 'args']],
+            {code:[O.assign, null, 'f', 'args', [O.or, [O.lookup, null, 'argList'], {code:[O.list]}]]}
+        ],
+        [O.lookup, null, 'f']
+    ]});
+    compileAssign(O, 'with', { parent: O, args: ['obj', 'code'], code: [O.do,
+        [O.assign, null, 'len', [O.length, [O.lookup, null, 'arguments']]],
+        [O.do,
+            [O.if, [O['<'], [O.lookup, null, 'len'], 2],
+                null,
+                {code:[O.if, [O['<'], [O.lookup, null, 'len'], 3],
+                    {code:[[O.lookup, null, 'code'], [O.lookup, null, 'obj']]},
+                    {code:[O.apply, O.assign, [O.lookup, null, 'arguments']]}
+                ]}
+            ],
+            [O.lookup, null, 'obj']
+        ]
+    ]});
+
+    // Eval functions:
+
+    compileAssign(O, 'eval', { parent: O, args: ['env', 'expr'], code: [
+        O.if, [O.or,
+                [O.not, [O['='], [O.type, [O.lookup, null, 'expr']], 'array']],
+                {code:[O['<'], [O.length, [O.lookup, null, 'expr']], 1]}
+            ],
+            {code:[O.lookup, null, 'expr']},
             {code:[O.do,
-                [O.assign, null, 'env2',
-                    [O.newEnv,
-                        [O.lookup, null, 'func'],
-                        [O.lookup, null, 'args'],
-                        [O.or, [O.lookup, null, 'env'], [O.lookup, null, 'caller']]
+                [O.assign, null, 'funcExpr', [O.lookup, null, 'expr', 0]],
+                [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'funcExpr']]],
+                [O.assign, null, 'func',
+                    [O.if, [O.or,
+                            [O['='], [O.lookup, null, 'funcType'], 'string'],
+                            {code:[O['='], [O.lookup, null, 'funcType'], 'number']}
+                        ],
+                        {code:[O.lookup, [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]},
+                        {code:[O.eval,   [O.lookup, null, 'env'], [O.lookup, null, 'funcExpr']]}
                     ]
                 ],
-                [O.assign, null, 'code', [O.lookup, null, 'func', 'code']],
-                [O.assign, null, 'type', [O.type, [O.lookup, null, 'code']]],
-                [O.if, [O['='], [O.lookup, null, 'type'], 'native'],
-                    {code:[[O.lookup, null, 'code'], [O.lookup, null, 'env2']]},
-                    {code:[O.eval, [O.lookup, null, 'env2'], [O.lookup, null, 'code']]}
+                [O.apply,
+                    [O.lookup, null, 'func'],
+                    [O.evalArgs,
+                        [O.lookup, null, 'func'],
+                        [O.slice, [O.lookup, null, 'expr'], 1],
+                        [O.lookup, null, 'env']
+                    ],
+                    [O.lookup, null, 'env']
                 ]
-            ]},
-            null,
-        ]}
-    ]
-]});
-compileAssign(O, 'newEnv', { parent: O, args: ['func', 'args', 'env'], code: [O.do,
-    [O.assign, null, 'env2', [O.newObj]],
-    [O.assign, null, 'env2', 'scope', [O.lookup, null, 'env2']],
-    [O.assign, null, 'env2', 'parent', [O.or, [O.lookup, null, 'func', 'parent'], [O.lookup, null, 'env']]],
-    [O.if, [O.lookup, null, 'func', 'parent'],
-        {code:[O.do,
-            [O.assign, null, 'env2', 'caller', [O.lookup, null, 'env']],
-            [O.assign, null, 'env2', 'thisFunc', [O.lookup, null, 'func']]
-        ]}
-    ],
-    [O.assign, null, 'argNames', [O.or, [O.lookup, null, 'func', 'args'], [O.list]]],
-    [O.assign, null, 'i', 0],
-    [O.assign, null, 'len', [O.length, [O.lookup, null, 'argNames']]],
-    [[O.assign, null, 'setNextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
-        {code:[O.do,
-            [O.assign, null, 'env2', 'arguments', [O.lookup, null, 'args']],
-            [O.lookup, null, 'env2']
-        ]},
-        {code:[O.do,
-            [O.assign, null, 'name', [O.lookup, null, 'argNames', [O.lookup, null, 'i']]],
-            [O.if, [O['='], [O.type, [O.lookup, null, 'name']], 'string'],
-                {code:[O.assign, null, 'env2', [O.lookup, null, 'name'], [O.lookup, null, 'args', [O.lookup, null, 'i']]]}
-            ],
-            [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
-            [[O.lookup, null, 'setNextArg']]
-        ]}
-    ]}]]
-]});
-compileAssign(O, 'evalArgs', { parent: O, args: ['func', 'args', 'env'], code: [O.do,
-    [O.assign, null, 'i', 0],
-    [O.assign, null, 'len', [O.length, [O.lookup, null, 'args']]],
-    [[O.assign, null, 'evalNextArg', {code:[
-        [O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
-            {code:[O.lookup, null, 'args']},
-            {code:[O.do,
-                [O.assign, null, 'args', [O.lookup, null, 'i'],
-                    [O.eval, [O.lookup, null, 'env'], [O.lookup, null, 'args', [O.lookup, null, 'i']]]
-                ],
-                [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
-                [[O.lookup, null, 'evalNextArg']]
+            ]}
+    ]});
+    compileAssign(O, 'apply', { parent: O, args: ['func', 'args', 'env'], code: [O.do,
+        [O.assign, null, 'funcType', [O.type, [O.lookup, null, 'func']]],
+        [O.if, [O['='], [O.lookup, null, 'funcType'], 'native'],
+            {code:[O.applyNative, [O.lookup, null, 'func'], [O.lookup, null, 'args']]},
+            {code:[O.if, [O['='], [O.lookup, null, 'funcType'], 'object'],
+                {code:[O.do,
+                    [O.assign, null, 'env2',
+                        [O.newEnv,
+                            [O.lookup, null, 'func'],
+                            [O.lookup, null, 'args'],
+                            [O.or, [O.lookup, null, 'env'], [O.lookup, null, 'caller']]
+                        ]
+                    ],
+                    [O.assign, null, 'code', [O.lookup, null, 'func', 'code']],
+                    [O.assign, null, 'type', [O.type, [O.lookup, null, 'code']]],
+                    [O.if, [O['='], [O.lookup, null, 'type'], 'native'],
+                        {code:[[O.lookup, null, 'code'], [O.lookup, null, 'env2']]},
+                        {code:[O.eval, [O.lookup, null, 'env2'], [O.lookup, null, 'code']]}
+                    ]
+                ]},
+                null,
             ]}
         ]
-    ]}]]
-]});
+    ]});
+    compileAssign(O, 'newEnv', { parent: O, args: ['func', 'args', 'env'], code: [O.do,
+        [O.assign, null, 'env2', [O.newObj]],
+        [O.assign, null, 'env2', 'scope', [O.lookup, null, 'env2']],
+        [O.assign, null, 'env2', 'parent', [O.or, [O.lookup, null, 'func', 'parent'], [O.lookup, null, 'env']]],
+        [O.if, [O.lookup, null, 'func', 'parent'],
+            {code:[O.do,
+                [O.assign, null, 'env2', 'caller', [O.lookup, null, 'env']],
+                [O.assign, null, 'env2', 'thisFunc', [O.lookup, null, 'func']]
+            ]}
+        ],
+        [O.assign, null, 'argNames', [O.or, [O.lookup, null, 'func', 'args'], [O.list]]],
+        [O.assign, null, 'i', 0],
+        [O.assign, null, 'len', [O.length, [O.lookup, null, 'argNames']]],
+        [[O.assign, null, 'setNextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+            {code:[O.do,
+                [O.assign, null, 'env2', 'arguments', [O.lookup, null, 'args']],
+                [O.lookup, null, 'env2']
+            ]},
+            {code:[O.do,
+                [O.assign, null, 'name', [O.lookup, null, 'argNames', [O.lookup, null, 'i']]],
+                [O.if, [O['='], [O.type, [O.lookup, null, 'name']], 'string'],
+                    {code:[O.assign, null, 'env2', [O.lookup, null, 'name'], [O.lookup, null, 'args', [O.lookup, null, 'i']]]}
+                ],
+                [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                [[O.lookup, null, 'setNextArg']]
+            ]}
+        ]}]]
+    ]});
+    compileAssign(O, 'evalArgs', { parent: O, args: ['func', 'args', 'env'], code: [O.do,
+        [O.assign, null, 'i', 0],
+        [O.assign, null, 'len', [O.length, [O.lookup, null, 'args']]],
+        [[O.assign, null, 'evalNextArg', {code:[
+            [O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                {code:[O.lookup, null, 'args']},
+                {code:[O.do,
+                    [O.assign, null, 'args', [O.lookup, null, 'i'],
+                        [O.eval, [O.lookup, null, 'env'], [O.lookup, null, 'args', [O.lookup, null, 'i']]]
+                    ],
+                    [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                    [[O.lookup, null, 'evalNextArg']]
+                ]}
+            ]
+        ]}]]
+    ]});
+}
+
+compileNonNatives();
 
 // Re-create all compiler functions from non-native code:
 
@@ -650,6 +654,9 @@ compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
 O.language = 'js';
 O.compiler = O.compilers[O.language];
 O.compile = O.compiler.compile;
+
+// Do this AGAIN to make sure that the bootstrapped compiler still works the same:
+compileNonNatives();
 
 // External interface for running code
 O.run = function (expr, env, cb) {
