@@ -619,6 +619,13 @@ compileAssign(O, 'evalArgs', { parent: O, args: ['func', 'args', 'env'], code: [
 
 // Re-create all compiler functions from non-native code:
 
+compileAssign(js, 'valueStr', { parent: js, args: ['v', 'alias'], code: [
+    O.if, [O['='], [O.type, [O.lookup, null, 'v']], 'number'],
+        {code:[O['+'], 'r', [O.lookup, null, 'v']]},
+        //TODO: fix compiler to a direct-reference below (i.e js.stringify instead of 'stringify'):
+        {code:[O.do, ['stringify', [O.lookup, null, 'v', 'value'], [O.lookup, null, 'alias']] ]}
+]});
+
 compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'keys', [O.keys, O]],
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
