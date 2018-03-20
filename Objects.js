@@ -384,8 +384,7 @@ function compileNonNatives() {
                 [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
                     true,
                     {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                        {code:[O.exists, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                        null
+                        {code:[O.exists, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]}
                     ]}
                 ]
             ]}
@@ -405,8 +404,7 @@ function compileNonNatives() {
                 [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
                     {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
                     {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                        {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                        null
+                        {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]}
                     ]}
                 ]
             ]}
@@ -451,8 +449,7 @@ function compileNonNatives() {
                         [O.lookup, null, 'v']
                     ]},
                     {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
-                        {code:[O.remove, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]},
-                        null
+                        {code:[O.remove, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]}
                     ]}
                 ]
             ]}
@@ -507,8 +504,7 @@ function compileNonNatives() {
     compileAssign(O, 'with', { parent: O, args: ['obj', 'code'], code: [O.do,
         [O.assign, null, 'len', [O.length, [O.lookup, null, 'arguments']]],
         [O.do,
-            [O.if, [O['<'], [O.lookup, null, 'len'], 2],
-                null,
+            [O.if, [O['>='], [O.lookup, null, 'len'], 2],
                 {code:[O.if, [O['<'], [O.lookup, null, 'len'], 3],
                     {code:[[O.lookup, null, 'code'], [O.lookup, null, 'obj']]},
                     {code:[O.apply, O.assign, [O.lookup, null, 'arguments']]}
@@ -569,7 +565,6 @@ function compileNonNatives() {
                         {code:[O.eval, [O.lookup, null, 'env2'], [O.lookup, null, 'code']]}
                     ]
                 ]},
-                null,
             ]}
         ]
     ]});
@@ -648,8 +643,7 @@ compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
     [O.assign, null, 'i', 0],
     [[O.assign, null, 'nextProp',
-        {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
-            null,
+        {code:[O.if, [O['<'], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
             {code:[O.do,
                 [O.assign, null, 'prop', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
                 [O.if, [O['='], [O.lookup, null, 'v'], [O.get, O, [O.lookup, null, 'prop']]],
