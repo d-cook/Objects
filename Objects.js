@@ -716,6 +716,70 @@ compileAssign(js, 'valueStr', { parent: js, args: ['v', 'alias'], code: [
         //TODO: fix compiler to a direct-reference below (i.e js.stringify instead of 'stringify'):
         {code:[O.do, ['stringify', [O.lookup, null, 'v', 'value'], [O.lookup, null, 'alias']] ]}
 ]});
+compileAssign(js, 'stringify', { parent: js, args: ['v', 'alias'], code: [O.do,
+    [O.assign, null, 's',
+        [O.if, [O['='], [O.lookup, null, 'alias'], false],
+            '',
+            // TODO: globalStr should only return strings or null, but is sometimes returning an array
+            {code:[O.or, ['globalStr', [O.lookup, null, 'v']], '']}
+        ]
+    ],
+    [O.assign, null, 'sLen', [O.length, [O.lookup, null, 's']]],
+    [O.if, [O['>'], [O.lookup, null, 'sLen'], 0],
+        {code:[O.lookup, null, 's']},
+        {code:[O.do,
+            [O.assign, null, 't', [O.type, [O.lookup, null, 'v']]],
+            [O.assign, null, 'isArray', [O['='], [O.lookup, null, 't'], 'array']],
+            [O.if, [O.and,
+                    [O.not, [O.lookup, null, 'isArray']],
+                    {code:[O.not, [O['='], [O.lookup, null, 't'], 'object']]}
+                ],
+                {code:[function(x){return JSON.stringify(x) || '' + x;},
+                    [O.lookup, null, 'v']
+                ]},
+                {code:[O.do,
+                    [O.assign, null, 'keys', [O.keys, [O.lookup, null, 'v']]],
+                    [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
+                    [O.assign, null, 'i', 0],
+                    [[O.assign, null, 'nextProp',
+                        {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                            {code:[O.do,
+                                [O.assign, null, 'anyS', [O['>'], [O.length, [O.lookup, null, 's']], 0]],
+                                [O.if, [O.lookup, null, 'isArray'],
+                                    {code:[O.if, [O.lookup, null, 'anyS'],
+                                        {code:[O['+'], '[', [O.substring, [O.lookup, null, 's'], 2], ']']},
+                                        '[]'
+                                    ]},
+                                    {code:[O.if, [O.lookup, null, 'anyS'],
+                                        {code:[O['+'], '{', [O.substring, [O.lookup, null, 's'], 2], '}']},
+                                        '{}'
+                                    ]}
+                                ]
+                            ]},
+                            {code:[O.do,
+                                [O.assign, null, 'prop', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
+                                [O.assign, null, 'propStr',
+                                    [O.if, [O.lookup, null, 'isArray'],
+                                        '',
+                                        {code:[O['+'], ['stringify', [O.lookup, null, 'prop']], ':']}
+                                    ]
+                                ],
+                                [O.assign, null, 's', [O['+'],
+                                    [O.lookup, null, 's'],
+                                    ', ',
+                                    [O.lookup, null, 'propStr'],
+                                    ['stringify', [O.lookup, null, 'v', [O.lookup, null, 'prop']], [O.lookup, null, 'alias']]
+                                ]],
+                                [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                                [[O.lookup, null, 'nextProp']]
+                            ]}
+                        ]}
+                    ]]
+                ]}
+            ]
+        ]}
+    ]
+]});
 compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'keys', [O.keys, O]],
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
