@@ -176,7 +176,6 @@ js.compileSrc = { parent: js, args: ['code', 'innerOffset'], code: function (cb,
 }};
 js.getCalls = { parent: js, args: ['code', 'calls', 'innerOffset'], code: function (cb, env) {
     var code = env.code, calls = env.calls, innerOffset = env.innerOffset;
-    calls = calls || [];
     if (O.type(code) !== 'array' || O.length(code) < 1) { return O.tailcall(cb, env, [calls]); }
     var last = [];
     return (function next(i) {
