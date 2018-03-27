@@ -632,7 +632,7 @@ compileAssign(js, 'compile', { parent: js, args: ['code', 'innerOffset'], code: 
             ],
             [O.assign, null, 'cc_code',
                 [O.if, [O.lookup, null, 'src'],
-                    //TODO: fix compiler to a direct-reference below (i.e 'compile'):
+                    //TODO: fix compiler to allow a direct-reference below (js.compile instead of 'compile'):
                     {code:['compile', [O.lookup, null, 'src'], [O.lookup, null, 'innerOffset']]},
                 ]
             ],
@@ -678,7 +678,6 @@ compileAssign(js, 'compile', { parent: js, args: ['code', 'innerOffset'], code: 
                 {code:[function(x){return eval(x);},
                     [O['+'],
                         '(function(cb, env) {\n',
-                        // TODO: check that this works the same as (innerOffset ?..:..):
                         [O.if, [O['>'], [O.lookup, null, 'innerOffset'], 0],
                             '',
                             'var args = env;\n'
@@ -692,7 +691,7 @@ compileAssign(js, 'compile', { parent: js, args: ['code', 'innerOffset'], code: 
 ]});
 compileAssign(js, 'compileSrc', { parent: js, args: ['code', 'innerOffset'], code: [
     O.if, [O['='], [O.type, [O.lookup, null, 'code']], 'array'],
-        //TODO: fix compiler to a direct-reference below (i.e 'buildCalls' and 'getCalls'):
+        //TODO: fix compiler to allow  a direct-reference below (i.e 'buildCalls' and 'getCalls'):
         {code:['buildCalls',
             ['getCalls', [O.lookup, null, 'code'], [O.list], [O.lookup, null, 'innerOffset']],
             [O.lookup, null, 'innerOffset']
@@ -713,14 +712,13 @@ compileAssign(js, 'indexStr', { parent: js, args: ['v'], code: [O.do,
 compileAssign(js, 'valueStr', { parent: js, args: ['v', 'alias'], code: [
     O.if, [O['='], [O.type, [O.lookup, null, 'v']], 'number'],
         {code:[O['+'], 'r', [O.lookup, null, 'v']]},
-        //TODO: fix compiler to a direct-reference below (i.e js.stringify instead of 'stringify'):
+        //TODO: fix compiler to allow  a direct-reference below (js.stringify instead of 'stringify'):
         {code:[O.do, ['stringify', [O.lookup, null, 'v', 'value'], [O.lookup, null, 'alias']] ]}
 ]});
 compileAssign(js, 'stringify', { parent: js, args: ['v', 'alias'], code: [O.do,
     [O.assign, null, 's',
         [O.if, [O['='], [O.lookup, null, 'alias'], false],
             '',
-            // TODO: globalStr should only return strings or null, but is sometimes returning an array
             {code:[O.or, ['globalStr', [O.lookup, null, 'v']], '']}
         ]
     ],
