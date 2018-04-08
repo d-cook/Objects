@@ -696,6 +696,49 @@ compileAssign(js, 'compileSrc', { parent: js, args: ['code', 'innerOffset'], cod
             [O.lookup, null, 'innerOffset']
         ]}
 ]});
+compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset'], code: [
+    O.if, [O.or,
+            [O.not, [O['='], [O.type, [O.lookup, null, 'code']], 'array']],
+            {code:[O['<'], [O.length, [O.lookup, null, 'code']], 1]}
+        ],
+        {code:[O.lookup, null, 'calls']},
+        {code:[O.do,
+            [O.assign, null, 'last', [O.list]],
+            [O.assign, null, 'len', [O.length, [O.lookup, null, 'code']]],
+            [O.assign, null, 'i', 0],
+            [[O.assign, null, 'nextCodeIdx',
+                {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                    {code:[O.do,
+                        [O.push, [O.lookup, null, 'calls'], [O.lookup, null, 'last']],
+                        [O.lookup, null, 'calls']
+                    ]},
+                    {code:[O.do,
+                        [O.assign, null, 'c', [O.lookup, null, 'code', [O.lookup, null, 'i']]],
+                        [O.push, [O.lookup, null, 'last'], [
+                            O.if, [O['='], [O.type, [O.lookup, null, 'c']], 'array'],
+                                {code:[O['+'],
+                                    [O.length, ['getCalls',
+                                        [O.lookup, null, 'c'],
+                                        [O.lookup, null, 'calls'],
+                                        [O.lookup, null, 'innerOffset']
+                                    ]],
+                                    -1,
+                                    [O.lookup, null, 'innerOffset']
+                                ]},
+                                {code:[O.do,
+                                    [O.assign, null, 'valObj', [O.newObj]],
+                                    [O.assign, null, 'valObj', 'value', [O.lookup, null, 'c']],
+                                    [O.lookup, null, 'valObj']
+                                ]}
+                            ]
+                        ],
+                        [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                        [[O.lookup, null, 'nextCodeIdx']]
+                    ]}
+                ]}
+            ]]
+        ]}
+]});
 compileAssign(js, 'indexStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'v']]],
     [O.assign, null, 'end', [O['-'], [O.lookup, null, 'len'], 1]],
@@ -781,7 +824,7 @@ compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'keys', [O.keys, O]],
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
     [O.assign, null, 'i', 0],
-    [[O.assign, null, 'nextProp',
+    [[O.assign, null, 'nextGlobalProp',
         {code:[O.if, [O['<'], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
             {code:[O.do,
                 [O.assign, null, 'prop', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
@@ -789,7 +832,7 @@ compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
                     {code:[O['+'], 'O["', [O.lookup, null, 'prop'], '"]']},
                     {code:[O.do,
                         [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
-                        [[O.lookup, null, 'nextProp']]
+                        [[O.lookup, null, 'nextGlobalProp']]
                     ]}
                 ]
             ]}
