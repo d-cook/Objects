@@ -265,11 +265,8 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
                         }));
                     }));
                 } else if(c[0] && c[0].value === O.do) {
-                    return O.tailcall(js.valueStr, env, [O.length(c) > 1 ? c.pop() : null], function (v) {
-                        src = (O.length(src) > 0
-                            ? 'var r' + (idx + innerOffset) + ' = ' + v + ';\n' + src
-                            : 'return O.tailcall(cb, env, [' + v + ']);'
-                        );
+                    return O.tailcall(js.buildCalls_do, env, [c, idx, innerOffset, src], function(newSrc) {
+                        src = newSrc;
                         return cb();
                     });
                 } else {
@@ -283,6 +280,15 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
             }));
         }));
     }(O.length(calls) - 1));
+}};
+js.buildCalls_do = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
+    var c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
+    return O.tailcall(js.valueStr, env, [O.length(c) > 1 ? c.pop() : null], function (v) {
+        return O.tailcall(cb, env, [(O.length(src) > 0
+            ? 'var r' + (idx + innerOffset) + ' = ' + v + ';\n' + src
+            : 'return O.tailcall(cb, env, [' + v + ']);'
+        )]);
+    });
 }};
 js.buildCalls_other = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
@@ -745,6 +751,29 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
                 ]}
             ]]
         ]}
+]});
+compileAssign(js, 'buildCalls_do', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [O.do,
+    //TODO: fix compiler to allow  a direct-reference below (i.e 'valueStr'):
+    [O.assign, null, 'v', ['valueStr',
+        [O.if, [O['>'], [O.length, [O.lookup, null, 'c']], 1],
+            {code:[O.pop, [O.lookup, null, 'c']]},
+        ]
+    ]],
+    [O.if, [O['>'], [O.length, [O.lookup, null, 'src']], 0],
+        {code:[O['+'],
+            'var r',
+            [O['+'], [O.lookup, null, 'idx'], [O.lookup, null, 'innerOffset']],
+            ' = ',
+            [O.lookup, null, 'v'],
+            ';\n',
+            [O.lookup, null, 'src']
+        ]},
+        {code:[O['+'],
+            'return O.tailcall(cb, env, [',
+            [O.lookup, null, 'v'],
+            ']);'
+        ]}
+    ]
 ]});
 compileAssign(js, 'buildCalls_other', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [O.do,
     //TODO: fix compiler to allow  a direct-reference below (i.e 'valueStr'):
