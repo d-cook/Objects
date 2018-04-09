@@ -264,13 +264,8 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
                             });
                         }));
                     }));
-                } else if(c[0] && c[0].value === O.do) {
-                    return O.tailcall(js.buildCalls_do, env, [c, idx, innerOffset, src], function(newSrc) {
-                        src = newSrc;
-                        return cb();
-                    });
                 } else {
-                    return O.tailcall(js.buildCalls_other, env, [c, idx, innerOffset, src], function(newSrc) {
+                    return O.tailcall(js.buildCalls_do_other, env, [c, idx, innerOffset, src], function(newSrc) {
                         src = newSrc;
                         return cb();
                     });
@@ -281,17 +276,16 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
         }));
     }(O.length(calls) - 1));
 }};
-js.buildCalls_do = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
+js.buildCalls_do_other = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
-    return O.tailcall(js.valueStr, env, [O.length(c) > 1 ? c.pop() : null], function (v) {
-        return O.tailcall(cb, env, [(O.length(src) > 0
-            ? 'var r' + (idx + innerOffset) + ' = ' + v + ';\n' + src
-            : 'return O.tailcall(cb, env, [' + v + ']);'
-        )]);
-    });
-}};
-js.buildCalls_other = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
-    var c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
+    if (c[0] && c[0].value === O.do) {
+        return O.tailcall(js.valueStr, env, [O.length(c) > 1 ? c.pop() : null], function (v) {
+            return O.tailcall(cb, env, [(O.length(src) > 0
+                ? 'var r' + (idx + innerOffset) + ' = ' + v + ';\n' + src
+                : 'return O.tailcall(cb, env, [' + v + ']);'
+            )]);
+        });
+    }
     return O.tailcall(js.valueStr, env, [c[0]], function (v) {
         var str = (O.charAt(v, 0) === '"');
         var s = 'return O.tailcall(' +
@@ -703,7 +697,7 @@ compileAssign(js, 'compile', { parent: js, args: ['code', 'innerOffset'], code: 
 ]});
 compileAssign(js, 'compileSrc', { parent: js, args: ['code', 'innerOffset'], code: [
     O.if, [O['='], [O.type, [O.lookup, null, 'code']], 'array'],
-        //TODO: fix compiler to allow  a direct-reference below (i.e 'buildCalls' and 'getCalls'):
+        //TODO: fix compiler to allow a direct-reference below (i.e 'buildCalls' and 'getCalls'):
         {code:['buildCalls',
             ['getCalls', [O.lookup, null, 'code'], [O.list], [O.lookup, null, 'innerOffset']],
             [O.lookup, null, 'innerOffset']
@@ -752,76 +746,79 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
             ]]
         ]}
 ]});
-compileAssign(js, 'buildCalls_do', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [O.do,
-    //TODO: fix compiler to allow  a direct-reference below (i.e 'valueStr'):
-    [O.assign, null, 'v', ['valueStr',
-        [O.if, [O['>'], [O.length, [O.lookup, null, 'c']], 1],
-            {code:[O.pop, [O.lookup, null, 'c']]},
-        ]
-    ]],
-    [O.if, [O['>'], [O.length, [O.lookup, null, 'src']], 0],
-        {code:[O['+'],
-            'var r',
-            [O['+'], [O.lookup, null, 'idx'], [O.lookup, null, 'innerOffset']],
-            ' = ',
-            [O.lookup, null, 'v'],
-            ';\n',
-            [O.lookup, null, 'src']
+compileAssign(js, 'buildCalls_do_other', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [
+    O.if, [O['='], [O.lookup, null, 'c', 0, 'value'], O.do],
+        {code:[O.do,
+            //TODO: fix compiler to allow a direct-reference below (i.e 'valueStr'):
+            [O.assign, null, 'v', ['valueStr',
+                [O.if, [O['>'], [O.length, [O.lookup, null, 'c']], 1],
+                    {code:[O.pop, [O.lookup, null, 'c']]},
+                ]
+            ]],
+            [O.if, [O['>'], [O.length, [O.lookup, null, 'src']], 0],
+                {code:[O['+'],
+                    'var r',
+                    [O['+'], [O.lookup, null, 'idx'], [O.lookup, null, 'innerOffset']],
+                    ' = ',
+                    [O.lookup, null, 'v'],
+                    ';\n',
+                    [O.lookup, null, 'src']
+                ]},
+                {code:[O['+'],
+                    'return O.tailcall(cb, env, [',
+                    [O.lookup, null, 'v'],
+                    ']);'
+                ]}
+            ]
         ]},
-        {code:[O['+'],
-            'return O.tailcall(cb, env, [',
-            [O.lookup, null, 'v'],
-            ']);'
-        ]}
-    ]
-]});
-compileAssign(js, 'buildCalls_other', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [O.do,
-    //TODO: fix compiler to allow  a direct-reference below (i.e 'valueStr'):
-    [O.assign, null, 'v', ['valueStr', [O.lookup, null, 'c', 0]]],
-    [O.assign, null, 'str', [O['='], [O.charAt, [O.lookup, null, 'v'], 0], '"']],
-    [O.assign, null, 's', [O['+'],
-        'return O.tailcall(',
-        [O.if, [O.lookup, null, 'str'],
-            {code:[O['+'],
-                'O.lookup, env, [env, ',
-                [O.lookup, null, 'v'],
-                '], function (f) {\nreturn O.tailcall(f'
-            ]},
-            {code:[O.lookup, null, 'v']}
-        ],
-        ', env, ['
-    ]],
-    [O.assign, null, 'len', [O.length, [O.lookup, null, 'c']]],
-    [O.assign, null, 'i', 1],
-    [[O.assign, null, 'nextC',
-        {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
-            {code:[O['+'],
-                [O.lookup, null, 's'],
-                '], ',
-                [O.if, [O['<'], [O.length, [O.lookup, null, 'src']], 1],
-                    'cb);',
+        {code:[O.do,
+            //TODO: fix compiler to allow a direct-reference below (i.e 'valueStr'):
+            [O.assign, null, 'v', ['valueStr', [O.lookup, null, 'c', 0]]],
+            [O.assign, null, 'str', [O['='], [O.charAt, [O.lookup, null, 'v'], 0], '"']],
+            [O.assign, null, 's', [O['+'],
+                'return O.tailcall(',
+                [O.if, [O.lookup, null, 'str'],
                     {code:[O['+'],
-                        'function(r',
-                        [O['+'], [O.lookup, null, 'idx'], [O.lookup, null, 'innerOffset']],
-                        ') {\n',
-                        [O.lookup, null, 'src'],
-                        '\n});'
-                    ]}
+                        'O.lookup, env, [env, ',
+                        [O.lookup, null, 'v'],
+                        '], function (f) {\nreturn O.tailcall(f'
+                    ]},
+                    {code:[O.lookup, null, 'v']}
                 ],
-                [O.if, [O.lookup, null, 'str'], '\n});', '']
-            ]},
-            {code:[O.do,
-                [O.assign, null, 's', [O['+'],
-                    [O.lookup, null, 's'],
-                    [O.if, [O['>'], [O.lookup, null, 'i'], 1], ', ', ''],
-                    //TODO: fix compiler to allow  a direct-reference below (i.e 'valueStr'):
-                    ['valueStr', [O.lookup, null, 'c', [O.lookup, null, 'i']]]
-                ]],
-                [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
-                [[O.lookup, null, 'nextC']]
-            ]}
+                ', env, ['
+            ]],
+            [O.assign, null, 'len', [O.length, [O.lookup, null, 'c']]],
+            [O.assign, null, 'i', 1],
+            [[O.assign, null, 'nextC',
+                {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                    {code:[O['+'],
+                        [O.lookup, null, 's'],
+                        '], ',
+                        [O.if, [O['<'], [O.length, [O.lookup, null, 'src']], 1],
+                            'cb);',
+                            {code:[O['+'],
+                                'function(r',
+                                [O['+'], [O.lookup, null, 'idx'], [O.lookup, null, 'innerOffset']],
+                                ') {\n',
+                                [O.lookup, null, 'src'],
+                                '\n});'
+                            ]}
+                        ],
+                        [O.if, [O.lookup, null, 'str'], '\n});', '']
+                    ]},
+                    {code:[O.do,
+                        [O.assign, null, 's', [O['+'],
+                            [O.lookup, null, 's'],
+                            [O.if, [O['>'], [O.lookup, null, 'i'], 1], ', ', ''],
+                            //TODO: fix compiler to allow a direct-reference below (i.e 'valueStr'):
+                            ['valueStr', [O.lookup, null, 'c', [O.lookup, null, 'i']]]
+                        ]],
+                        [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                        [[O.lookup, null, 'nextC']]
+                    ]}
+                ]}
+            ]]
         ]}
-    ]]
 ]});
 compileAssign(js, 'indexStr', { parent: js, args: ['v'], code: [O.do,
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'v']]],
@@ -838,7 +835,7 @@ compileAssign(js, 'indexStr', { parent: js, args: ['v'], code: [O.do,
 compileAssign(js, 'valueStr', { parent: js, args: ['v', 'alias'], code: [
     O.if, [O['='], [O.type, [O.lookup, null, 'v']], 'number'],
         {code:[O['+'], 'r', [O.lookup, null, 'v']]},
-        //TODO: fix compiler to allow  a direct-reference below (js.stringify instead of 'stringify'):
+        //TODO: fix compiler to allow a direct-reference below (js.stringify instead of 'stringify'):
         {code:[O.do, ['stringify', [O.lookup, null, 'v', 'value'], [O.lookup, null, 'alias']] ]}
 ]});
 compileAssign(js, 'stringify', { parent: js, args: ['v', 'alias'], code: [O.do,
