@@ -221,22 +221,12 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
                 }));
             }(0));
         }(function() {
-            return (function(cb) {
-                var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
-                if (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove)) {
-                    return O.tailcall(js.buildCalls_lookup, env, [c, idx, innerOffset, src, f], function(newSrc) {
-                        src = newSrc;
-                        return cb();
-                    });
-                } else {
-                    return O.tailcall(js.buildCalls_do_other, env, [c, idx, innerOffset, src], function(newSrc) {
-                        src = newSrc;
-                        return cb();
-                    });
-                }
-            }(function() {
+            var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
+            var sub = (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove) ? js.buildCalls_lookup : js.buildCalls_do_other);
+            return O.tailcall(sub, env, [c, idx, innerOffset, src, f], function(newSrc) {
+                src = newSrc;
                 return O.tailcall(next, env, [idx - 1]);
-            }));
+            });
         }));
     }(O.length(calls) - 1));
 }};
