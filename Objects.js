@@ -257,16 +257,15 @@ js.buildCalls_lookup_y = { parent: js, args: ['f', 'vals', 'idx', 'innerOffset',
     var max = O.length(vals) - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
     return (function next(i) {
         if (i >= max) { return O.tailcall(js.buildCalls_lookup_z, env, [f, s, vals, max, idx, innerOffset, src], cb); }
-        var v = vals[i];
-        return O.tailcall(js.buildCalls_lookup_y_sub, env, [s, v, i], function(s2) {
+        return O.tailcall(js.buildCalls_lookup_y_sub, env, [s, vals, i], function(s2) {
             s = s2;
             return O.tailcall(next, env, [i + 1]);
         });
     }(0));
 }};
-js.buildCalls_lookup_y_sub = { parent: js, args: ['s', 'v', 'i'], code: function (cb, env) {
-    var s = env.s, v = env.v, i = env.i;
-    return O.tailcall(js.indexStr, env, [v], function (vs) {
+js.buildCalls_lookup_y_sub = { parent: js, args: ['s', 'vals', 'i'], code: function (cb, env) {
+    var s = env.s, vals = env.vals, i = env.i;
+    return O.tailcall(js.indexStr, env, [vals[i]], function (vs) {
         return O.tailcall(cb, env, [s + (i > 0 ? ' && ' + s : '') + vs]);
     });
 }};
@@ -758,11 +757,12 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
             ]]
         ]}
 ]});
-compileAssign(js, 'buildCalls_lookup_y_sub', { parent: js, args: ['s', 'v', 'i'], code: [
+compileAssign(js, 'buildCalls_lookup_y_sub', { parent: js, args: ['s', 'vals', 'i'], code: [
     O['+'],
         [O.lookup, null, 's'],
         [O.if, [O['>'], [O.lookup, null, 'i'], 0], {code:[O['+'], ' && ', [O.lookup, null, 's']]}, ''],
-        ['indexStr', [O.lookup, null, 'v']]
+        //TODO: fix compiler to allow a direct-reference below (i.e 'indexStr'):
+        ['indexStr', [O.lookup, null, 'vals', [O.lookup, null, 'i']]]
 ]});
 compileAssign(js, 'buildCalls_lookup_z', { parent: js, args: ['f', 's', 'vals', 'max', 'idx', 'innerOffset', 'src'], code: [O.do,
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'src']]],
