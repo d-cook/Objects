@@ -234,7 +234,7 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
                             });
                         }(2));
                     }(function() {
-                        return O.tailcall(js.buildCalls_lookup_y, env, [f, vals, idx, innerOffset, src], function(newSrc) {
+                        return O.tailcall(js.buildCalls_lookup, env, [f, vals, idx, innerOffset, src], function(newSrc) {
                             src = newSrc;
                             return cb();
                         });
@@ -251,35 +251,33 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
         }));
     }(O.length(calls) - 1));
 }};
-js.buildCalls_lookup_y = { parent: js, args: ['f', 'vals', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
+js.buildCalls_lookup = { parent: js, args: ['f', 'vals', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var f = env.f, vals = env.vals, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
     var max = O.length(vals) - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
     var s = 'args';
     return (function next(i) {
-        if (i >= max) { return O.tailcall(js.buildCalls_lookup_z, env, [f, s, vals, max, idx, innerOffset, src], cb); }
+        if (i >= max) {
+            var len = O.length(src);
+            return O.tailcall(js.indexStr, env, [vals[max]], function (vs) {
+                if (f === O.assign) {
+                    s = '(' + (max < 1 ? s : '((' + s + ')||{})') + vs + ' = ' + vals[max + 1] + ')';
+                } else if (f === O.exists) {
+                    s = vals[max] + ' in ' + (max < 1 ? s : '((' + s + ')||{})');
+                } else if (f === O.remove) {
+                    src = 'var v = ' + s + ';\n' + 'delete v' + vs + ';\n' + src;
+                    s = 'v' + vs;
+                }
+                return O.tailcall(cb, env, [(len > 0
+                    ? 'var r' + (idx + innerOffset) + ' = ' + s + ';\n' + src
+                    : 'return O.tailcall(cb, env, [' + s + ']);'
+                )]);
+            });
+        }
         return O.tailcall(js.indexStr, env, [vals[i]], function (vs) {
             s = s + (i > 0 ? ' && ' + s : '') + vs;
             return O.tailcall(next, env, [i + 1]);
         });
     }(0));
-}};
-js.buildCalls_lookup_z = { parent: js, args: ['f', 's', 'vals', 'max', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
-    var f = env.f, s = env.s, vals = env.vals, max = env.max, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
-    var len = O.length(src);
-    return O.tailcall(js.indexStr, env, [vals[max]], function (vs) {
-        if (f === O.assign) {
-            s = '(' + (max < 1 ? s : '((' + s + ')||{})') + vs + ' = ' + vals[max + 1] + ')';
-        } else if (f === O.exists) {
-            s = vals[max] + ' in ' + (max < 1 ? s : '((' + s + ')||{})');
-        } else if (f === O.remove) {
-            src = 'var v = ' + s + ';\n' + 'delete v' + vs + ';\n' + src;
-            s = 'v' + vs;
-        }
-        return O.tailcall(cb, env, [(len > 0
-            ? 'var r' + (idx + innerOffset) + ' = ' + s + ';\n' + src
-            : 'return O.tailcall(cb, env, [' + s + ']);'
-        )]);
-    });
 }};
 js.buildCalls_do_other = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
@@ -751,7 +749,7 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
             ]]
         ]}
 ]});
-compileAssign(js, 'buildCalls_lookup_y', { parent: js, args: ['f', 'vals', 'idx', 'innerOffset', 'src'], code: [O.do,
+compileAssign(js, 'buildCalls_lookup', { parent: js, args: ['f', 'vals', 'idx', 'innerOffset', 'src'], code: [O.do,
     [O.assign, null, 'max', [O['-'],
         [O.length, [O.lookup, null, 'vals']],
         [O.if, [O['='], [O.lookup, null, 'f'], O.lookup],
@@ -763,15 +761,64 @@ compileAssign(js, 'buildCalls_lookup_y', { parent: js, args: ['f', 'vals', 'idx'
     [O.assign, null, 'i', 0],
     [[O.assign, null, 'nextS', {code:[
         [O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'max']],
-            //TODO: fix compiler to allow a direct-reference below (i.e 'buildCalls_lookup_z'):
-            {code:['buildCalls_lookup_z',
-                [O.lookup, null, 'f'],
-                [O.lookup, null, 's'],
-                [O.lookup, null, 'vals'],
-                [O.lookup, null, 'max'],
-                [O.lookup, null, 'idx'],
-                [O.lookup, null, 'innerOffset'],
-                [O.lookup, null, 'src']
+            {code:[O.do,
+                [O.assign, null, 'len', [O.length, [O.lookup, null, 'src']]],
+                //TODO: fix compiler to allow a direct-reference below (i.e 'indexStr'):
+                [O.assign, null, 'vs', ['indexStr', [O.lookup, null, 'vals', [O.lookup, null, 'max']]]],
+                [O.assign, null, 's',
+                    [O.if, [O['='], [O.lookup, null, 'f'], O.assign],
+                        {code:[O['+'],
+                            '(',
+                            [O.if, [O['<'], [O.lookup, null, 'max'], 1],
+                                {code:[O.lookup, null, 's']},
+                                {code:[O['+'], '((', [O.lookup, null, 's'], ')||{})']}
+                            ],
+                            [O.lookup, null, 'vs'],
+                            ' = ',
+                            [O.lookup, null, 'vals', [O['+'], [O.lookup, null, 'max'], 1]],
+                            ')'
+                        ]},
+                        {code:[O.if, [O['='], [O.lookup, null, 'f'], O.exists],
+                            {code:[O['+'],
+                                [O.lookup, null, 'vals', [O.lookup, null, 'max']],
+                                ' in ',
+                                [O.if, [O['<'], [O.lookup, null, 'max'], 1],
+                                    {code:[O.lookup, null, 's']},
+                                    {code:[O['+'], '((', [O.lookup, null, 's'], ')||{})']}
+                                ]
+                            ]},
+                            {code:[O.if, [O['='], [O.lookup, null, 'f'], O.remove],
+                                {code:[O.do,
+                                    [O.assign, null, 'src', [O['+'],
+                                        'var v = ',
+                                        [O.lookup, null, 's'],
+                                        ';\ndelete v',
+                                        [O.lookup, null, 'vs'],
+                                        ';\n',
+                                        [O.lookup, null, 'src']
+                                    ]],
+                                    [O['+'], 'v', [O.lookup, null, 'vs']]
+                                ]},
+                                {code:[O.lookup, null, 's']}
+                            ]}
+                        ]}
+                    ]
+                ],
+                [O.if, [O['>'], [O.lookup, null, 'len'], 0],
+                    {code:[O['+'],
+                        'var r',
+                        [O['+'], [O.lookup, null, 'idx'], [O.lookup, null, 'innerOffset']],
+                        ' = ',
+                        [O.lookup, null, 's'],
+                        ';\n',
+                        [O.lookup, null, 'src']
+                    ]},
+                    {code:[O['+'],
+                        'return O.tailcall(cb, env, [',
+                        [O.lookup, null, 's'],
+                        ']);'
+                    ]}
+                ]
             ]},
             {code:[O.do,
                 [O.assign, null, 's', [O['+'],
@@ -785,65 +832,6 @@ compileAssign(js, 'buildCalls_lookup_y', { parent: js, args: ['f', 'vals', 'idx'
             ]}
         ]
     ]}]]
-]});
-compileAssign(js, 'buildCalls_lookup_z', { parent: js, args: ['f', 's', 'vals', 'max', 'idx', 'innerOffset', 'src'], code: [O.do,
-    [O.assign, null, 'len', [O.length, [O.lookup, null, 'src']]],
-    //TODO: fix compiler to allow a direct-reference below (i.e 'indexStr'):
-    [O.assign, null, 'vs', ['indexStr', [O.lookup, null, 'vals', [O.lookup, null, 'max']]]],
-    [O.assign, null, 's',
-        [O.if, [O['='], [O.lookup, null, 'f'], O.assign],
-            {code:[O['+'],
-                '(',
-                [O.if, [O['<'], [O.lookup, null, 'max'], 1],
-                    {code:[O.lookup, null, 's']},
-                    {code:[O['+'], '((', [O.lookup, null, 's'], ')||{})']}
-                ],
-                [O.lookup, null, 'vs'],
-                ' = ',
-                [O.lookup, null, 'vals', [O['+'], [O.lookup, null, 'max'], 1]],
-                ')'
-            ]},
-            {code:[O.if, [O['='], [O.lookup, null, 'f'], O.exists],
-                {code:[O['+'],
-                    [O.lookup, null, 'vals', [O.lookup, null, 'max']],
-                    ' in ',
-                    [O.if, [O['<'], [O.lookup, null, 'max'], 1],
-                        {code:[O.lookup, null, 's']},
-                        {code:[O['+'], '((', [O.lookup, null, 's'], ')||{})']}
-                    ]
-                ]},
-                {code:[O.if, [O['='], [O.lookup, null, 'f'], O.remove],
-                    {code:[O.do,
-                        [O.assign, null, 'src', [O['+'],
-                            'var v = ',
-                            [O.lookup, null, 's'],
-                            ';\ndelete v',
-                            [O.lookup, null, 'vs'],
-                            ';\n',
-                            [O.lookup, null, 'src']
-                        ]],
-                        [O['+'], 'v', [O.lookup, null, 'vs']]
-                    ]},
-                    {code:[O.lookup, null, 's']}
-                ]}
-            ]}
-        ]
-    ],
-    [O.if, [O['>'], [O.lookup, null, 'len'], 0],
-        {code:[O['+'],
-            'var r',
-            [O['+'], [O.lookup, null, 'idx'], [O.lookup, null, 'innerOffset']],
-            ' = ',
-            [O.lookup, null, 's'],
-            ';\n',
-            [O.lookup, null, 'src']
-        ]},
-        {code:[O['+'],
-            'return O.tailcall(cb, env, [',
-            [O.lookup, null, 's'],
-            ']);'
-        ]}
-    ]
 ]});
 compileAssign(js, 'buildCalls_do_other', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [
     O.if, [O['='], [O.lookup, null, 'c', 0, 'value'], O.do],
