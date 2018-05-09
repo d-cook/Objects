@@ -253,21 +253,21 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
 }};
 js.buildCalls_lookup_y = { parent: js, args: ['f', 'vals', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var f = env.f, vals = env.vals, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
-    var s = 'args';
     var max = O.length(vals) - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
+    return O.tailcall(js.buildCalls_lookup_y_sub, env, [vals, max], function(s) {
+        return O.tailcall(js.buildCalls_lookup_z, env, [f, s, vals, max, idx, innerOffset, src], cb);
+    });
+}};
+js.buildCalls_lookup_y_sub = { parent: js, args: ['vals', 'max'], code: function (cb, env) {
+    var vals = env.vals, max = env.max;
+    var s = 'args';
     return (function next(i) {
-        if (i >= max) { return O.tailcall(js.buildCalls_lookup_z, env, [f, s, vals, max, idx, innerOffset, src], cb); }
-        return O.tailcall(js.buildCalls_lookup_y_sub, env, [s, vals, i], function(s2) {
-            s = s2;
+        if (i >= max) { return O.tailcall(cb, env, [s]); }
+        return O.tailcall(js.indexStr, env, [vals[i]], function (vs) {
+            s = s + (i > 0 ? ' && ' + s : '') + vs;
             return O.tailcall(next, env, [i + 1]);
         });
     }(0));
-}};
-js.buildCalls_lookup_y_sub = { parent: js, args: ['s', 'vals', 'i'], code: function (cb, env) {
-    var s = env.s, vals = env.vals, i = env.i;
-    return O.tailcall(js.indexStr, env, [vals[i]], function (vs) {
-        return O.tailcall(cb, env, [s + (i > 0 ? ' && ' + s : '') + vs]);
-    });
 }};
 js.buildCalls_lookup_z = { parent: js, args: ['f', 's', 'vals', 'max', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var f = env.f, s = env.s, vals = env.vals, max = env.max, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
@@ -757,12 +757,24 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
             ]]
         ]}
 ]});
-compileAssign(js, 'buildCalls_lookup_y_sub', { parent: js, args: ['s', 'vals', 'i'], code: [
-    O['+'],
-        [O.lookup, null, 's'],
-        [O.if, [O['>'], [O.lookup, null, 'i'], 0], {code:[O['+'], ' && ', [O.lookup, null, 's']]}, ''],
-        //TODO: fix compiler to allow a direct-reference below (i.e 'indexStr'):
-        ['indexStr', [O.lookup, null, 'vals', [O.lookup, null, 'i']]]
+compileAssign(js, 'buildCalls_lookup_y_sub', { parent: js, args: ['vals', 'max'], code: [O.do,
+    [O.assign, null, 's', 'args'],
+    [O.assign, null, 'i', 0],
+    [[O.assign, null, 'nextS', {code:[
+        [O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'max']],
+            {code:[O.lookup, null, 's']},
+            {code:[O.do,
+                [O.assign, null, 's', [O['+'],
+                    [O.lookup, null, 's'],
+                    [O.if, [O['>'], [O.lookup, null, 'i'], 0], {code:[O['+'], ' && ', [O.lookup, null, 's']]}, ''],
+                    //TODO: fix compiler to allow a direct-reference below (i.e 'indexStr'):
+                    ['indexStr', [O.lookup, null, 'vals', [O.lookup, null, 'i']]]
+                ]],
+                [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                [[O.lookup, null, 'nextS']]
+            ]}
+        ]
+    ]}]]
 ]});
 compileAssign(js, 'buildCalls_lookup_z', { parent: js, args: ['f', 's', 'vals', 'max', 'idx', 'innerOffset', 'src'], code: [O.do,
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'src']]],
