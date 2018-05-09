@@ -205,7 +205,7 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
         return (function nextI(i) {
             if (i >= O.length(c)) { 
                 var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
-                var sub = (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove) ? js.buildCalls_lookup : js.buildCalls_do_other);
+                var sub = (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove) ? js.buildCalls_lookup : js.buildCalls_other);
                 return O.tailcall(sub, env, [c, idx, innerOffset, src, f], function(newSrc) {
                     src = newSrc;
                     return O.tailcall(next, env, [idx - 1]);
@@ -265,7 +265,7 @@ js.buildCalls_lookup = { parent: js, args: ['c', 'idx', 'innerOffset', 'src', 'f
         });
     }(2));
 }};
-js.buildCalls_do_other = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
+js.buildCalls_other = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
     if (c[0] && c[0].value === O.do) {
         return O.tailcall(js.valueStr, env, [O.length(c) > 1 ? c.pop() : null], function (v) {
@@ -834,7 +834,7 @@ compileAssign(js, 'buildCalls_lookup', { parent: js, args: ['c', 'idx', 'innerOf
         ]
     ]}]]
 ]});
-compileAssign(js, 'buildCalls_do_other', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [
+compileAssign(js, 'buildCalls_other', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [
     O.if, [O['='], [O.lookup, null, 'c', 0, 'value'], O.do],
         {code:[O.do,
             //TODO: fix compiler to allow a direct-reference below (i.e 'valueStr'):
