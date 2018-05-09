@@ -225,20 +225,18 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
                 var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
                 if (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove)) {
                     var vals = [];
-                    return (function(cb) {
-                        return (function next(i) {
-                            if (i >= O.length(c)) { return cb(); }
-                            return O.tailcall(js.valueStr, env, [c[i]], function (vs) {
-                                vals.push(vs);
-                                return O.tailcall(next, env, [i + 1]);
+                    return (function next(i) {
+                        if (i >= O.length(c)) { 
+                            return O.tailcall(js.buildCalls_lookup, env, [f, vals, idx, innerOffset, src], function(newSrc) {
+                                src = newSrc;
+                                return cb();
                             });
-                        }(2));
-                    }(function() {
-                        return O.tailcall(js.buildCalls_lookup, env, [f, vals, idx, innerOffset, src], function(newSrc) {
-                            src = newSrc;
-                            return cb();
+                        }
+                        return O.tailcall(js.valueStr, env, [c[i]], function (vs) {
+                            vals.push(vs);
+                            return O.tailcall(next, env, [i + 1]);
                         });
-                    }));
+                    }(2));
                 } else {
                     return O.tailcall(js.buildCalls_do_other, env, [c, idx, innerOffset, src], function(newSrc) {
                         src = newSrc;
