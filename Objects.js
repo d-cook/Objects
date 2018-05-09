@@ -254,15 +254,9 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
 js.buildCalls_lookup_y = { parent: js, args: ['f', 'vals', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var f = env.f, vals = env.vals, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
     var max = O.length(vals) - (f === O.lookup ? 0 : f === O.assign ? 2 : 1);
-    return O.tailcall(js.buildCalls_lookup_y_sub, env, [vals, max], function(s) {
-        return O.tailcall(js.buildCalls_lookup_z, env, [f, s, vals, max, idx, innerOffset, src], cb);
-    });
-}};
-js.buildCalls_lookup_y_sub = { parent: js, args: ['vals', 'max'], code: function (cb, env) {
-    var vals = env.vals, max = env.max;
     var s = 'args';
     return (function next(i) {
-        if (i >= max) { return O.tailcall(cb, env, [s]); }
+        if (i >= max) { return O.tailcall(js.buildCalls_lookup_z, env, [f, s, vals, max, idx, innerOffset, src], cb); }
         return O.tailcall(js.indexStr, env, [vals[i]], function (vs) {
             s = s + (i > 0 ? ' && ' + s : '') + vs;
             return O.tailcall(next, env, [i + 1]);
@@ -757,12 +751,28 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
             ]]
         ]}
 ]});
-compileAssign(js, 'buildCalls_lookup_y_sub', { parent: js, args: ['vals', 'max'], code: [O.do,
+compileAssign(js, 'buildCalls_lookup_y', { parent: js, args: ['f', 'vals', 'idx', 'innerOffset', 'src'], code: [O.do,
+    [O.assign, null, 'max', [O['-'],
+        [O.length, [O.lookup, null, 'vals']],
+        [O.if, [O['='], [O.lookup, null, 'f'], O.lookup],
+            0,
+            {code:[O.if, [O['='], [O.lookup, null, 'f'], O.assign], 2, 1]}
+        ]
+    ]],
     [O.assign, null, 's', 'args'],
     [O.assign, null, 'i', 0],
     [[O.assign, null, 'nextS', {code:[
         [O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'max']],
-            {code:[O.lookup, null, 's']},
+            //TODO: fix compiler to allow a direct-reference below (i.e 'buildCalls_lookup_z'):
+            {code:['buildCalls_lookup_z',
+                [O.lookup, null, 'f'],
+                [O.lookup, null, 's'],
+                [O.lookup, null, 'vals'],
+                [O.lookup, null, 'max'],
+                [O.lookup, null, 'idx'],
+                [O.lookup, null, 'innerOffset'],
+                [O.lookup, null, 'src']
+            ]},
             {code:[O.do,
                 [O.assign, null, 's', [O['+'],
                     [O.lookup, null, 's'],
