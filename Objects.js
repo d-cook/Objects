@@ -202,32 +202,30 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
         if (idx < 0) { return O.tailcall(cb, env, [src]); }
         var c = calls[idx];
         if (O.type(c) !== 'array') { return O.tailcall(cb, env, [src]); }
-        return (function(cb) {
-            return (function next(i) {
-                if (i >= O.length(c)) { return cb(); }
-                var v = c[i] && c[i].value;
-                return (function (cb) {
-                    return (function(cb) {
-                        return !(v && v.code) ? cb(true) : O.tailcall(js.globalStr, env, [v], cb);
-                    }(function(ngs) {
-                        return ngs ? cb() :
-                            O.tailcall(js.compile, env, [v, O.length(calls) - 1 + innerOffset], function(cv) {
-                                c[i].value = cv;
-                                return cb();
-                            });
-                    }));
-                }(function () {
-                    return O.tailcall(next, env, [i + 1]);
+        return (function nextI(i) {
+            if (i >= O.length(c)) { 
+                var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
+                var sub = (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove) ? js.buildCalls_lookup : js.buildCalls_do_other);
+                return O.tailcall(sub, env, [c, idx, innerOffset, src, f], function(newSrc) {
+                    src = newSrc;
+                    return O.tailcall(next, env, [idx - 1]);
+                });
+            }
+            var v = c[i] && c[i].value;
+            return (function (cb) {
+                return (function(cb) {
+                    return !(v && v.code) ? cb(true) : O.tailcall(js.globalStr, env, [v], cb);
+                }(function(ngs) {
+                    return ngs ? cb() :
+                        O.tailcall(js.compile, env, [v, O.length(calls) - 1 + innerOffset], function(cv) {
+                            c[i].value = cv;
+                            return cb();
+                        });
                 }));
-            }(0));
-        }(function() {
-            var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
-            var sub = (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove) ? js.buildCalls_lookup : js.buildCalls_do_other);
-            return O.tailcall(sub, env, [c, idx, innerOffset, src, f], function(newSrc) {
-                src = newSrc;
-                return O.tailcall(next, env, [idx - 1]);
-            });
-        }));
+            }(function () {
+                return O.tailcall(nextI, env, [i + 1]);
+            }));
+        }(0));
     }(O.length(calls) - 1));
 }};
 js.buildCalls_lookup = { parent: js, args: ['c', 'idx', 'innerOffset', 'src', 'f'], code: function (cb, env) {
