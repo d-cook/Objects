@@ -203,7 +203,8 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
         var c = calls[idx];
         if (O.type(c) !== 'array') { return O.tailcall(cb, env, [src]); }
         return (function nextI(i) {
-            if (i >= O.length(c)) { 
+            if (i >= O.length(c)) {
+                // TODO: sub this:
                 var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
                 var sub = (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove) ? js.buildCalls_lookup : js.buildCalls_other);
                 return O.tailcall(sub, env, [c, idx, innerOffset, src, f], function(newSrc) {
@@ -211,22 +212,24 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
                     return O.tailcall(next, env, [idx - 1]);
                 });
             }
-            var v = c[i] && c[i].value;
-            return (function (cb) {
-                return (function(cb) {
-                    return !(v && v.code) ? cb(true) : O.tailcall(js.globalStr, env, [v], cb);
-                }(function(ngs) {
-                    return ngs ? cb() :
-                        O.tailcall(js.compile, env, [v, O.length(calls) - 1 + innerOffset], function(cv) {
-                            c[i].value = cv;
-                            return cb();
-                        });
-                }));
-            }(function () {
+            return O.tailcall(js.buildCalls_compile, env, [c[i], innerOffset, calls], function() {
                 return O.tailcall(nextI, env, [i + 1]);
-            }));
+            });
         }(0));
     }(O.length(calls) - 1));
+}};
+js.buildCalls_compile = { parent: js, args: ['ci', 'innerOffset', 'calls'], code: function (cb, env) {
+    var ci = env.ci, innerOffset = env.innerOffset, calls = env.calls;
+    var v = ci && ci.value
+    return (function(next) {
+        return !(v && v.code) ? next(true) : O.tailcall(js.globalStr, env, [v], next);
+    }(function(ngs) {
+        return ngs ? O.tailcall(cb, env, []) :
+            O.tailcall(js.compile, env, [v, O.length(calls) - 1 + innerOffset], function(cv) {
+                ci.value = cv;
+                return O.tailcall(cb, env, []);
+            });
+    }));
 }};
 js.buildCalls_lookup = { parent: js, args: ['c', 'idx', 'innerOffset', 'src', 'f'], code: function (cb, env) {
     var f = env.f, c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
@@ -735,6 +738,20 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
             ]]
         ]}
 ]});
+/*
+// This is not working for some reason
+// if(!A | B){}else{C}  -->  if(!(!A | B)){C} -->  if(A & !B){C}  -->  A & !B & C
+compileAssign(js, 'buildCalls_compile', { parent: js, args: ['ci', 'innerOffset', 'calls'], code: [
+    O.and,
+        [O.lookup, null, 'ci', 'value', 'code'],
+        //TODO: fix compiler to allow a direct-reference below (i.e 'globalStr'):
+        {code:[O.not, ['globalStr', [O.lookup, null, 'ci', 'value']]]},
+        {code:[O.assign, null, 'ci', 'value',
+            //TODO: fix compiler to allow a direct-reference below (i.e 'compile'):
+            ['compile', [O.lookup, null, 'ci', 'value'], [O['+'], [O.length, [O.lookup, null, 'calls']], -1, [O.lookup, null, 'innerOffset']]]
+        ]}
+]});
+*/
 compileAssign(js, 'buildCalls_lookup', { parent: js, args: ['c', 'idx', 'innerOffset', 'src', 'f'], code: [O.do,
     [O.assign, null, 'vals', [O.list]],
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'c']]],
