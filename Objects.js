@@ -221,14 +221,17 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
 js.buildCalls_compile = { parent: js, args: ['ci', 'innerOffset', 'calls'], code: function (cb, env) {
     var ci = env.ci, innerOffset = env.innerOffset, calls = env.calls;
     var v = ci && ci.value
+    return O.tailcall(js.buildCalls_compile_sub, env, [ci, innerOffset, calls, v, !(v && v.code)], cb);
+}};
+js.buildCalls_compile_sub = { parent: js, args: ['ci', 'innerOffset', 'calls', 'v', 'noCode'], code: function (cb, env) {
+    var ci = env.ci, innerOffset = env.innerOffset, calls = env.calls, v = env.v, noCode = env.noCode;
     return (function(next) {
-        return !(v && v.code) ? next(true) : O.tailcall(js.globalStr, env, [v], next);
+        return noCode ? next(true) : O.tailcall(js.globalStr, env, [v], next);
     }(function(ngs) {
-        return ngs ? O.tailcall(cb, env, []) :
-            O.tailcall(js.compile, env, [v, O.length(calls) - 1 + innerOffset], function(cv) {
-                ci.value = cv;
-                return O.tailcall(cb, env, []);
-            });
+        return ngs ? O.tailcall(cb, env, []) : O.tailcall(js.compile, env, [v, O.length(calls) - 1 + innerOffset], function(cv) {
+            ci.value = cv;
+            return O.tailcall(cb, env, []);
+        });
     }));
 }};
 js.buildCalls_lookup = { parent: js, args: ['c', 'idx', 'innerOffset', 'src', 'f'], code: function (cb, env) {
@@ -738,20 +741,18 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
             ]]
         ]}
 ]});
-/*
-// This is not working for some reason
-// if(!A | B){}else{C}  -->  if(!(!A | B)){C} -->  if(A & !B){C}  -->  A & !B & C
-compileAssign(js, 'buildCalls_compile', { parent: js, args: ['ci', 'innerOffset', 'calls'], code: [
-    O.and,
-        [O.lookup, null, 'ci', 'value', 'code'],
-        //TODO: fix compiler to allow a direct-reference below (i.e 'globalStr'):
-        {code:[O.not, ['globalStr', [O.lookup, null, 'ci', 'value']]]},
+compileAssign(js, 'buildCalls_compile_sub', { parent: js, args: ['ci', 'innerOffset', 'calls', 'v', 'noCode'], code: [
+    O.if, [O.not, [O.or,
+            [O.lookup, null, 'noCode'],
+            {code:['globalStr', [O.lookup, null, 'v']]}
+        ]],
         {code:[O.assign, null, 'ci', 'value',
-            //TODO: fix compiler to allow a direct-reference below (i.e 'compile'):
-            ['compile', [O.lookup, null, 'ci', 'value'], [O['+'], [O.length, [O.lookup, null, 'calls']], -1, [O.lookup, null, 'innerOffset']]]
+            ['compile',
+                [O.lookup, null, 'v'],
+                [O['+'], [O.length, [O.lookup, null, 'calls']], -1, [O.lookup, null, 'innerOffset']]
+            ]
         ]}
 ]});
-*/
 compileAssign(js, 'buildCalls_lookup', { parent: js, args: ['c', 'idx', 'innerOffset', 'src', 'f'], code: [O.do,
     [O.assign, null, 'vals', [O.list]],
     [O.assign, null, 'len', [O.length, [O.lookup, null, 'c']]],
