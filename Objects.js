@@ -23,22 +23,22 @@ O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     return O.tailcall((env.cond ? env.T : env.F), env.caller, [env.cond], cb);
 }};
 O.and = { parent: O, args: ['L', 'R'], code: function (cb, env) {
-    if (O.falsey(env.L) || env.arguments.length < 2) {
+    if (env.arguments.length < 2 || O.falsey(env.L)) {
         return O.tailcall(cb, env, [env.L]); 
     }
     return O.tailcall(env.R, env.caller, [], function(r) {
         var args = [r];
-        args.push.apply(args, O.slice(arguments, 1));
+        args.push.apply(args, O.slice(env.arguments, 2));
         return O.tailcall(O.and, env.caller, args, cb);
     });
 }};
 O.or = { parent: O, args: ['L', 'R'], code: function (cb, env) {
-    if (O.truthy(env.L) || env.arguments.length < 2) {
+    if (env.arguments.length < 2 || O.truthy(env.L)) {
         return O.tailcall(cb, env, [env.L]); 
     }
     return O.tailcall(env.R, env.caller, [], function(r) {
         var args = [r];
-        args.push.apply(args, O.slice(arguments, 1));
+        args.push.apply(args, O.slice(env.arguments, 2));
         return O.tailcall(O.or, env.caller, args, cb);
     });
 }};
