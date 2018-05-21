@@ -20,7 +20,7 @@ O.type = function (o) {
 };
 
 O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
-    return O.tailcall((env.cond ? env.T : env.F), env.caller, [env.cond], cb);
+    return O.tailcall((O.truthy(env.cond) ? env.T : env.F), env.caller, [env.cond], cb);
 }};
 O.and = { parent: O, args: ['L', 'R'], code: function (cb, env) {
     if (env.arguments.length < 2 || O.not(env.L)) {
