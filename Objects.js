@@ -23,7 +23,7 @@ O.if = { parent: O, args: ['cond', 'T', 'F'], code: function (cb, env) {
     return O.tailcall((env.cond ? env.T : env.F), env.caller, [env.cond], cb);
 }};
 O.and = { parent: O, args: ['L', 'R'], code: function (cb, env) {
-    if (env.arguments.length < 2 || O.falsey(env.L)) {
+    if (env.arguments.length < 2 || O.not(env.L)) {
         return O.tailcall(cb, env, [env.L]); 
     }
     return O.tailcall(env.R, env.caller, [], function(r) {
@@ -46,9 +46,8 @@ O.or = { parent: O, args: ['L', 'R'], code: function (cb, env) {
 O.newObj = function ( ) { return Object.create(null); };
 O.keys   = function (o) { return Object.keys(o||{}) || []; };
 O.length = function (o) { return(Object.keys(o||{}) || []).length; };
-O.falsey = function (v) { return !v && v !== 0 && v !== ''; };
-O.truthy = function (v) { return  v || v === 0 || v === ''; };
-O.not    = function (v) { return O.falsey(v); };
+O.truthy = function (v) { return v || v === 0 || v === ''; };
+O.not    = function (v) { return !O.truthy(v); };
 
 O['+']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) {       r +=      arguments[i];                 } return r;    };
 O['-']  = function () { var r = arguments[0]; for(var i=1; i<arguments.length; i++) {       r -=      arguments[i];                 } return r;    };
