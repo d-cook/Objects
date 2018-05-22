@@ -135,8 +135,8 @@ O.invoke = function (tc) { // tailcall
 //         - echoing all non-native code wrapped in calls to the compiler
 //      5b. ALTERNATELY, echo the compiled version of non-natives instead of
 //          generating and using the gnc as part of the bootstrapping process.
-O.compilers = {};
-var js = O.compilers.js = {};
+O.compilers = { parent: O };
+var js = O.compilers.js = { parent: O };
 js.compile = { parent: js, args: ['code', 'innerOffset'], code: function (cb, env) {
     var code = env.code, innerOffset = env.innerOffset;
     if (O.type(code) === 'object') {
@@ -1029,6 +1029,7 @@ compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
     ]]
 ]});
 
+// TODO: Revisit this hierarchy (and "parent" references within it):
 O.language = 'js';
 O.compiler = O.compilers[O.language];
 O.compile = O.compiler.compile;
