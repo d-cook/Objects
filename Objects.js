@@ -202,20 +202,23 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
         var c = calls[idx];
         if (O.type(c) !== 'array') { return O.tailcall(cb, env, [src]); }
         return (function nextI(i) {
-            if (i >= O.length(c)) {
-                // TODO: sub this:
-                var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
-                var sub = (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove) ? js.buildCalls_lookup : js.buildCalls_other);
-                return O.tailcall(sub, env, [c, idx, innerOffset, src, f], function(newSrc) {
-                    src = newSrc;
-                    return O.tailcall(next, env, [idx - 1]);
-                });
-            }
-            return O.tailcall(js.buildCalls_compile, env, [c[i], innerOffset, calls], function() {
-                return O.tailcall(nextI, env, [i + 1]);
-            });
+            return (i >= O.length(c)
+                ? O.tailcall(js.buildCalls_sub, env, [c, idx, innerOffset, src, next], function(newSrc) {
+                        src = newSrc;
+                        return O.tailcall(next, env, [idx - 1]);
+                    })
+                : O.tailcall(js.buildCalls_compile, env, [c[i], innerOffset, calls], function() {
+                        return O.tailcall(nextI, env, [i + 1]);
+                    })
+            );
         }(0));
     }(O.length(calls) - 1));
+}};
+js.buildCalls_sub = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
+    var c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
+    var f = (O.length(c) > 2 && c[1] && c[1].value === null && c[0] && c[0].value);
+    var sub = (f && (f === O.lookup || f === O.assign || f === O.exists || f === O.remove) ? js.buildCalls_lookup : js.buildCalls_other);
+    return O.tailcall(sub, env, [c, idx, innerOffset, src, f], cb);
 }};
 js.buildCalls_compile = { parent: js, args: ['ci', 'innerOffset', 'calls'], code: function (cb, env) {
     var ci = env.ci, innerOffset = env.innerOffset, calls = env.calls;
@@ -735,6 +738,30 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
                 ]}
             ]]
         ]}
+]});
+compileAssign(js, 'buildCalls_sub', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [O.do,
+    [O.assign, null, 'f', [O.and,
+            [O['='], [O.type, [O.lookup, null, 'c', 1]], 'object'],
+            {code:[O['='], [O.lookup, null, 'c', 1, 'value'], null]},
+            {code:[O.lookup, null, 'c', 0, 'value']}
+        ]
+    ],
+    [
+        ['lookup', null,
+            [O.if, [O.or,
+                        [O['='], [O.lookup, null, 'f'], O.lookup],
+                        {code:[O['='], [O.lookup, null, 'f'], O.assign]},
+                        {code:[O['='], [O.lookup, null, 'f'], O.exists]},
+                        {code:[O['='], [O.lookup, null, 'f'], O.remove]}
+                ], 'buildCalls_lookup', 'buildCalls_other'
+            ]
+        ],
+        [O.lookup, null, 'c'],
+        [O.lookup, null, 'idx'],
+        [O.lookup, null, 'innerOffset'],
+        [O.lookup, null, 'src'],
+        [O.lookup, null, 'f']
+    ]
 ]});
 compileAssign(js, 'buildCalls_compile', { parent: js, args: ['ci', 'innerOffset', 'calls'], code: [O.do,
     [O.assign, null, 'v', [O.lookup, null, 'ci', 'value']],
