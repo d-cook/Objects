@@ -196,22 +196,20 @@ js.getCalls = { parent: js, args: ['code', 'calls', 'innerOffset'], code: functi
 }};
 js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb, env) {
     var calls = env.calls, innerOffset = env.innerOffset;
-    var src = '';
-    return (function next(idx) {
+    return (function next(idx, src) {
         if (idx < 0) { return O.tailcall(cb, env, [src]); }
         var c = calls[idx];
         if (O.type(c) !== 'array') { return O.tailcall(cb, env, [src]); }
         return (function nextI(i) {
             return (i >= O.length(c)
                 ? O.tailcall(js.buildCalls_sub, env, [c, idx, innerOffset, src, next], function(newSrc) {
-                        src = newSrc;
-                        return O.tailcall(next, env, [idx - 1]);
+                        return O.tailcall(next, env, [idx - 1, newSrc]);
                     })
                 : O.tailcall(js.buildCalls_compile, env, [c[i], innerOffset, calls], function() {
                         return O.tailcall(nextI, env, [i + 1]);
                     })
             );
-        }(0));
+        }(0, ''));
     }(O.length(calls) - 1));
 }};
 js.buildCalls_sub = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
