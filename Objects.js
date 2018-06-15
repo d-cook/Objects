@@ -202,7 +202,7 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
         if (O.type(c) !== 'array') { return O.tailcall(cb, env, [src]); }
         return (function nextI(i) {
             return (i >= O.length(c)
-                ? O.tailcall(js.buildCalls_sub, env, [c, idx, innerOffset, src, next], function(newSrc) {
+                ? O.tailcall(js.buildCalls_sub, env, [c, idx, innerOffset, src], function(newSrc) {
                         return O.tailcall(next, env, [idx - 1, newSrc]);
                     })
                 : O.tailcall(js.buildCalls_compile, env, [c[i], innerOffset, calls], function() {
@@ -736,6 +736,48 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
                 ]}
             ]]
         ]}
+]});
+compileAssign(js, 'buildCalls', { parent: js, args: ['calls', 'innerOffset'], code: [O.do,
+    [O.assign, null, 'idx', [O['-'], [O.length, [O.lookup, null, 'calls']], 1]],
+    [O.assign, null, 'src', ''],
+    [[O.assign, null, 'next', {code:[
+        O.if, [O['<'], [O.lookup, null, 'idx'], 0],
+            {code:[O.lookup, null, 'src']},
+            {code:[O.do,
+                [O.assign, null, 'c', [O.lookup, null, 'calls', [O.lookup, null, 'idx']]],
+                [O.if, [O.not, [O['='], [O.type, [O.lookup, null, 'c']], 'array']],
+                    {code:[O.lookup, null, 'src']},
+                    {code:[O.do,
+                        [O.assign, null, 'i', 0],
+                        [O.assign, null, 'len', [O.length, [O.lookup, null, 'c']]],
+                        [[O.assign, null, 'nextI', {code:[
+                            O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                                {code:[O.do,
+                                    [O.assign, null, 'src', [
+                                        'buildCalls_sub',
+                                        [O.lookup, null, 'c'],
+                                        [O.lookup, null, 'idx'],
+                                        [O.lookup, null, 'innerOffset'],
+                                        [O.lookup, null, 'src']
+                                    ]],
+                                    [O.assign, null, 'idx', [O['-'], [O.lookup, null, 'idx'], 1]],
+                                    [[O.lookup, null, 'next']]
+                                ]},
+                                {code:[O.do,
+                                    [
+                                        'buildCalls_compile',
+                                        [O.lookup, null, 'c', [O.lookup, null, 'i']],
+                                        [O.lookup, null, 'innerOffset'],
+                                        [O.lookup, null, 'calls']
+                                    ],
+                                    [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                                    [[O.lookup, null, 'nextI']]
+                                ]}
+                        ]}]]
+                    ]}
+                ]
+            ]}
+    ]}]]
 ]});
 compileAssign(js, 'buildCalls_sub', { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: [O.do,
     [O.assign, null, 'f', [O.and,
