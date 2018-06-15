@@ -209,8 +209,8 @@ js.buildCalls = { parent: js, args: ['calls', 'innerOffset'], code: function (cb
                         return O.tailcall(nextI, env, [i + 1]);
                     })
             );
-        }(0, ''));
-    }(O.length(calls) - 1));
+        }(0));
+    }(O.length(calls) - 1, ''));
 }};
 js.buildCalls_sub = { parent: js, args: ['c', 'idx', 'innerOffset', 'src'], code: function (cb, env) {
     var c = env.c, idx = env.idx, innerOffset = env.innerOffset, src = env.src;
