@@ -1108,6 +1108,7 @@ O.run = function (expr, env, cb) {
 };
 
 // JavaScript only:
+
 O.evaljs = function(x) { var root = O; try { return eval(x); } catch(e) { return null; } };
 O.funcjs = function(/*args...,*/ code) {
     try {
@@ -1117,6 +1118,27 @@ O.funcjs = function(/*args...,*/ code) {
         if (!/\;|\breturn\b/g.test(code)) { code = 'return ' + code; }
         return O.evaljs('(function(' + _args + '){' + code + ';})');
     } catch(e) { return null; }
+};
+
+O.saveFile = function(contents, fileName) {
+    fileName = fileName || 'Objects.js';
+    if (fileName.indexOf('.') < 0) { fileName += '.js'; }
+    var file = new Blob([contents], {type: 'application/javascript'});
+    if (window.navigator.msSaveOrOpenBlob) { // IE10+
+        window.navigator.msSaveOrOpenBlob(file, fileName);
+    } else { // Others
+        var saveLink = document.createElement('a');
+        saveLink.style.display = 'none';
+        var url = URL.createObjectURL(file);
+        saveLink.href = url;
+        saveLink.download = fileName;
+        saveLink.click();
+        document.appendChild(saveLink);
+        setTimeout(function() {
+            window.URL.revokeObjectURL(url);
+            document.removeChild(saveLink);
+        }); 
+    }
 };
 
 // ------------------------------------------ //
