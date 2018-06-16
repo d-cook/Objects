@@ -1107,6 +1107,18 @@ O.run = function (expr, env, cb) {
     } catch(e) { (console.warn||console.log)(' !!!' + (e.stack || e.message || e)); }
 };
 
+// JavaScript only:
+O.evaljs = function(x) { var root = O; try { return eval(x); } catch(e) { return null; } };
+O.funcjs = function(/*args...,*/ code) {
+    try {
+        var _args = [];
+        _args.push.apply(_args, arguments);
+        code = (_args.length > 0 ? _args.pop() : '').trim();
+        if (!/\;|\breturn\b/g.test(code)) { code = 'return ' + code; }
+        return O.evaljs('(function(' + _args + '){' + code + ';})');
+    } catch(e) { return null; }
+};
+
 // ------------------------------------------ //
 // TEMPORARY HOOKS FOR TESTING PURPOSES ONLY: //
 // ------------------------------------------ //
