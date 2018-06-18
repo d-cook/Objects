@@ -1091,6 +1091,29 @@ O.compile = O.compiler.compile;
 // Do this AGAIN to make sure that the bootstrapped compiler still works the same:
 compileNonNatives();
 
+function decompile(func) {
+    if (func.code && func.src) {
+        func.code = func.src;
+        delete func.src;
+    }
+}
+
+// DECOMPILE the compiler, so that only the interpreter remains with compiled code:
+//decompile(O.compilers.js.compile);
+decompile(O.compilers.js.compileSrc);
+//decompile(O.compilers.js.getCalls);
+//decompile(O.compilers.js.buildCalls);
+//decompile(O.compilers.js.buildCalls_compile);
+//decompile(O.compilers.js.buildCalls_lookup);
+//decompile(O.compilers.js.buildCalls_other);
+decompile(O.compilers.js.indexStr);
+//decompile(O.compilers.js.valueStr);
+//decompile(O.compilers.js.stringify);
+//decompile(O.compilers.js.globalStr);
+
+// Do this AGAIN to make sure that the decompiled compiler still works the same:
+compileNonNatives();
+
 // External interface for running code
 O.run = function (expr, env, cb) {
     console.log('run:', expr);
