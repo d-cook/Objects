@@ -401,7 +401,7 @@ function compileNonNatives() {
             {code: [O.do,
                 [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
                 [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
-                    {code:[O.lookup, null, 'obj', [O.lookup, null, 'prop']]},
+                    {code:[O.get, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']]},
                     {code:[O.if, [O.has, [O.lookup, null, 'obj'], 'parent'],
                         {code:[O.lookup, [O.lookup, null, 'obj', 'parent'], [O.lookup, null, 'prop']]}
                     ]}
@@ -443,7 +443,7 @@ function compileNonNatives() {
                 [O.assign, null, 'obj', [O.or, [O.lookup, null, 'obj'], {code:[O.lookup, null, 'caller']}]],
                 [O.if, [O.has, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
                     {code:[O.do,
-                        [O.assign, null, 'v', [O.lookup, null, 'obj', [O.lookup, null, 'prop']]],
+                        [O.assign, null, 'v', [O.get, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']]],
                         [O.delete, [O.lookup, null, 'obj'], [O.lookup, null, 'prop']],
                         [O.lookup, null, 'v']
                     ]},
@@ -468,8 +468,8 @@ function compileNonNatives() {
                     [[O.assign, null, 'nextArg', {code:[O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
                         {code:[O.lookup, null, 'obj2']},
                         {code:[O.do,
-                            [O.assign, null, 'k', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
-                            [O.assign, null, 'obj2', [O.lookup, null, 'k'], [O.lookup, null, 'obj', [O.lookup, null, 'k']]],
+                            [O.assign, null, 'k', [O.get, [O.lookup, null, 'keys'], [O.lookup, null, 'i']]],
+                            [O.assign, null, 'obj2', [O.lookup, null, 'k'], [O.get, [O.lookup, null, 'obj'], [O.lookup, null, 'k']]],
                             [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                             [[O.lookup, null, 'nextArg']]
                         ]}
@@ -586,9 +586,9 @@ function compileNonNatives() {
                 [O.lookup, null, 'env2']
             ]},
             {code:[O.do,
-                [O.assign, null, 'name', [O.lookup, null, 'argNames', [O.lookup, null, 'i']]],
+                [O.assign, null, 'name', [O.get, [O.lookup, null, 'argNames'], [O.lookup, null, 'i']]],
                 [O.if, [O['='], [O.type, [O.lookup, null, 'name']], 'string'],
-                    {code:[O.assign, null, 'env2', [O.lookup, null, 'name'], [O.lookup, null, 'args', [O.lookup, null, 'i']]]}
+                    {code:[O.assign, null, 'env2', [O.lookup, null, 'name'], [O.get, [O.lookup, null, 'args'], [O.lookup, null, 'i']]]}
                 ],
                 [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                 [[O.lookup, null, 'setNextArg']]
@@ -603,7 +603,7 @@ function compileNonNatives() {
                 {code:[O.lookup, null, 'args']},
                 {code:[O.do,
                     [O.assign, null, 'args', [O.lookup, null, 'i'],
-                        [O.eval, [O.lookup, null, 'env'], [O.lookup, null, 'args', [O.lookup, null, 'i']]]
+                        [O.eval, [O.lookup, null, 'env'], [O.get, [O.lookup, null, 'args'], [O.lookup, null, 'i']]]
                     ],
                     [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                     [[O.lookup, null, 'evalNextArg']]
@@ -645,12 +645,12 @@ compileAssign(js, 'compile', { parent: js, args: ['code', 'innerOffset'], code: 
                     [[O.assign, null, 'nextCodeProp', {code:[
                         O.if, [O['<'], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
                             {code:[O.do,
-                                [O.assign, null, 'p', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
+                                [O.assign, null, 'p', [O.get, [O.lookup, null, 'keys'], [O.lookup, null, 'i']]],
                                 [O.if, [O.not, [O.or,
                                         [O['='], [O.lookup, null, 'p'], 'src'],
                                         {code:[O['='], [O.lookup, null, 'p'], 'code']}
                                     ]],
-                                    {code:[O.assign, null, 'cc', [O.lookup, null, 'p'], [O.lookup, null, 'code', [O.lookup, null, 'p']]]}
+                                    {code:[O.assign, null, 'cc', [O.lookup, null, 'p'], [O.get, [O.lookup, null, 'code'], [O.lookup, null, 'p']]]}
                                 ],
                                 [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                                 [[O.lookup, null, 'nextCodeProp']]
@@ -713,7 +713,7 @@ compileAssign(js, 'getCalls', { parent: js, args: ['code', 'calls', 'innerOffset
                         [O.lookup, null, 'calls']
                     ]},
                     {code:[O.do,
-                        [O.assign, null, 'c', [O.lookup, null, 'code', [O.lookup, null, 'i']]],
+                        [O.assign, null, 'c', [O.get, [O.lookup, null, 'code'], [O.lookup, null, 'i']]],
                         [O.push, [O.lookup, null, 'last'], [
                             O.if, [O['='], [O.type, [O.lookup, null, 'c']], 'array'],
                                 {code:[O['+'],
@@ -746,7 +746,7 @@ compileAssign(js, 'buildCalls', { parent: js, args: ['calls', 'innerOffset'], co
         O.if, [O['<'], [O.lookup, null, 'idx'], 0],
             {code:[O.lookup, null, 'src']},
             {code:[O.do,
-                [O.assign, null, 'c', [O.lookup, null, 'calls', [O.lookup, null, 'idx']]],
+                [O.assign, null, 'c', [O.get, [O.lookup, null, 'calls'], [O.lookup, null, 'idx']]],
                 [O.if, [O.not, [O['='], [O.type, [O.lookup, null, 'c']], 'array']],
                     {code:[O.lookup, null, 'src']},
                     {code:[O.do,
@@ -783,7 +783,7 @@ compileAssign(js, 'buildCalls', { parent: js, args: ['calls', 'innerOffset'], co
                                 {code:[O.do,
                                     [
                                         'buildCalls_compile',
-                                        [O.lookup, null, 'c', [O.lookup, null, 'i']],
+                                        [O.get, [O.lookup, null, 'c'], [O.lookup, null, 'i']],
                                         [O.lookup, null, 'innerOffset'],
                                         [O.lookup, null, 'calls']
                                     ],
@@ -836,7 +836,7 @@ compileAssign(js, 'buildCalls_lookup', { parent: js, args: ['c', 'idx', 'innerOf
                         {code:[O.do,
                             [O.assign, null, 'len', [O.length, [O.lookup, null, 'src']]],
                             //TODO: fix compiler to allow a direct-reference below (i.e 'indexStr'):
-                            [O.assign, null, 'vs', ['indexStr', [O.lookup, null, 'vals', [O.lookup, null, 'max']]]],
+                            [O.assign, null, 'vs', ['indexStr', [O.get, [O.lookup, null, 'vals'], [O.lookup, null, 'max']]]],
                             [O.assign, null, 's',
                                 [O.if, [O['='], [O.lookup, null, 'f'], O.assign],
                                     {code:[O['+'],
@@ -852,7 +852,7 @@ compileAssign(js, 'buildCalls_lookup', { parent: js, args: ['c', 'idx', 'innerOf
                                     ]},
                                     {code:[O.if, [O['='], [O.lookup, null, 'f'], O.exists],
                                         {code:[O['+'],
-                                            [O.lookup, null, 'vals', [O.lookup, null, 'max']],
+                                            [O.get, [O.lookup, null, 'vals'], [O.lookup, null, 'max']],
                                             ' in ',
                                             [O.if, [O['<'], [O.lookup, null, 'max'], 1],
                                                 {code:[O.lookup, null, 's']},
@@ -897,7 +897,7 @@ compileAssign(js, 'buildCalls_lookup', { parent: js, args: ['c', 'idx', 'innerOf
                                 [O.lookup, null, 's'],
                                 [O.if, [O['>'], [O.lookup, null, 'i'], 0], {code:[O['+'], ' && ', [O.lookup, null, 's']]}, ''],
                                 //TODO: fix compiler to allow a direct-reference below (i.e 'indexStr'):
-                                ['indexStr', [O.lookup, null, 'vals', [O.lookup, null, 'i']]]
+                                ['indexStr', [O.get, [O.lookup, null, 'vals'], [O.lookup, null, 'i']]]
                             ]],
                             [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                             [[O.lookup, null, 'nextS']]
@@ -907,7 +907,7 @@ compileAssign(js, 'buildCalls_lookup', { parent: js, args: ['c', 'idx', 'innerOf
             ]},
             {code:[O.do,
                 //TODO: fix compiler to allow a direct-reference below (i.e 'valueStr'):
-                [O.push, [O.lookup, null, 'vals'], ['valueStr', [O.lookup, null, 'c', [O.lookup, null, 'i']]]],
+                [O.push, [O.lookup, null, 'vals'], ['valueStr', [O.get, [O.lookup, null, 'c'], [O.lookup, null, 'i']]]],
                 [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                 [[O.lookup, null, 'next']]
             ]}
@@ -979,7 +979,7 @@ compileAssign(js, 'buildCalls_other', { parent: js, args: ['c', 'idx', 'innerOff
                             [O.lookup, null, 's'],
                             [O.if, [O['>'], [O.lookup, null, 'i'], 1], ', ', ''],
                             //TODO: fix compiler to allow a direct-reference below (i.e 'valueStr'):
-                            ['valueStr', [O.lookup, null, 'c', [O.lookup, null, 'i']]]
+                            ['valueStr', [O.get, [O.lookup, null, 'c'], [O.lookup, null, 'i']]]
                         ]],
                         [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                         [[O.lookup, null, 'nextC']]
@@ -1046,7 +1046,7 @@ compileAssign(js, 'stringify', { parent: js, args: ['v', 'alias'], code: [O.do,
                                 ]
                             ]},
                             {code:[O.do,
-                                [O.assign, null, 'prop', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
+                                [O.assign, null, 'prop', [O.get, [O.lookup, null, 'keys'], [O.lookup, null, 'i']]],
                                 [O.assign, null, 'propStr',
                                     [O.if, [O.lookup, null, 'isArray'],
                                         '',
@@ -1057,7 +1057,7 @@ compileAssign(js, 'stringify', { parent: js, args: ['v', 'alias'], code: [O.do,
                                     [O.lookup, null, 's'],
                                     ', ',
                                     [O.lookup, null, 'propStr'],
-                                    ['stringify', [O.lookup, null, 'v', [O.lookup, null, 'prop']], [O.lookup, null, 'alias']]
+                                    ['stringify', [O.get, [O.lookup, null, 'v'], [O.lookup, null, 'prop']], [O.lookup, null, 'alias']]
                                 ]],
                                 [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
                                 [[O.lookup, null, 'nextProp']]
@@ -1076,7 +1076,7 @@ compileAssign(js, 'globalStr', { parent: js, args: ['v'], code: [O.do,
     [[O.assign, null, 'nextGlobalProp',
         {code:[O.if, [O['<'], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
             {code:[O.do,
-                [O.assign, null, 'prop', [O.lookup, null, 'keys', [O.lookup, null, 'i']]],
+                [O.assign, null, 'prop', [O.get, [O.lookup, null, 'keys'], [O.lookup, null, 'i']]],
                 [O.if, [O['='], [O.lookup, null, 'v'], [O.get, O, [O.lookup, null, 'prop']]],
                     {code:[O['+'], 'O["', [O.lookup, null, 'prop'], '"]']},
                     {code:[O.do,
@@ -1106,13 +1106,13 @@ function decompile(func) {
 
 // DECOMPILE the compiler, so that only the interpreter remains with compiled code:
 //decompile(O.compilers.js.compile);
-decompile(O.compilers.js.compileSrc);
+//decompile(O.compilers.js.compileSrc);
 //decompile(O.compilers.js.getCalls);
 //decompile(O.compilers.js.buildCalls);
 //decompile(O.compilers.js.buildCalls_compile);
 //decompile(O.compilers.js.buildCalls_lookup);
 //decompile(O.compilers.js.buildCalls_other);
-decompile(O.compilers.js.indexStr);
+//decompile(O.compilers.js.indexStr);
 //decompile(O.compilers.js.valueStr);
 //decompile(O.compilers.js.stringify);
 //decompile(O.compilers.js.globalStr);
