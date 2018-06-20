@@ -1,7 +1,7 @@
 (function() {
 
 // The "root" object of the whole system:
-var O = window.Objects = Object.create(null);
+var O = window.Objects = window.O = Object.create(null);
 O.root = O;
 
 // Functions that must be native-defined:
@@ -356,7 +356,13 @@ js.globalStr = { parent: js, args: ['v'], code: function (cb, env) {
 })();
 
 function compileAssign(parent, funcName, code) {
-    O.invoke(O.tailcall(js.compile, O, [code], function (cc) { parent[funcName] = cc; }));
+    O.invoke(O.tailcall(js.compile, O, [code], function (cc) {
+        var p = parent[funcName] || (parent[funcName] = {});
+        var keys = O.keys(cc);
+        for(var i = 0; i < keys.length; i++) {
+            p[keys[i]] = cc[keys[i]];
+        }
+    }));
 }
 
 function compileNonNatives() {
@@ -1160,7 +1166,7 @@ O.saveFile = function(contents, fileName) {
         setTimeout(function() {
             window.URL.revokeObjectURL(url);
             document.removeChild(saveLink);
-        }); 
+        });
     }
 };
 
