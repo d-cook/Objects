@@ -366,6 +366,8 @@ function compileAssign(parent, funcName, code) {
 }
 
 function compileNonNatives() {
+    console.log('compiling natives...');
+
     // The exists, lookup, assign, and remove are just like has, get, set, and delete,
     //   except that property-search continues up the "parent" chain until it is found.
     //   They also allow a series of properties to be listed, for convenience.
@@ -1106,15 +1108,15 @@ function decompile(func) {
 
 // DECOMPILE the compiler, so that only the interpreter remains with compiled code:
 //decompile(O.compilers.js.compile);
-//decompile(O.compilers.js.compileSrc);
+decompile(O.compilers.js.compileSrc);
 //decompile(O.compilers.js.getCalls);
 //decompile(O.compilers.js.buildCalls);
 //decompile(O.compilers.js.buildCalls_compile);
 //decompile(O.compilers.js.buildCalls_lookup);
 //decompile(O.compilers.js.buildCalls_other);
-//decompile(O.compilers.js.indexStr);
+decompile(O.compilers.js.indexStr);
 //decompile(O.compilers.js.valueStr);
-//decompile(O.compilers.js.stringify);
+decompile(O.compilers.js.stringify);
 //decompile(O.compilers.js.globalStr);
 
 // Do this AGAIN to make sure that the decompiled compiler still works the same:
