@@ -356,6 +356,7 @@ js.globalStr = { parent: js, args: ['v'], code: function (cb, env) {
 })();
 
 function compileAssign(parent, funcName, code) {
+    console.log('compiling: ' + (parent === js ? 'compiler.' : '') + funcName);
     O.invoke(O.tailcall(js.compile, O, [code], function (cc) {
         var p = parent[funcName] || (parent[funcName] = {});
         var keys = O.keys(cc);
@@ -365,9 +366,18 @@ function compileAssign(parent, funcName, code) {
     }));
 }
 
-function compileNonNatives() {
-    console.log('compiling natives...');
+function process(start, end, func) {
+    var i = 1;
+    return function() {
+        console.log('---- ' + start + (i > 1 ? ' (' + i + ')' : '') + ' ----');
+        var result = func.apply(null, arguments);
+        console.log('---- ' + end + (i > 1 ? ' (' + i + ')' : '') + ' ----');
+        i++;
+        return result;
+    };
+}
 
+var compileNonNatives = process('Compiling Natives', 'Done Compiling', function() {
     // The exists, lookup, assign, and remove are just like has, get, set, and delete,
     //   except that property-search continues up the "parent" chain until it is found.
     //   They also allow a series of properties to be listed, for convenience.
@@ -1177,12 +1187,11 @@ O.saveFile = function(contents, fileName) {
 // ------------------------------------------ //
 
 window.Test = O.run;
-window.RunTests = function(tests) {
+window.RunTests = process('Running Tests', 'Done Running Tests', function(tests) {
     tests = tests || window.Tests;
     if (O.type(tests) !== 'array') { tests = [tests]; }
-    console.log("Running tests:");
     for(var i = 0; i < tests.length; i++) { window.Test(tests[i]); }
-};
+});
 window.Tests = [
     "123",
     "'test'",
