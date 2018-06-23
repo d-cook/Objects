@@ -623,6 +623,43 @@ var compileNonNatives = process('Compiling Natives', function() {
             ]
         ]}]]
     ]});
+
+    compileAssign(O, 'bootstrap', { parent: O, code: [O.do,
+        [O.assign, null, 'src', ''],
+        [O.assign, null, 'keys', [O.keys, ['lookup', null, 'root']]],
+        [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
+        [O.assign, null, 'i', 0],
+        [[O.assign, null, 'next', {code:[
+            O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                {code:['saveFile', [O['+'],
+                    '(function(){\n\n',
+                    '// The "root" object of the whole system:\n',
+                    'var O = window.Objects = Object.create(null);\n\n',
+                    [O.lookup, null, 'src'],
+                    '\n}());'
+                ]]},
+                {code:[O.do,
+                    [O.assign, null, 'src', [O['+'],
+                        [O.lookup, null, 'src'],
+                        [
+                            ['lookup', null, 'compiler', 'stringify'],
+                            ['lookup', ['lookup', null, 'root'], [O.lookup, null, 'i']]
+                        ],
+                        '\n'
+                    ]],
+                    [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                    [[O.lookup, null, 'next']]
+                ]}
+        ]}]],
+        ['saveFile',
+            [O['+'],
+                '(function(){\n\n',
+                '// The "root" object of the whole system:\n',
+                'var O = window.Objects = Object.create(null);\n\n',
+                '\n\n}());'
+            ]
+        ]
+    ]});
 });
 
 compileNonNatives();
