@@ -1160,17 +1160,17 @@ function decompile(parent, funcName) {
 
 var decompileCompiler = process('Decompiling Compiler', function() {
     // DECOMPILE the compiler, so that only the interpreter remains with compiled code:
-    //decompile(js, 'compile');
+    //decompile(js, 'compile');            // broken
     decompile(js, 'compileSrc');
-    //decompile(js, 'getCalls');
-    //decompile(js, 'buildCalls');
-    //decompile(js, 'buildCalls_compile');
-    //decompile(js, 'buildCalls_lookup');
-    //decompile(js, 'buildCalls_other');
+    //decompile(js, 'getCalls');           // broken
+    //decompile(js, 'buildCalls');         // stack overflow
+    //decompile(js, 'buildCalls_compile'); // stack overflow
+    //decompile(js, 'buildCalls_lookup');  // broken
+    //decompile(js, 'buildCalls_other');   // broken
     decompile(js, 'indexStr');
-    //decompile(js, 'valueStr');
+    //decompile(js, 'valueStr');           // broken
     decompile(js, 'stringify');
-    //decompile(js, 'globalStr');
+    //decompile(js, 'globalStr');          // runs very slow
 });
 
 decompileCompiler();
