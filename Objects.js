@@ -624,38 +624,181 @@ var compileNonNatives = process('Compiling Natives', function() {
         ]}]]
     ]});
 
+    // Written in one sitting without testing ... needs verification:
     compileAssign(O, 'bootstrap', { parent: O, code: [O.do,
-        [O.assign, null, 'src', ''],
-        [O.assign, null, 'keys', [O.keys, ['lookup', null, 'root']]],
-        [O.assign, null, 'len', [O.length, [O.lookup, null, 'keys']]],
-        [O.assign, null, 'i', 0],
-        [[O.assign, null, 'next', {code:[
-            O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
-                {code:['saveFile', [O['+'],
-                    '(function(){\n\n',
-                    '// The "root" object of the whole system:\n',
-                    'var O = window.Objects = Object.create(null);\n\n',
-                    [O.lookup, null, 'src'],
-                    '\n}());'
-                ]]},
+        [O.assign, null, 'mem', [O.list]],
+        [O.assign, null, 'len', 0],
+        [O.assign, null, 'getIdx', {args:['val'], code:[O.do,
+            // Assume val is object or array
+            [O.assign, null, 'i', 0],
+            [[O.assign, null, 'nextIdx', {code:[
+                O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                    -1,
+                    {code:[
+                        O.if, [O['='], [O.get, [O.get, [O.lookup, null, 'mem'], [O.lookup, null, 'i']], 'val'], [O.lookup, null, 'val']],
+                            {code:[O.lookup, null, 'i']},
+                            {code:[O.do,
+                                [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                                [[O.lookup, null, 'nextIdx']]
+                            ]}
+                    ]}
+            ]}]]
+        ]}],
+        [O.assign, null, 'insert', {args:['val'], code:[
+            // Assume val is object or array
+            O.if, [O['<'], [[O.lookup, null, 'getIdx'], [O.lookup, null, 'val']], 0],
                 {code:[O.do,
-                    [O.assign, null, 'src', [O['+'],
-                        [O.lookup, null, 'src'],
-                        [
-                            ['lookup', null, 'compiler', 'stringify'],
-                            ['lookup', ['lookup', null, 'root'], [O.lookup, null, 'i']]
-                        ],
-                        '\n'
-                    ]],
-                    [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
-                    [[O.lookup, null, 'next']]
+                    [O.assign, null, 'entry', [O.newObj]],
+                    [O.assign, null, 'len', [O.push, [O.lookup, null, 'mem'], [O.lookup, null, 'entry']]],
+                    [O.set, [O.lookup, null, 'entry'], 'val', [O.lookup, null, 'val']],
+                    [O.set, [O.lookup, null, 'entry'], 'fields',
+                        [O.if, [O['='], [O.type, [O.lookup, null, 'val']], 'array'],
+                            {code:[O.do,
+                                [O.assign, null, 'fields', [O.list]],
+                                [O.assign, null, 'i', 0],
+                                [O.assign, null, 'fLen', [O.length, [O.lookup, null, 'val']]],
+                                [[O.assign, null, 'nextField', {code:[
+                                    O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'fLen']],
+                                        {code:[O.lookup, null, 'fields']},
+                                        {code:[O.do,
+                                            [O.assign, null, 'f', [O.get, [O.lookup, null, 'val'], [O.lookup, null, 'i']]],
+                                            [O.assign, null, 'fType', [O.type, [O.lookup, null, 'f']]],
+                                            [O.if, [O.or,
+                                                    [O['='], [O.lookup, null, 'fType'], 'array'],
+                                                    {code:[O['='], [O.lookup, null, 'fType'], 'object']}
+                                                ],
+                                                {code:[O.do,
+                                                    [O.assign, null, 'fIdx', [[O.lookup, null, 'getIdx'], [O.lookup, null, 'f']]],
+                                                    [O.if, [O['<'], [O.lookup, null, 'fIdx'], 0],
+                                                        {code:[O.do,
+                                                            [O.assign, null, 'fIdx', [O.lookup, null, 'len']],
+                                                            [[O.lookup, null, 'insert'], [O.lookup, null, 'f']]
+                                                        ]}
+                                                    ],
+                                                    [O.push, [O.lookup, null, 'fields'], [O.list, [O.lookup, null, 'fIdx']]]
+                                                ]},
+                                                {code:[O.push, [O.lookup, null, 'fields'], [O.lookup, null, 'f']]}
+                                            ],
+                                            [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                                            [[O.lookup, null, 'nextField']]
+                                        ]}
+                                ]}]]
+                            ]},
+                            {code:[O.do,
+                                [O.assign, null, 'fields', [O.newObj]],
+                                [O.assign, null, 'i', 0],
+                                [O.assign, null, 'keys', [O.keys, [O.lookup, null, 'val']]],
+                                [O.assign, null, 'fLen', [O.length, [O.lookup, null, 'keys']]],
+                                [[O.assign, null, 'nextField', {code:[
+                                    O.if, [O['>='], [O.lookup, null, 'i'], [O.lookup, null, 'fLen']],
+                                        {code:[O.lookup, null, 'fields']},
+                                        {code:[O.do,
+                                            [O.assign, null, 'k', [O.get, [O.lookup, null, 'keys'], [O.lookup, null, 'i']]],
+                                            [O.assign, null, 'f', [O.get, [O.lookup, null, 'val'], [O.lookup, null, 'k']]],
+                                            [O.assign, null, 'fType', [O.type, [O.lookup, null, 'f']]],
+                                            [O.if, [O.or,
+                                                    [O['='], [O.lookup, null, 'fType'], 'array'],
+                                                    {code:[O['='], [O.lookup, null, 'fType'], 'object']}
+                                                ],
+                                                {code:[O.do,
+                                                    [O.assign, null, 'fIdx', [[O.lookup, null, 'getIdx'], [O.lookup, null, 'f']]],
+                                                    [O.if, [O['<'], [O.lookup, null, 'fIdx'], 0],
+                                                        {code:[O.do,
+                                                            [O.assign, null, 'fIdx', [O.lookup, null, 'len']],
+                                                            [[O.lookup, null, 'insert'], [O.lookup, null, 'f']]
+                                                        ]}
+                                                    ],
+                                                    [O.set, [O.lookup, null, 'fields'], [O.lookup, null, 'k'], [O.list, [O.lookup, null, 'fIdx']]]
+                                                ]},
+                                                {code:[O.set, [O.lookup, null, 'fields'], [O.lookup, null, 'k'], [O.lookup, null, 'f']]}
+                                            ],
+                                            [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                                            [[O.lookup, null, 'nextField']]
+                                        ]}
+                                ]}]]
+                            ]}
+                        ]
+                    ]
                 ]}
+        ]}],
+        [[O.lookup, null, 'insert'], [O.lookup, null, 'root']],
+        [O.assign, null, 'decls', ''],
+        [O.assign, null, 'assigns', ''],
+        [O.assign, null, 'i', 0],
+        [[O.assign, null, 'parseNextEntry', {code:[
+            O.if, [O['<'], [O.lookup, null, 'i'], [O.lookup, null, 'len']],
+                {code:[O.do,
+                    [O.assign, null, 'fields', [O.get, [O.get, [O.lookup, null, 'mem'], [O.lookup, null, 'i']], 'fields']],
+                    [O.if, [O['='], [O.type, [O.lookup, null, 'fields']], 'array'],
+                        {code:[O.do,
+                            [O.assign, null, 'decls', [O['+'], [O.lookup, null, 'decls'], 'var v', [O.lookup, null, 'i'], ' = {\n']],
+                            [O.assign, null, 'fIdx', 0],
+                            [O.assign, null, 'fLen', [O.length, [O.lookup, null, 'fields']]],
+                            [[O.assign, null, 'parseNextField', {code:[
+                                O.if, [O['<'], [O.lookup, null, 'fIdx'], [O.lookup, null, 'fLen']],
+                                    {code:[O.do,
+                                        [O.assign, null, 'f', [O.get, [O.lookup, null, 'fields'], [O.lookup, null, 'fIdx']]],
+                                        [O.assign, null, 'defer', [O['='], [O.type, [O.lookup, null, 'f']], 'array']],
+                                        [O.assign, null, 'decls', [O['+'],
+                                            [O.lookup, null, 'decls'],
+                                            [O.if, [O['>'], [O.lookup, null, 'fIdx'], 0], ', ', ''],
+                                            [O.if, [O.lookup, null, 'defer'], 'null', {code:[O.lookup, null, 'f']}]
+                                        ]],
+                                        [O.if, [O.lookup, null, 'defer'],
+                                            {code:[O.assign, null, 'assigns',
+                                                [O.lookup, null, 'assigns'],
+                                                'v', [O.lookup, null, 'i'], '[', [O.lookup, null, 'fIdx'], '] = ',
+                                                'v', [O.get, [O.lookup, null, 'f'], 0], ';\n'
+                                            ]}
+                                        ],
+                                        [O.assign, null, 'fIdx', [O['+'], [O.lookup, null, 'fIdx'], 1]],
+                                        [[O.lookup, null, 'parseNextField']]
+                                    ]}
+                            ]}]],
+                            [O.assign, null, 'decls', [O['+'], [O.lookup, null, 'decls'], '};\n']],
+                        ]},
+                        {code:[O.do,
+                            [O.assign, null, 'decls', [O['+'], [O.lookup, null, 'decls'], 'var v', [O.lookup, null, 'i'], ' = [\n']],
+                            [O.assign, null, 'fIdx', 0],
+                            [O.assign, null, 'keys', [O.keys, [O.lookup, null, 'fields']]],
+                            [O.assign, null, 'fLen', [O.length, [O.lookup, null, 'keys']]],
+                            [[O.assign, null, 'parseNextField', {code:[
+                                O.if, [O['<'], [O.lookup, null, 'fIdx'], [O.lookup, null, 'fLen']],
+                                    {code:[O.do,
+                                        [O.assign, null, 'k', [O.get, [O.lookup, null, 'keys'], [O.lookup, null, 'fIdx']]],
+                                        [O.assign, null, 'f', [O.get, [O.lookup, null, 'fields'], [O.lookup, null, 'k']]],
+                                        [O.assign, null, 'defer', [O['='], [O.type, [O.lookup, null, 'f']], 'array']],
+                                        [O.assign, null, 'decls', [O['+'],
+                                            [O.lookup, null, 'decls'],
+                                            '"', [O.lookup, null, 'k'], '": ',
+                                            [O.if, [O['>'], [O.lookup, null, 'fIdx'], 0], ', ', ''],
+                                            [O.if, [O.lookup, null, 'defer'], 'null', {code:[O.lookup, null, 'f']}]
+                                        ]],
+                                        [O.if, [O.lookup, null, 'defer'],
+                                            {code:[O.assign, null, 'assigns',
+                                                [O.lookup, null, 'assigns'],
+                                                'v', [O.lookup, null, 'i'], '["', [O.lookup, null, 'k'], '"] = ',
+                                                'v', [O.get, [O.lookup, null, 'f'], 0], ';\n'
+                                            ]}
+                                        ],
+                                        [O.assign, null, 'fIdx', [O['+'], [O.lookup, null, 'fIdx'], 1]],
+                                        [[O.lookup, null, 'parseNextField']]
+                                    ]}
+                            ]}]],
+                            [O.assign, null, 'decls', [O['+'], [O.lookup, null, 'decls'], '];\n']]
+                        ]}
+                    ]
+                    [O.assign, null, 'i', [O['+'], [O.lookup, null, 'i'], 1]],
+                    [[O.lookup, null, 'parseNextEntry']]
+                ]},
         ]}]],
         ['saveFile',
             [O['+'],
                 '(function(){\n\n',
-                '// The "root" object of the whole system:\n',
-                'var O = window.Objects = Object.create(null);\n\n',
+                [O.lookup, null, 'decls'], '\n\n',
+                'var O = v', [[O.lookup, null, 'getIdx'], [O.lookup, null, 'root']], ';\n',
+                'var js = v', [[O.lookup, null, 'getIdx'], [O.lookup, null, 'compiler']], ';\n\n',
+                [O.lookup, null, 'assigns'],
                 '\n\n}());'
             ]
         ]
