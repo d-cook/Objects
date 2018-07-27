@@ -9,49 +9,48 @@ The end goal is to do this visually, but may have to start programmatically firs
 
 --------------------------
 
-any   :: object | array | prim
+any   :: object | array | prim | native-function   <-- object can be a func
 prim  :: string | number | bool | null
 key   :: string
 
-value :: prim             <-- Actual prim value
-         { key:value.. }  <-- Object literal of values
-         [ [ value.. ] ]  <-- Array literal of values
-         entry            <-- Reference path to a value
+value :: prim              <-- Actual prim value
+         { key:value.. }   <-- Object literal of values
+         [ [ value.. ] ]   <-- Array literal of values
+         calc              <-- Calculated value
 
-entry :: [ number, index.. ]  <-- Distance up the context-chain, indexes down into it
+calc   :: [ lookup.. ]     <-- Op followed by args, Or a single lookup value
+lookup :: number, entry    <-- Distance up the context-chain (-1 for args), entry
+entry  :: [ index.. ]      <-- Indexes down into a context.
+index  :: number | string  <-- Array index or Object property
 
-index :: number  <-- Array index
-         string  <-- Object property
-
-func  :: { args:[string..], ops:[op..], parent:context }  <-- Function
-
-op    :: [ entry.. ]   <-- Operation to perform, followed by args
+func  :: { args:[string..], values:[value..], parent:context }
 
 context :: { values:[any..], parent:context }  <-- Execution context
 
 -----------------------
 
-EXAMPLE: [x, y, z] --> { x: x*(d/(d+z)), y: y*(d/(d+z)) }
+EXAMPLE: (x, y, z) --> { x: x*(d/(d+z)), y: y*(d/(d+z)) }
 
 Func: {
-  parent: { values: [<*>, </>, <+>, <D>] },  <-- Entries: [1,..]
-  args  : ["x","y","z"],
-  ops   : [
-    [[1,2],[1,3],[0,2]],   --> [0,3]
-    [[1,1],[1,3],[1,3]],   --> [0,4]
-    [[1,0],[0,0],[0,4]],   --> [0,5]
-    [[1,0],[0,1],[0,4]],   --> [0,6]
-    [{x:[0,5], y:[0,6]}]   --> [0,7]
+  parent: { values: [<*>, </>, <+>] },  <-- Lookups:  1,[..]
+  args  : ["x","y","z","d"],            <-- Lookups: -1,[..]
+  values: [                             <-- Lookups:  0,[..]
+    [ 1,[2], -1,[3], -1,[2]],  <-- d + z
+    [ 1,[1], -1,[3],  0,[0]],  <-- d / (d+z)
+    [ 1,[0], -1,[0],  0,[1]],  <-- x * (d/(d+z))
+    [ 1,[0], -1,[1],  0,[1]],  <-- y * (d/(d+z))
+    [{x:[0,[2]], y:[0,[3]]}]   <-- { x: x*(d/(d+z)), y: y*(d/(d+z)) }
   ]
 }
 
-Context: [  <-- Entries: [0,..]
-  0: x      <-- These come straight from args passed
-  1: y
-  2: z
-  3: d + z  <-- Everything from here down is built from ops over time
-  4: d /..
-  5: x *..
-  6: y *..
-  7: {x,y}
-]
+ExampleCallToFunc: {
+  parent: values: [Func],  <-- Lookups:  1,[..] (Func is 1,[0])
+  args  : [ ],             <-- Lookups: -1,[..] (But its empty)
+  values: [                <-- Lookups:  0,[..]
+    3,                                    <-- x = 3
+    2,                                    <-- y = 2
+    1,                                    <-- z = 1
+    9,                                    <-- d = 9
+    [1,[0], 0,[0], 0,[1], 0,[2], 0,[3] ]  <-- Func(3,2,1,9)
+  ]
+}
